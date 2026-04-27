@@ -117,7 +117,7 @@ export default function Home() {
       {filtered.length === 0 ? (
         <EmptyState hasItems={totalCount > 0} />
       ) : (
-        <ul className="space-y-2.5">
+        <ul className="divide-y divide-beige/70 -mx-2">
           {filtered.map((item) => (
             <li key={item.id}>
               <ItemCard item={item} tags={tags ?? []} />
