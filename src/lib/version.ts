@@ -13,5 +13,9 @@
  *        dropped) and circle handles get a pale beige interior. The edit
  *        screen "切り抜き" button now falls back to the saved main/icon
  *        blob when no fresh file has been picked.
+ * 0.2.4  Edit-screen re-crop works on a Blob copy (saved record is not
+ *        touched until confirmation), and updateItemImage now does an
+ *        explicit get + put so siblings like iconBlob survive a
+ *        mainImageBlob update.
  */
-export const APP_VERSION = "0.2.3";
+export const APP_VERSION = "0.2.4";

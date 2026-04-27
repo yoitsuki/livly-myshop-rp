@@ -142,7 +142,15 @@ export async function updateItemImage(
     mainCrop?: ItemCropRecord;
   }
 ): Promise<void> {
-  await db().items.update(id, patch);
+  // Use an explicit get + put inside a transaction so other Blob fields on
+  // the record (iconBlob / mainImageBlob etc.) survive the round-trip. Some
+  // browsers' IndexedDB implementations can lose sibling Blobs on a partial
+  // update of a record that already contains Blobs.
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(id);
+    if (!current) return;
+    await db().items.put({ ...current, ...patch });
+  });
 }
 
 export async function deleteItem(id: string): Promise<void> {

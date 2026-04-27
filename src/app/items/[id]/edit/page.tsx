@@ -107,15 +107,23 @@ export default function EditItemPage({
   };
 
   // The cropper falls back to the most recent main/icon blob when the user has
-  // not picked a fresh source file in this session.
+  // not picked a fresh source file in this session. We always work on a *copy*
+  // of the saved blob so the stored record is never mutated until the cropper
+  // confirmation persists a fresh result.
   const startCrop = (target: "icon" | "main") => {
-    const fallback = sourceBlob ?? mainSrc ?? iconSrc;
-    if (!fallback) {
+    if (sourceBlob) {
+      setError(undefined);
+      setCropping(target);
+      return;
+    }
+    const saved = mainSrc ?? iconSrc;
+    if (!saved) {
       setError("先にファイルを選んでください");
       return;
     }
     setError(undefined);
-    if (!sourceBlob) setSourceBlob(fallback);
+    const copy = new Blob([saved], { type: saved.type || "image/jpeg" });
+    setSourceBlob(copy);
     setCropping(target);
   };
 
