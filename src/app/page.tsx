@@ -30,10 +30,7 @@ export default function Home() {
     if (q.trim()) {
       const needle = q.trim().toLowerCase();
       list = list.filter((i) =>
-        [i.name, i.category, i.description]
-          .join(" ")
-          .toLowerCase()
-          .includes(needle)
+        [i.name, i.category].join(" ").toLowerCase().includes(needle)
       );
     }
     if (activeCategory) {

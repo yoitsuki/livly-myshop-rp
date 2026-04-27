@@ -4,16 +4,19 @@ export type TagType = "period" | "gacha" | "category" | "custom";
 
 export interface Item {
   id: string;
-  /** Resized + JPEG-compressed image (default max 1600px wide). */
+  /** Cropped icon — used in list rows and detail header. */
+  iconBlob?: Blob;
+  /** Cropped main image — shown large on the detail page. */
+  mainImageBlob?: Blob;
+  /** Legacy v2 field; preserved on read for older records. */
   imageBlob?: Blob;
-  /** Small thumbnail (default 240px wide) for list views. */
+  /** Legacy v2 thumbnail; preserved for older records. */
   thumbBlob?: Blob;
   /** Reserved for a future Drive backup. Optional and unused for now. */
   driveFileId?: string;
   driveThumbnailUrl?: string;
   name: string;
   category: string;
-  description: string;
   minPrice: number;
   refPriceMin: number;
   refPriceMax: number;
@@ -100,7 +103,6 @@ export type ItemMetaPatch = Partial<
     Item,
     | "name"
     | "category"
-    | "description"
     | "minPrice"
     | "refPriceMin"
     | "refPriceMax"
@@ -117,10 +119,10 @@ export async function updateItemMeta(
   await db().items.update(id, { ...patch, updatedAt: Date.now() });
 }
 
-/** Replace image without bumping updatedAt. */
+/** Replace icon and/or main image without bumping updatedAt. */
 export async function updateItemImage(
   id: string,
-  patch: { imageBlob?: Blob; thumbBlob?: Blob }
+  patch: { iconBlob?: Blob; mainImageBlob?: Blob }
 ): Promise<void> {
   await db().items.update(id, patch);
 }

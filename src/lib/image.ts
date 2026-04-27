@@ -70,3 +70,69 @@ export async function buildStoredImages(
 
   return { imageBlob, thumbBlob, width, height };
 }
+
+export interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Crop a region (in source-image pixel coordinates) and re-encode as JPEG.
+ * Optionally caps the output width.
+ */
+export async function cropAndEncode(
+  source: Blob,
+  rect: CropRect,
+  opts: { maxWidth?: number; quality?: number } = {}
+): Promise<Blob> {
+  const bitmap = await createImageBitmap(source);
+  try {
+    const x = clamp(Math.round(rect.x), 0, bitmap.width);
+    const y = clamp(Math.round(rect.y), 0, bitmap.height);
+    const w = clamp(Math.round(rect.w), 1, bitmap.width - x);
+    const h = clamp(Math.round(rect.h), 1, bitmap.height - y);
+
+    const cap = opts.maxWidth ?? Number.POSITIVE_INFINITY;
+    const ratio = Math.min(1, cap / w);
+    const dw = Math.max(1, Math.round(w * ratio));
+    const dh = Math.max(1, Math.round(h * ratio));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = dw;
+    canvas.height = dh;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("2d context unavailable");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, dw, dh);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bitmap, x, y, w, h, 0, 0, dw, dh);
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("toBlob returned null"))),
+        "image/jpeg",
+        opts.quality ?? 0.85
+      );
+    });
+  } finally {
+    bitmap.close();
+  }
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+export async function getImageSize(
+  source: Blob
+): Promise<{ width: number; height: number }> {
+  const bitmap = await createImageBitmap(source);
+  try {
+    return { width: bitmap.width, height: bitmap.height };
+  } finally {
+    bitmap.close();
+  }
+}

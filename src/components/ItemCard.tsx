@@ -15,16 +15,18 @@ export default function ItemCard({
   tags: Tag[];
 }) {
   const itemTags = tags.filter((t) => item.tagIds.includes(t.id));
+  const thumbSource =
+    item.iconBlob ?? item.thumbBlob ?? item.mainImageBlob ?? item.imageBlob;
   const [thumbUrl, setThumbUrl] = useState<string | undefined>(
     item.driveThumbnailUrl
   );
 
   useEffect(() => {
-    if (!item.thumbBlob) return;
-    const url = URL.createObjectURL(item.thumbBlob);
+    if (!thumbSource) return;
+    const url = URL.createObjectURL(thumbSource);
     setThumbUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [item.thumbBlob]);
+  }, [thumbSource]);
 
   return (
     <Link
@@ -47,19 +49,18 @@ export default function ItemCard({
         <h3 className="font-bold text-[14px] text-text break-words">
           {item.name || "(名称未設定)"}
         </h3>
-        <div className="whitespace-nowrap text-[12px]">
-          <span className="text-gold-deep tabular-nums">
-            {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)}
-            <span className="text-[10px] ml-0.5">GP</span>
-          </span>
-          <span className="text-muted mx-1">/</span>
-          <span className="text-text/65 tabular-nums">
-            {formatPrice(item.minPrice)}
-            <span className="text-[10px] ml-0.5">GP</span>
+        <div className="text-[11px] tabular-nums whitespace-nowrap">
+          <span className="text-muted">参考価格 </span>
+          <span className="text-gold-deep">
+            {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)} GP
           </span>
         </div>
+        <div className="text-[11px] tabular-nums whitespace-nowrap">
+          <span className="text-muted">最低販売価格 </span>
+          <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
+        </div>
         {itemTags.length > 0 && (
-          <div className="flex items-center flex-wrap gap-0.5">
+          <div className="flex items-center flex-wrap gap-0.5 mt-px">
             {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}

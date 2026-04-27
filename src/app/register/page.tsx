@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ImagePlus, Loader2, Sparkles, X } from "lucide-react";
+import { Crop, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 import {
   createItem,
   createTag,
@@ -12,18 +12,18 @@ import {
   type Tag,
   type TagType,
 } from "@/lib/db";
-import { buildStoredImages } from "@/lib/image";
+import { compressImage } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
 import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
+import ImageCropper from "@/components/ImageCropper";
 
 interface FormState {
   name: string;
   category: string;
-  description: string;
   minPrice: string;
   refPriceMin: string;
   refPriceMax: string;
@@ -34,7 +34,6 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   name: "",
   category: "",
-  description: "",
   minPrice: "",
   refPriceMin: "",
   refPriceMax: "",
@@ -42,14 +41,19 @@ const EMPTY_FORM: FormState = {
   tagIds: [],
 };
 
+type CropTarget = "icon" | "main" | null;
+
 export default function RegisterPage() {
   const router = useRouter();
   const fileInput = useRef<HTMLInputElement>(null);
-  const [originalFile, setOriginalFile] = useState<File | undefined>();
+  const [sourceBlob, setSourceBlob] = useState<Blob | undefined>();
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
-  const [imageBlob, setImageBlob] = useState<Blob | undefined>();
-  const [thumbBlob, setThumbBlob] = useState<Blob | undefined>();
-  const [busy, setBusy] = useState<"idle" | "compress" | "ocr" | "save">("idle");
+  const [iconBlob, setIconBlob] = useState<Blob | undefined>();
+  const [mainBlob, setMainBlob] = useState<Blob | undefined>();
+  const [iconUrl, setIconUrl] = useState<string | undefined>();
+  const [mainUrl, setMainUrl] = useState<string | undefined>();
+  const [cropping, setCropping] = useState<CropTarget>(null);
+  const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [error, setError] = useState<string | undefined>();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -62,25 +66,47 @@ export default function RegisterPage() {
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
+  useEffect(() => {
+    if (!iconBlob) {
+      setIconUrl(undefined);
+      return;
+    }
+    const url = URL.createObjectURL(iconBlob);
+    setIconUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [iconBlob]);
+
+  useEffect(() => {
+    if (!mainBlob) {
+      setMainUrl(undefined);
+      return;
+    }
+    const url = URL.createObjectURL(mainBlob);
+    setMainUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [mainBlob]);
+
   const onPick = () => fileInput.current?.click();
 
   const handleFile = async (file: File) => {
     setError(undefined);
-    setOriginalFile(file);
+    setSourceBlob(file);
+    setIconBlob(undefined);
+    setMainBlob(undefined);
     setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
     setAutoFilled(new Set());
 
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
 
-    setBusy("compress");
+    setBusy("load");
     try {
       const checkedAt = await getCheckedAt(file);
-      const built = await buildStoredImages(file);
-      setImageBlob(built.imageBlob);
-      setThumbBlob(built.thumbBlob);
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
+
+      // OCR runs against a downscaled copy for speed
+      const downscaled = await compressImage(file, { maxWidth: 1600, quality: 0.8 });
 
       setBusy("ocr");
       setOcrProgress(0);
@@ -89,12 +115,12 @@ export default function RegisterPage() {
       try {
         if (settings.ocrProvider === "claude" && settings.claudeApiKey) {
           extracted = await recognizeWithClaude(
-            built.imageBlob,
+            downscaled,
             settings.claudeApiKey,
             settings.claudeModel
           );
         } else {
-          const text = await recognizeJapanese(built.imageBlob, (p) =>
+          const text = await recognizeJapanese(downscaled, (p) =>
             setOcrProgress(p)
           );
           extracted = parseShopText(text);
@@ -115,7 +141,6 @@ export default function RegisterPage() {
         };
         set("name", extracted.name ?? "");
         set("category", extracted.category ?? "");
-        set("description", extracted.description ?? "");
         if (extracted.minPrice != null)
           set("minPrice", String(extracted.minPrice));
         if (extracted.refPriceMin != null)
@@ -133,8 +158,8 @@ export default function RegisterPage() {
   };
 
   const onSave = async () => {
-    if (!imageBlob || !thumbBlob) {
-      setError("画像が選択されていません");
+    if (!iconBlob && !mainBlob) {
+      setError("アイコンかメイン画像のどちらかを切り抜いてください");
       return;
     }
     if (!form.name.trim()) {
@@ -145,11 +170,10 @@ export default function RegisterPage() {
     setBusy("save");
     try {
       await createItem({
-        imageBlob,
-        thumbBlob,
+        iconBlob,
+        mainImageBlob: mainBlob,
         name: form.name.trim(),
         category: form.category.trim(),
-        description: form.description.trim(),
         minPrice: Number(form.minPrice) || 0,
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
@@ -191,30 +215,44 @@ export default function RegisterPage() {
           </div>
         </button>
       ) : (
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={previewUrl}
-            alt="プレビュー"
-            className="w-full max-h-96 object-contain rounded-2xl border border-beige bg-white"
-          />
-          <button
-            onClick={onPick}
-            className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-cream/95 border border-beige text-[12px] text-text/80 shadow"
-          >
-            画像を変更
-          </button>
+        <div className="space-y-3">
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt="プレビュー"
+              className="w-full max-h-72 object-contain rounded-2xl border border-beige bg-white"
+            />
+            <button
+              onClick={onPick}
+              className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-cream/95 border border-beige text-[12px] text-text/80 shadow"
+            >
+              画像を変更
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <CropSlot
+              label="アイコン"
+              imageUrl={iconUrl}
+              onClick={() => setCropping("icon")}
+            />
+            <CropSlot
+              label="メイン画像"
+              imageUrl={mainUrl}
+              onClick={() => setCropping("main")}
+            />
+          </div>
         </div>
       )}
 
-      {busy !== "idle" && (
+      {busy !== "idle" && busy !== "save" && (
         <div className="rounded-xl bg-beige/50 border border-beige px-3 py-2 flex items-center gap-2 text-[13px] text-text/80">
           <Loader2 size={16} className="animate-spin shrink-0" />
           <span>
-            {busy === "compress" && "画像を読み込み中…"}
+            {busy === "load" && "画像を読み込み中…"}
             {busy === "ocr" &&
               `テキストを読み取り中… ${Math.round(ocrProgress * 100)}%`}
-            {busy === "save" && "保存中…"}
           </span>
         </div>
       )}
@@ -267,7 +305,10 @@ export default function RegisterPage() {
         </Field>
       </div>
 
-      <Field label="参考販売価格 (GP)" highlighted={isAuto("refPriceMin") || isAuto("refPriceMax")}>
+      <Field
+        label="参考販売価格 (GP)"
+        highlighted={isAuto("refPriceMin") || isAuto("refPriceMax")}
+      >
         <div className="flex items-center gap-2">
           <input
             inputMode="numeric"
@@ -298,16 +339,6 @@ export default function RegisterPage() {
         </div>
       </Field>
 
-      <Field label="説明文" highlighted={isAuto("description")}>
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          rows={3}
-          className="w-full bg-transparent outline-none text-[13px] text-text resize-y"
-          placeholder="アイテムの説明文"
-        />
-      </Field>
-
       <TagPicker
         tags={tags}
         selected={form.tagIds}
@@ -323,13 +354,62 @@ export default function RegisterPage() {
         </button>
         <button
           onClick={onSave}
-          disabled={busy === "save" || !imageBlob}
+          disabled={busy === "save" || (!iconBlob && !mainBlob)}
           className="flex-[2] py-3 rounded-full bg-gold text-white font-bold disabled:opacity-50 active:bg-gold-deep"
         >
           {busy === "save" ? "保存中…" : "保存"}
         </button>
       </div>
+
+      <ImageCropper
+        source={cropping ? sourceBlob ?? null : null}
+        open={cropping !== null}
+        title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
+        aspect={cropping === "icon" ? 1 : undefined}
+        maxOutputWidth={cropping === "icon" ? 320 : 1200}
+        onCancel={() => setCropping(null)}
+        onConfirm={(blob) => {
+          if (cropping === "icon") setIconBlob(blob);
+          else if (cropping === "main") setMainBlob(blob);
+          setCropping(null);
+        }}
+      />
     </div>
+  );
+}
+
+function CropSlot({
+  label,
+  imageUrl,
+  onClick,
+}: {
+  label: string;
+  imageUrl?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-xl border border-beige bg-cream overflow-hidden"
+    >
+      <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={label}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Crop size={28} strokeWidth={1.6} />
+        )}
+      </div>
+      <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
+        {label}
+        {!imageUrl && <span className="text-[10px] text-muted ml-1">未設定</span>}
+      </div>
+    </button>
   );
 }
 
@@ -397,7 +477,9 @@ function TagPicker({
   const [newType, setNewType] = useState<TagType>("custom");
 
   const toggle = (id: string) => {
-    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+    onChange(
+      selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]
+    );
   };
 
   const add = async () => {

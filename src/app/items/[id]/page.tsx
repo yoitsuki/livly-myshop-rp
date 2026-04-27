@@ -19,15 +19,26 @@ export default function ItemDetailPage({
   const router = useRouter();
   const item = useLiveQuery(() => db().items.get(id), [id]);
   const allTags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
-  const [imageUrl, setImageUrl] = useState<string | undefined>();
+
+  const iconSrc = item?.iconBlob ?? item?.thumbBlob;
+  const mainSrc = item?.mainImageBlob ?? item?.imageBlob;
+
+  const [iconUrl, setIconUrl] = useState<string | undefined>();
+  const [mainUrl, setMainUrl] = useState<string | undefined>();
 
   useEffect(() => {
-    const blob = item?.imageBlob ?? item?.thumbBlob;
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    setImageUrl(url);
+    if (!iconSrc) return setIconUrl(undefined);
+    const url = URL.createObjectURL(iconSrc);
+    setIconUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [item?.imageBlob, item?.thumbBlob]);
+  }, [iconSrc]);
+
+  useEffect(() => {
+    if (!mainSrc) return setMainUrl(undefined);
+    const url = URL.createObjectURL(mainSrc);
+    setMainUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [mainSrc]);
 
   if (item === undefined) {
     return <div className="pt-6 text-center text-muted">読み込み中…</div>;
@@ -56,59 +67,75 @@ export default function ItemDetailPage({
 
   return (
     <div className="pt-3 pb-6 space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 w-20 h-20 rounded-xl border border-beige bg-white overflow-hidden flex items-center justify-center">
+          {iconUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={iconUrl} alt="アイコン" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[10px] text-muted">no icon</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[18px] font-bold text-text leading-snug break-words">
+            {i.name}
+          </h2>
+          {i.category && (
+            <div className="text-[12px] text-muted flex items-center gap-1.5 mt-1">
+              <TagIcon size={12} strokeWidth={2.2} />
+              {i.category}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-beige bg-white overflow-hidden">
-        {imageUrl ? (
+        {mainUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={imageUrl}
+            src={mainUrl}
             alt={i.name}
             className="w-full max-h-[60vh] object-contain bg-white"
           />
         ) : (
-          <div className="aspect-[3/4] bg-beige/40" />
+          <div className="aspect-[4/3] flex items-center justify-center text-muted text-[12px]">
+            メイン画像が登録されていません
+          </div>
         )}
       </div>
 
-      <div className="space-y-2">
-        <h2 className="text-[18px] font-bold text-text leading-snug">{i.name}</h2>
-        {i.category && (
-          <div className="text-[13px] text-muted flex items-center gap-1.5">
-            <TagIcon size={13} strokeWidth={2.2} />
-            {i.category}
-          </div>
-        )}
-        <div className="text-[15px]">
+      <div className="space-y-1">
+        <div className="text-[14px]">
+          <span className="text-muted text-[12px]">参考価格 </span>
           <span className="font-bold text-gold-deep tabular-nums">
             {formatPrice(i.refPriceMin)}〜{formatPrice(i.refPriceMax)} GP
           </span>
-          <span className="text-muted text-[12px] mx-2">参考価格</span>
         </div>
-        <div className="text-[14px] text-text/80">
-          <span className="tabular-nums">{formatPrice(i.minPrice)} GP</span>
-          <span className="text-muted text-[12px] ml-2">最低販売価格</span>
+        <div className="text-[13px]">
+          <span className="text-muted text-[12px]">最低販売価格 </span>
+          <span className="text-text/85 tabular-nums">
+            {formatPrice(i.minPrice)} GP
+          </span>
         </div>
-        {i.description && (
-          <p className="text-[13px] text-text/80 whitespace-pre-wrap leading-relaxed pt-1">
-            {i.description}
-          </p>
+      </div>
+
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((t) => (
+            <TagChip key={t.id} tag={t} />
+          ))}
+        </div>
+      )}
+
+      <div className="text-[12px] text-muted flex items-center gap-1.5 pt-2 border-t border-beige/50">
+        <CalendarDays size={12} strokeWidth={2.2} />
+        確認日時 {formatDateTime(i.checkedAt)}
+      </div>
+      <div className="text-[11px] text-muted">
+        登録 {formatDateTime(i.createdAt)}
+        {i.updatedAt !== i.createdAt && (
+          <> / 更新 {formatDateTime(i.updatedAt)}</>
         )}
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1">
-            {tags.map((t) => (
-              <TagChip key={t.id} tag={t} />
-            ))}
-          </div>
-        )}
-        <div className="text-[12px] text-muted flex items-center gap-1.5 pt-2 border-t border-beige/50">
-          <CalendarDays size={12} strokeWidth={2.2} />
-          確認日時 {formatDateTime(i.checkedAt)}
-        </div>
-        <div className="text-[11px] text-muted">
-          登録 {formatDateTime(i.createdAt)}
-          {i.updatedAt !== i.createdAt && (
-            <> / 更新 {formatDateTime(i.updatedAt)}</>
-          )}
-        </div>
       </div>
 
       <div className="flex gap-2 pt-2">

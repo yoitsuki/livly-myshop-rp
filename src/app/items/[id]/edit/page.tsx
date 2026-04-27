@@ -4,7 +4,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Loader2 } from "lucide-react";
+import { Crop, Loader2, RefreshCw } from "lucide-react";
 import {
   createTag,
   db,
@@ -14,20 +14,21 @@ import {
   type Tag,
   type TagType,
 } from "@/lib/db";
-import { buildStoredImages } from "@/lib/image";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
+import ImageCropper from "@/components/ImageCropper";
 
 interface FormState {
   name: string;
   category: string;
-  description: string;
   minPrice: string;
   refPriceMin: string;
   refPriceMax: string;
   checkedAt: string;
   tagIds: string[];
 }
+
+type CropTarget = "icon" | "main" | null;
 
 export default function EditItemPage({
   params,
@@ -40,16 +41,22 @@ export default function EditItemPage({
   const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
   const fileInput = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState | undefined>();
-  const [imageUrl, setImageUrl] = useState<string | undefined>();
-  const [busy, setBusy] = useState<"idle" | "image" | "save">("idle");
+  const [busy, setBusy] = useState<"idle" | "save">("idle");
   const [error, setError] = useState<string | undefined>();
+
+  const [sourceBlob, setSourceBlob] = useState<Blob | undefined>();
+  const [cropping, setCropping] = useState<CropTarget>(null);
+
+  const iconSrc = item?.iconBlob ?? item?.thumbBlob;
+  const mainSrc = item?.mainImageBlob ?? item?.imageBlob;
+  const [iconUrl, setIconUrl] = useState<string | undefined>();
+  const [mainUrl, setMainUrl] = useState<string | undefined>();
 
   useEffect(() => {
     if (!item) return;
     setForm({
       name: item.name,
       category: item.category,
-      description: item.description,
       minPrice: String(item.minPrice ?? ""),
       refPriceMin: String(item.refPriceMin ?? ""),
       refPriceMax: String(item.refPriceMax ?? ""),
@@ -59,12 +66,18 @@ export default function EditItemPage({
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const blob = item?.imageBlob ?? item?.thumbBlob;
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    setImageUrl(url);
+    if (!iconSrc) return setIconUrl(undefined);
+    const url = URL.createObjectURL(iconSrc);
+    setIconUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [item?.imageBlob, item?.thumbBlob]);
+  }, [iconSrc]);
+
+  useEffect(() => {
+    if (!mainSrc) return setMainUrl(undefined);
+    const url = URL.createObjectURL(mainSrc);
+    setMainUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [mainSrc]);
 
   if (item === undefined || !form) {
     return <div className="pt-6 text-center text-muted">読み込み中…</div>;
@@ -84,22 +97,12 @@ export default function EditItemPage({
 
   const i = item as Item;
 
-  const onPickImage = () => fileInput.current?.click();
+  const onPickFile = () => fileInput.current?.click();
 
-  const onReplaceImage = async (file: File) => {
+  const onFile = async (file: File) => {
     setError(undefined);
-    setBusy("image");
-    try {
-      const built = await buildStoredImages(file);
-      await updateItemImage(i.id, {
-        imageBlob: built.imageBlob,
-        thumbBlob: built.thumbBlob,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "画像の更新に失敗しました");
-    } finally {
-      setBusy("idle");
-    }
+    setSourceBlob(file);
+    setCropping("icon");
   };
 
   const onSave = async () => {
@@ -113,7 +116,6 @@ export default function EditItemPage({
       await updateItemMeta(i.id, {
         name: form.name.trim(),
         category: form.category.trim(),
-        description: form.description.trim(),
         minPrice: Number(form.minPrice) || 0,
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
@@ -136,34 +138,29 @@ export default function EditItemPage({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) onReplaceImage(f);
+          if (f) onFile(f);
           e.target.value = "";
         }}
       />
 
-      <div className="relative rounded-2xl border border-beige bg-white overflow-hidden">
-        {imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={form.name}
-            className="w-full max-h-72 object-contain bg-white"
-          />
-        )}
-        <button
-          onClick={onPickImage}
-          className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-cream/95 border border-beige text-[12px] text-text/80 shadow"
-        >
-          画像を差し替え
-        </button>
+      <div className="grid grid-cols-2 gap-3">
+        <SlotPreview
+          label="アイコン"
+          imageUrl={iconUrl}
+          onClickCrop={() => sourceBlob && setCropping("icon")}
+          onPick={onPickFile}
+        />
+        <SlotPreview
+          label="メイン画像"
+          imageUrl={mainUrl}
+          onClickCrop={() => sourceBlob && setCropping("main")}
+          onPick={onPickFile}
+        />
       </div>
-
-      {busy === "image" && (
-        <div className="rounded-xl bg-beige/50 border border-beige px-3 py-2 flex items-center gap-2 text-[13px]">
-          <Loader2 size={16} className="animate-spin shrink-0" />
-          画像を更新中…
-        </div>
-      )}
+      <p className="text-[11px] text-muted px-1 -mt-2">
+        画像を差し替えるには「ファイルを選ぶ」を押してください。一度選んだ画像から
+        アイコン / メインそれぞれを切り抜きで上書きできます。
+      </p>
 
       {error && (
         <div className="rounded-xl bg-pink/40 border border-pink px-3 py-2 text-[13px]">
@@ -233,15 +230,6 @@ export default function EditItemPage({
         </div>
       </Field>
 
-      <Field label="説明文">
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          rows={3}
-          className="w-full bg-transparent outline-none text-[13px] text-text resize-y"
-        />
-      </Field>
-
       <TagPicker
         tags={tags}
         selected={form.tagIds}
@@ -260,7 +248,77 @@ export default function EditItemPage({
           disabled={busy === "save"}
           className="flex-[2] py-3 rounded-full bg-gold text-white font-bold disabled:opacity-50 active:bg-gold-deep"
         >
-          {busy === "save" ? "保存中…" : "保存"}
+          {busy === "save" ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Loader2 size={14} className="animate-spin" />
+              保存中…
+            </span>
+          ) : (
+            "保存"
+          )}
+        </button>
+      </div>
+
+      <ImageCropper
+        source={cropping ? sourceBlob ?? null : null}
+        open={cropping !== null}
+        title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
+        aspect={cropping === "icon" ? 1 : undefined}
+        maxOutputWidth={cropping === "icon" ? 320 : 1200}
+        onCancel={() => setCropping(null)}
+        onConfirm={async (blob) => {
+          if (cropping === "icon") {
+            await updateItemImage(i.id, { iconBlob: blob });
+          } else if (cropping === "main") {
+            await updateItemImage(i.id, { mainImageBlob: blob });
+          }
+          setCropping(null);
+        }}
+      />
+    </div>
+  );
+}
+
+function SlotPreview({
+  label,
+  imageUrl,
+  onClickCrop,
+  onPick,
+}: {
+  label: string;
+  imageUrl?: string;
+  onClickCrop: () => void;
+  onPick: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-beige bg-cream overflow-hidden">
+      <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
+        ) : (
+          <Crop size={28} strokeWidth={1.6} />
+        )}
+      </div>
+      <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
+        {label}
+      </div>
+      <div className="border-t border-beige flex divide-x divide-beige">
+        <button
+          type="button"
+          onClick={onPick}
+          className="flex-1 py-1.5 text-[11px] text-text/70 inline-flex items-center justify-center gap-1"
+        >
+          <RefreshCw size={11} />
+          ファイル
+        </button>
+        <button
+          type="button"
+          onClick={onClickCrop}
+          className="flex-1 py-1.5 text-[11px] text-text/70 inline-flex items-center justify-center gap-1"
+        >
+          <Crop size={11} />
+          切り抜き
         </button>
       </div>
     </div>
@@ -319,7 +377,9 @@ function TagPicker({
   const [newType, setNewType] = useState<TagType>("custom");
 
   const toggle = (id: string) => {
-    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+    onChange(
+      selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]
+    );
   };
 
   const add = async () => {
