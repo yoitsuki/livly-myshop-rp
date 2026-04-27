@@ -2,17 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ImageIcon, Tag as TagIcon, CalendarDays } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import type { Item, Tag } from "@/lib/db";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import TagChip from "./TagChip";
-
-function formatDate(ms: number): string {
-  const d = new Date(ms);
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
-}
 
 export default function ItemCard({
   item,
@@ -51,46 +44,25 @@ export default function ItemCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 className="font-bold text-[14px] text-text truncate">
-            {item.name || "(名称未設定)"}
-          </h3>
-          <span className="shrink-0 font-bold text-[13px] text-gold-deep whitespace-nowrap tabular-nums">
+        <h3 className="font-bold text-[14px] text-text leading-snug break-words">
+          {item.name || "(名称未設定)"}
+        </h3>
+        <div className="mt-0.5 whitespace-nowrap">
+          <span className="font-bold text-[13px] text-gold-deep tabular-nums">
             {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)}
             <span className="text-[11px] font-medium ml-0.5">GP</span>
           </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-2 text-[11px] mt-0.5">
-          <div className="text-muted truncate flex items-center gap-1">
-            {item.category && (
-              <>
-                <TagIcon size={11} strokeWidth={2.2} className="shrink-0" />
-                <span className="truncate">{item.category}</span>
-                <span className="mx-0.5">·</span>
-              </>
-            )}
-            <CalendarDays size={11} strokeWidth={2.2} className="shrink-0" />
-            <span className="whitespace-nowrap">{formatDate(item.checkedAt)}</span>
-          </div>
-          <span className="shrink-0 text-text/65 tabular-nums whitespace-nowrap">
-            / {formatPrice(item.minPrice)} GP
+          <span className="text-muted mx-1.5 text-[11px]">/</span>
+          <span className="text-[12px] text-text/65 tabular-nums">
+            {formatPrice(item.minPrice)}
+            <span className="text-[10px] ml-0.5">GP</span>
           </span>
         </div>
-        {(itemTags.length > 0 || item.description) && (
-          <div className="flex items-center gap-1.5 mt-1 min-w-0">
-            {itemTags.slice(0, 3).map((t) => (
+        {itemTags.length > 0 && (
+          <div className="flex items-center flex-wrap gap-1 mt-1">
+            {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}
-            {itemTags.length > 3 && (
-              <span className="text-[10px] text-muted shrink-0">
-                +{itemTags.length - 3}
-              </span>
-            )}
-            {item.description && (
-              <span className="text-[11px] text-muted truncate min-w-0">
-                {item.description}
-              </span>
-            )}
           </div>
         )}
       </div>
