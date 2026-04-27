@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Camera, Loader2, Sparkles, X } from "lucide-react";
+import { ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 import {
   createItem,
   createTag,
@@ -171,7 +171,6 @@ export default function RegisterPage() {
         ref={fileInput}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -183,13 +182,13 @@ export default function RegisterPage() {
       {!previewUrl ? (
         <button
           onClick={onPick}
-          className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-beige bg-cream/60 flex flex-col items-center justify-center gap-3 text-muted active:bg-beige/40"
+          className="w-full h-32 rounded-2xl border-2 border-dashed border-beige bg-cream/60 flex items-center justify-center gap-3 text-muted active:bg-beige/40"
         >
-          <Camera size={36} strokeWidth={1.6} />
-          <div className="text-[14px] font-bold text-text">
-            お店のスクショを選ぶ
+          <ImagePlus size={26} strokeWidth={1.6} />
+          <div className="text-left">
+            <div className="text-[14px] font-bold text-text">スクショを選ぶ</div>
+            <div className="text-[11px]">タップしてファイルから取り込み</div>
           </div>
-          <div className="text-[12px]">タップしてカメラロールから取り込み</div>
         </button>
       ) : (
         <div className="relative">
