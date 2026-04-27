@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, PlusCircle, Tag, X } from "lucide-react";
 import { useEffect } from "react";
+import { APP_VERSION } from "@/lib/version";
 
 const items = [
   { href: "/", label: "ホーム", icon: Home },
@@ -44,7 +45,7 @@ export default function DrawerNav({
         }`}
       />
       <aside
-        className={`fixed top-0 left-0 z-50 h-dvh w-72 max-w-[80%] bg-cream border-r border-beige shadow-xl transition-transform duration-250 ${
+        className={`fixed top-0 left-0 z-50 h-dvh w-72 max-w-[80%] bg-cream border-r border-beige shadow-xl transition-transform duration-250 flex flex-col ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-hidden={!open}
@@ -67,7 +68,7 @@ export default function DrawerNav({
             <X size={20} />
           </button>
         </div>
-        <nav className="py-2">
+        <nav className="py-2 flex-1">
           {items.map(({ href, label, icon: Icon }) => {
             const active = pathname === href;
             return (
@@ -87,6 +88,9 @@ export default function DrawerNav({
             );
           })}
         </nav>
+        <div className="px-4 py-3 text-[10.5px] text-muted border-t border-beige/70 tabular-nums">
+          ver. {APP_VERSION}
+        </div>
       </aside>
     </>
   );

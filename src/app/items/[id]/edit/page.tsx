@@ -11,6 +11,7 @@ import {
   updateItemImage,
   updateItemMeta,
   type Item,
+  type ItemCropRecord,
   type Tag,
   type TagType,
 } from "@/lib/db";
@@ -265,12 +266,32 @@ export default function EditItemPage({
         title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
         aspect={cropping === "icon" ? 1 : undefined}
         maxOutputWidth={cropping === "icon" ? 320 : 1200}
+        initialRect={
+          cropping === "icon"
+            ? i.iconCrop?.rect
+            : cropping === "main"
+              ? i.mainCrop?.rect
+              : undefined
+        }
         onCancel={() => setCropping(null)}
-        onConfirm={async (blob) => {
+        onConfirm={async (result) => {
+          const record: ItemCropRecord = {
+            rect: {
+              x: Math.round(result.rect.x),
+              y: Math.round(result.rect.y),
+              w: Math.round(result.rect.w),
+              h: Math.round(result.rect.h),
+            },
+            source: result.source,
+            croppedAt: Date.now(),
+          };
           if (cropping === "icon") {
-            await updateItemImage(i.id, { iconBlob: blob });
+            await updateItemImage(i.id, { iconBlob: result.blob, iconCrop: record });
           } else if (cropping === "main") {
-            await updateItemImage(i.id, { mainImageBlob: blob });
+            await updateItemImage(i.id, {
+              mainImageBlob: result.blob,
+              mainCrop: record,
+            });
           }
           setCropping(null);
         }}

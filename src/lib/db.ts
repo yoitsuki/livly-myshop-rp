@@ -1,6 +1,15 @@
 import Dexie, { type EntityTable } from "dexie";
+import type { CropRect } from "./image";
 
 export type TagType = "period" | "gacha" | "category" | "custom";
+
+/** Crop rectangle in source-image pixel coordinates, plus the source dimensions. */
+export interface ItemCropRecord {
+  rect: CropRect;
+  source: { width: number; height: number };
+  /** Encoded epoch ms when the crop was made. */
+  croppedAt: number;
+}
 
 export interface Item {
   id: string;
@@ -8,6 +17,10 @@ export interface Item {
   iconBlob?: Blob;
   /** Cropped main image — shown large on the detail page. */
   mainImageBlob?: Blob;
+  /** Crop coordinates that produced iconBlob (pixel coords on the source). */
+  iconCrop?: ItemCropRecord;
+  /** Crop coordinates that produced mainImageBlob. */
+  mainCrop?: ItemCropRecord;
   /** Legacy v2 field; preserved on read for older records. */
   imageBlob?: Blob;
   /** Legacy v2 thumbnail; preserved for older records. */
@@ -122,7 +135,12 @@ export async function updateItemMeta(
 /** Replace icon and/or main image without bumping updatedAt. */
 export async function updateItemImage(
   id: string,
-  patch: { iconBlob?: Blob; mainImageBlob?: Blob }
+  patch: {
+    iconBlob?: Blob;
+    mainImageBlob?: Blob;
+    iconCrop?: ItemCropRecord;
+    mainCrop?: ItemCropRecord;
+  }
 ): Promise<void> {
   await db().items.update(id, patch);
 }

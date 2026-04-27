@@ -138,6 +138,34 @@ export default function ItemDetailPage({
         )}
       </div>
 
+      {(i.iconCrop || i.mainCrop) && (
+        <details className="text-[11px] text-muted">
+          <summary className="cursor-pointer select-none">切り抜き座標</summary>
+          <div className="font-mono tabular-nums text-[10.5px] pt-1 space-y-0.5">
+            {i.iconCrop && (
+              <div>
+                アイコン: x={i.iconCrop.rect.x}, y={i.iconCrop.rect.y}, w=
+                {i.iconCrop.rect.w}, h={i.iconCrop.rect.h}
+                <span className="text-muted/70">
+                  {" "}
+                  / 元 {i.iconCrop.source.width}×{i.iconCrop.source.height}
+                </span>
+              </div>
+            )}
+            {i.mainCrop && (
+              <div>
+                メイン: x={i.mainCrop.rect.x}, y={i.mainCrop.rect.y}, w=
+                {i.mainCrop.rect.w}, h={i.mainCrop.rect.h}
+                <span className="text-muted/70">
+                  {" "}
+                  / 元 {i.mainCrop.source.width}×{i.mainCrop.source.height}
+                </span>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+
       <div className="flex gap-2 pt-2">
         <button
           onClick={onDelete}

@@ -9,6 +9,7 @@ import {
   createTag,
   db,
   getSettings,
+  type ItemCropRecord,
   type Tag,
   type TagType,
 } from "@/lib/db";
@@ -50,6 +51,8 @@ export default function RegisterPage() {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const [iconBlob, setIconBlob] = useState<Blob | undefined>();
   const [mainBlob, setMainBlob] = useState<Blob | undefined>();
+  const [iconCrop, setIconCrop] = useState<ItemCropRecord | undefined>();
+  const [mainCrop, setMainCrop] = useState<ItemCropRecord | undefined>();
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
   const [cropping, setCropping] = useState<CropTarget>(null);
@@ -93,6 +96,8 @@ export default function RegisterPage() {
     setSourceBlob(file);
     setIconBlob(undefined);
     setMainBlob(undefined);
+    setIconCrop(undefined);
+    setMainCrop(undefined);
     setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
     setAutoFilled(new Set());
 
@@ -172,6 +177,8 @@ export default function RegisterPage() {
       await createItem({
         iconBlob,
         mainImageBlob: mainBlob,
+        iconCrop,
+        mainCrop,
         name: form.name.trim(),
         category: form.category.trim(),
         minPrice: Number(form.minPrice) || 0,
@@ -367,10 +374,32 @@ export default function RegisterPage() {
         title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
         aspect={cropping === "icon" ? 1 : undefined}
         maxOutputWidth={cropping === "icon" ? 320 : 1200}
+        initialRect={
+          cropping === "icon"
+            ? iconCrop?.rect
+            : cropping === "main"
+              ? mainCrop?.rect
+              : undefined
+        }
         onCancel={() => setCropping(null)}
-        onConfirm={(blob) => {
-          if (cropping === "icon") setIconBlob(blob);
-          else if (cropping === "main") setMainBlob(blob);
+        onConfirm={(result) => {
+          const record: ItemCropRecord = {
+            rect: {
+              x: Math.round(result.rect.x),
+              y: Math.round(result.rect.y),
+              w: Math.round(result.rect.w),
+              h: Math.round(result.rect.h),
+            },
+            source: result.source,
+            croppedAt: Date.now(),
+          };
+          if (cropping === "icon") {
+            setIconBlob(result.blob);
+            setIconCrop(record);
+          } else if (cropping === "main") {
+            setMainBlob(result.blob);
+            setMainCrop(record);
+          }
           setCropping(null);
         }}
       />
