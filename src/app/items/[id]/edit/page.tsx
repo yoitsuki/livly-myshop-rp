@@ -106,6 +106,19 @@ export default function EditItemPage({
     setCropping("icon");
   };
 
+  // The cropper falls back to the most recent main/icon blob when the user has
+  // not picked a fresh source file in this session.
+  const startCrop = (target: "icon" | "main") => {
+    const fallback = sourceBlob ?? mainSrc ?? iconSrc;
+    if (!fallback) {
+      setError("先にファイルを選んでください");
+      return;
+    }
+    setError(undefined);
+    if (!sourceBlob) setSourceBlob(fallback);
+    setCropping(target);
+  };
+
   const onSave = async () => {
     if (!form.name.trim()) {
       setError("アイテム名は必須です");
@@ -148,19 +161,19 @@ export default function EditItemPage({
         <SlotPreview
           label="アイコン"
           imageUrl={iconUrl}
-          onClickCrop={() => sourceBlob && setCropping("icon")}
+          onClickCrop={() => startCrop("icon")}
           onPick={onPickFile}
         />
         <SlotPreview
           label="メイン画像"
           imageUrl={mainUrl}
-          onClickCrop={() => sourceBlob && setCropping("main")}
+          onClickCrop={() => startCrop("main")}
           onPick={onPickFile}
         />
       </div>
       <p className="text-[11px] text-muted px-1 -mt-2">
-        画像を差し替えるには「ファイルを選ぶ」を押してください。一度選んだ画像から
-        アイコン / メインそれぞれを切り抜きで上書きできます。
+        「ファイル」で画像を選び直すか、「切り抜き」で保存済みのメイン画像を
+        トリミングし直せます。
       </p>
 
       {error && (

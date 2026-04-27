@@ -9,5 +9,9 @@
  * 0.2.2  Icon crop is free-form (no aspect lock), crop frame uses dark
  *        lines for visibility on white backgrounds, hamburger menu moved
  *        to the top-right and the drawer slides in from the right
+ * 0.2.3  Crop frame uses only the dark teal stroke (white outer outline
+ *        dropped) and circle handles get a pale beige interior. The edit
+ *        screen "切り抜き" button now falls back to the saved main/icon
+ *        blob when no fresh file has been picked.
  */
-export const APP_VERSION = "0.2.2";
+export const APP_VERSION = "0.2.3";

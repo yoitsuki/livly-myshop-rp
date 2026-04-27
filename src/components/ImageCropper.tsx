@@ -303,7 +303,7 @@ export default function ImageCropper({
                   )`,
                 }}
               />
-              {/* selection rect — dark line so it stays visible on white backgrounds */}
+              {/* selection rect — dark teal stroke + light interior handles */}
               <div
                 data-handle="move"
                 className="absolute cursor-move"
@@ -313,25 +313,21 @@ export default function ImageCropper({
                   width: dispRect.width,
                   height: dispRect.height,
                   pointerEvents: "auto",
-                  // double border (dark inner + light outer) so the line shows
-                  // on both white and dark image backgrounds
-                  outline: "1px solid rgba(255,255,255,0.85)",
-                  outlineOffset: "-1px",
-                  boxShadow: "inset 0 0 0 2px #053f38",
+                  boxShadow: "inset 0 0 0 2px #047366",
                 }}
               >
                 {/* grid lines */}
                 <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute left-1/3 top-0 bottom-0 border-l border-text/60" />
-                  <div className="absolute left-2/3 top-0 bottom-0 border-l border-text/60" />
-                  <div className="absolute top-1/3 left-0 right-0 border-t border-text/60" />
-                  <div className="absolute top-2/3 left-0 right-0 border-t border-text/60" />
+                  <div className="absolute left-1/3 top-0 bottom-0 border-l border-gold-deep/50" />
+                  <div className="absolute left-2/3 top-0 bottom-0 border-l border-gold-deep/50" />
+                  <div className="absolute top-1/3 left-0 right-0 border-t border-gold-deep/50" />
+                  <div className="absolute top-2/3 left-0 right-0 border-t border-gold-deep/50" />
                 </div>
                 {HANDLES.map((h) => (
                   <span
                     key={h.key}
                     data-handle={h.key}
-                    className={`absolute w-5 h-5 rounded-full bg-text border-2 border-cream shadow ${h.pos}`}
+                    className={`absolute w-5 h-5 rounded-full bg-beige border-2 border-gold-deep ${h.pos}`}
                     style={{ cursor: h.cursor }}
                   />
                 ))}
