@@ -8,6 +8,7 @@ import { CalendarDays, Pencil, Tag as TagIcon, Trash2 } from "lucide-react";
 import { db, deleteItem, type Item, type Tag } from "@/lib/db";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
+import { formatShopPeriod } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
 
 export default function ItemDetailPage({
@@ -106,6 +107,11 @@ export default function ItemDetailPage({
 
       <div className="space-y-1">
         <div className="text-[14px]">
+          {i.shopPeriod && (
+            <span className="text-gold-deep text-[11px] mr-1.5 tabular-nums">
+              [{formatShopPeriod(i.shopPeriod.yearMonth, i.shopPeriod.phase)}]
+            </span>
+          )}
           <span className="text-muted text-[12px]">参考価格 </span>
           <span className="font-bold text-gold-deep tabular-nums">
             {formatPrice(i.refPriceMin)}〜{formatPrice(i.refPriceMax)} GP
@@ -117,6 +123,11 @@ export default function ItemDetailPage({
             {formatPrice(i.minPrice)} GP
           </span>
         </div>
+        {i.priceSource && (
+          <div className="text-[11px] text-muted">
+            情報元: <span className="text-text/80">{i.priceSource}</span>
+          </div>
+        )}
       </div>
 
       {tags.length > 0 && (
@@ -138,33 +149,6 @@ export default function ItemDetailPage({
         )}
       </div>
 
-      {(i.iconCrop || i.mainCrop) && (
-        <details className="text-[11px] text-muted">
-          <summary className="cursor-pointer select-none">切り抜き座標</summary>
-          <div className="font-mono tabular-nums text-[10.5px] pt-1 space-y-0.5">
-            {i.iconCrop && (
-              <div>
-                アイコン: x={i.iconCrop.rect.x}, y={i.iconCrop.rect.y}, w=
-                {i.iconCrop.rect.w}, h={i.iconCrop.rect.h}
-                <span className="text-muted/70">
-                  {" "}
-                  / 元 {i.iconCrop.source.width}×{i.iconCrop.source.height}
-                </span>
-              </div>
-            )}
-            {i.mainCrop && (
-              <div>
-                メイン: x={i.mainCrop.rect.x}, y={i.mainCrop.rect.y}, w=
-                {i.mainCrop.rect.w}, h={i.mainCrop.rect.h}
-                <span className="text-muted/70">
-                  {" "}
-                  / 元 {i.mainCrop.source.width}×{i.mainCrop.source.height}
-                </span>
-              </div>
-            )}
-          </div>
-        </details>
-      )}
 
       <div className="flex gap-2 pt-2">
         <button

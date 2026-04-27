@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ImageIcon } from "lucide-react";
 import type { Item, Tag } from "@/lib/db";
 import { formatPrice } from "@/lib/utils/parsePrice";
+import { formatShopPeriod } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 
 export default function ItemCard({
@@ -28,6 +29,10 @@ export default function ItemCard({
     return () => URL.revokeObjectURL(url);
   }, [thumbSource]);
 
+  const periodLabel = item.shopPeriod
+    ? `[${formatShopPeriod(item.shopPeriod.yearMonth, item.shopPeriod.phase)}]`
+    : null;
+
   return (
     <Link
       href={`/items/${item.id}`}
@@ -50,6 +55,9 @@ export default function ItemCard({
           {item.name || "(名称未設定)"}
         </h3>
         <div className="text-[11px] tabular-nums whitespace-nowrap">
+          {periodLabel && (
+            <span className="text-gold-deep mr-1">{periodLabel}</span>
+          )}
           <span className="text-muted">参考価格 </span>
           <span className="text-gold-deep">
             {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)} GP
@@ -59,11 +67,16 @@ export default function ItemCard({
           <span className="text-muted">最低販売価格 </span>
           <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
         </div>
-        {itemTags.length > 0 && (
+        {(itemTags.length > 0 || item.priceSource) && (
           <div className="flex items-center flex-wrap gap-0.5 mt-px">
             {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}
+            {item.priceSource && (
+              <span className="text-[10px] text-muted truncate max-w-[180px]">
+                #{item.priceSource}
+              </span>
+            )}
           </div>
         )}
       </div>

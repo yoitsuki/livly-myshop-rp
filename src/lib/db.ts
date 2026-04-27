@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { CropRect } from "./image";
+import type { ShopPhase } from "./shopPeriods";
 
 export type TagType = "period" | "gacha" | "category" | "custom";
 
@@ -9,6 +10,15 @@ export interface ItemCropRecord {
   source: { width: number; height: number };
   /** Encoded epoch ms when the crop was made. */
   croppedAt: number;
+}
+
+/** Shop round metadata captured per item. */
+export interface ShopPeriodRecord {
+  /** YYYYMM in JST. */
+  yearMonth: string;
+  phase: ShopPhase;
+  /** Whether the value was auto-derived from the main image checkedAt. */
+  auto: boolean;
 }
 
 export interface Item {
@@ -34,6 +44,11 @@ export interface Item {
   refPriceMin: number;
   refPriceMax: number;
   tagIds: string[];
+  /** Shop round + phase. Populated automatically from checkedAt when a main
+   * image is present, or chosen by the user when not. */
+  shopPeriod?: ShopPeriodRecord;
+  /** Free-text price source when no main image exists (e.g. site name + URL). */
+  priceSource?: string;
   /** EXIF DateTimeOriginal — epoch ms */
   checkedAt: number;
   /** Record creation — never overwritten */
@@ -121,6 +136,8 @@ export type ItemMetaPatch = Partial<
     | "refPriceMax"
     | "tagIds"
     | "checkedAt"
+    | "shopPeriod"
+    | "priceSource"
   >
 >;
 
@@ -129,7 +146,24 @@ export async function updateItemMeta(
   id: string,
   patch: ItemMetaPatch
 ): Promise<void> {
-  await db().items.update(id, { ...patch, updatedAt: Date.now() });
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(id);
+    if (!current) return;
+    await db().items.put({ ...current, ...patch, updatedAt: Date.now() });
+  });
+}
+
+/** Remove the main image (and its crop record) from an item. */
+export async function clearMainImage(id: string): Promise<void> {
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(id);
+    if (!current) return;
+    const next: Item = { ...current };
+    delete next.mainImageBlob;
+    delete next.mainCrop;
+    delete next.imageBlob;
+    await db().items.put(next);
+  });
 }
 
 /** Replace icon and/or main image without bumping updatedAt. */

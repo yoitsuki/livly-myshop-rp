@@ -10,14 +10,22 @@ import {
   db,
   getSettings,
   type ItemCropRecord,
+  type ShopPeriodRecord,
   type Tag,
   type TagType,
 } from "@/lib/db";
-import { compressImage } from "@/lib/image";
+import { compressImage, type CropRect } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
 import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
+import {
+  formatShopPeriod,
+  resolveShopPeriod,
+  SHOP_ROUNDS,
+  type ShopPhase,
+} from "@/lib/shopPeriods";
+import { detectPresetCrops } from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
@@ -30,7 +38,20 @@ interface FormState {
   refPriceMax: string;
   checkedAt: string;
   tagIds: string[];
+  /** YYYYMM key. Empty = no period selected. */
+  shopYearMonth: string;
+  shopPhase: ShopPhase;
+  shopAuto: boolean;
+  priceSource: string;
 }
+
+const SOURCE_PRESETS: Array<{ value: string; label: string }> = [
+  { value: "", label: "選択しない" },
+  { value: "ライブリーガイド (https://livly-guide.com/)", label: "ライブリーガイド" },
+  { value: "公式 X / 旧 Twitter", label: "公式 X / 旧 Twitter" },
+  { value: "個人ブログ", label: "個人ブログ" },
+  { value: "他プレイヤーのお店", label: "他プレイヤーのお店" },
+];
 
 const EMPTY_FORM: FormState = {
   name: "",
@@ -40,6 +61,10 @@ const EMPTY_FORM: FormState = {
   refPriceMax: "",
   checkedAt: toLocalInput(Date.now()),
   tagIds: [],
+  shopYearMonth: "",
+  shopPhase: "ongoing",
+  shopAuto: false,
+  priceSource: "",
 };
 
 type CropTarget = "icon" | "main" | null;
@@ -56,6 +81,9 @@ export default function RegisterPage() {
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
   const [cropping, setCropping] = useState<CropTarget>(null);
+  const [presets, setPresets] = useState<{ icon: CropRect; main: CropRect } | null>(
+    null
+  );
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [error, setError] = useState<string | undefined>();
@@ -98,6 +126,7 @@ export default function RegisterPage() {
     setMainBlob(undefined);
     setIconCrop(undefined);
     setMainCrop(undefined);
+    setPresets(null);
     setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
     setAutoFilled(new Set());
 
@@ -109,6 +138,25 @@ export default function RegisterPage() {
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
+
+      // Auto-resolve shop period from the picked image's checkedAt
+      const resolved = resolveShopPeriod(checkedAt);
+      if (resolved) {
+        setForm((f) => ({
+          ...f,
+          shopYearMonth: resolved.round.yearMonth,
+          shopPhase: resolved.phase,
+          shopAuto: true,
+        }));
+      }
+
+      // Detect crop presets when the source matches our reference layout
+      try {
+        const detected = await detectPresetCrops(file);
+        setPresets(detected);
+      } catch {
+        // ignore — fall back to default crop rect
+      }
 
       // OCR runs against a downscaled copy for speed
       const downscaled = await compressImage(file, { maxWidth: 1600, quality: 0.8 });
@@ -136,22 +184,25 @@ export default function RegisterPage() {
       }
 
       setForm((f) => {
-        const next = { ...f };
+        const next: FormState = { ...f };
         const filled = new Set(autoFilled);
-        const set = (k: keyof FormState, v: string) => {
+        const setStringField = (
+          k: "name" | "category" | "minPrice" | "refPriceMin" | "refPriceMax",
+          v: string
+        ) => {
           if (v && !next[k]) {
-            (next as Record<keyof FormState, string | string[]>)[k] = v;
+            next[k] = v;
             filled.add(k);
           }
         };
-        set("name", extracted.name ?? "");
-        set("category", extracted.category ?? "");
+        setStringField("name", extracted.name ?? "");
+        setStringField("category", extracted.category ?? "");
         if (extracted.minPrice != null)
-          set("minPrice", String(extracted.minPrice));
+          setStringField("minPrice", String(extracted.minPrice));
         if (extracted.refPriceMin != null)
-          set("refPriceMin", String(extracted.refPriceMin));
+          setStringField("refPriceMin", String(extracted.refPriceMin));
         if (extracted.refPriceMax != null)
-          set("refPriceMax", String(extracted.refPriceMax));
+          setStringField("refPriceMax", String(extracted.refPriceMax));
         setAutoFilled(filled);
         return next;
       });
@@ -174,6 +225,13 @@ export default function RegisterPage() {
     setError(undefined);
     setBusy("save");
     try {
+      const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
+        ? {
+            yearMonth: form.shopYearMonth,
+            phase: form.shopPhase,
+            auto: !!mainBlob && form.shopAuto,
+          }
+        : undefined;
       await createItem({
         iconBlob,
         mainImageBlob: mainBlob,
@@ -186,6 +244,8 @@ export default function RegisterPage() {
         refPriceMax: Number(form.refPriceMax) || 0,
         tagIds: form.tagIds,
         checkedAt: fromLocalInput(form.checkedAt),
+        shopPeriod,
+        priceSource: !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
       });
       router.push("/");
     } catch (e) {
@@ -243,11 +303,27 @@ export default function RegisterPage() {
               label="アイコン"
               imageUrl={iconUrl}
               onClick={() => setCropping("icon")}
+              onClear={
+                iconBlob
+                  ? () => {
+                      setIconBlob(undefined);
+                      setIconCrop(undefined);
+                    }
+                  : undefined
+              }
             />
             <CropSlot
               label="メイン画像"
               imageUrl={mainUrl}
               onClick={() => setCropping("main")}
+              onClear={
+                mainBlob
+                  ? () => {
+                      setMainBlob(undefined);
+                      setMainCrop(undefined);
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>
@@ -312,6 +388,42 @@ export default function RegisterPage() {
         </Field>
       </div>
 
+      <ShopPeriodField
+        yearMonth={form.shopYearMonth}
+        phase={form.shopPhase}
+        auto={form.shopAuto && !!mainBlob}
+        hasMainImage={!!mainBlob}
+        onChange={(yearMonth, phase) =>
+          setForm({ ...form, shopYearMonth: yearMonth, shopPhase: phase, shopAuto: false })
+        }
+      />
+
+      {!mainBlob && (
+        <Field label="情報元 (メイン画像が無いとき)">
+          <select
+            value={
+              SOURCE_PRESETS.some((p) => p.value === form.priceSource)
+                ? form.priceSource
+                : ""
+            }
+            onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
+            className="w-full bg-transparent outline-none text-[13px] text-text mb-1"
+          >
+            {SOURCE_PRESETS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={form.priceSource}
+            onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
+            placeholder="自由入力 (URL や説明)"
+            className="w-full bg-transparent outline-none text-[13px] text-text border-t border-beige/60 pt-1.5"
+          />
+        </Field>
+      )}
+
       <Field
         label="参考販売価格 (GP)"
         highlighted={isAuto("refPriceMin") || isAuto("refPriceMax")}
@@ -375,9 +487,9 @@ export default function RegisterPage() {
         maxOutputWidth={cropping === "icon" ? 320 : 1200}
         initialRect={
           cropping === "icon"
-            ? iconCrop?.rect
+            ? iconCrop?.rect ?? presets?.icon
             : cropping === "main"
-              ? mainCrop?.rect
+              ? mainCrop?.rect ?? presets?.main
               : undefined
         }
         onCancel={() => setCropping(null)}
@@ -410,34 +522,117 @@ function CropSlot({
   label,
   imageUrl,
   onClick,
+  onClear,
 }: {
   label: string;
   imageUrl?: string;
   onClick: () => void;
+  onClear?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-xl border border-beige bg-cream overflow-hidden"
-    >
-      <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={label}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <Crop size={28} strokeWidth={1.6} />
+    <div className="relative rounded-xl border border-beige bg-cream overflow-hidden">
+      <button
+        type="button"
+        onClick={onClick}
+        className="block w-full"
+      >
+        <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={label}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Crop size={28} strokeWidth={1.6} />
+          )}
+        </div>
+        <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
+          {label}
+          {!imageUrl && <span className="text-[10px] text-muted ml-1">未設定</span>}
+        </div>
+      </button>
+      {onClear && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClear();
+          }}
+          aria-label={`${label}を削除`}
+          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-cream flex items-center justify-center hover:bg-text"
+        >
+          <X size={14} strokeWidth={2.6} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ShopPeriodField({
+  yearMonth,
+  phase,
+  auto,
+  hasMainImage,
+  onChange,
+}: {
+  yearMonth: string;
+  phase: ShopPhase;
+  auto: boolean;
+  hasMainImage: boolean;
+  onChange: (yearMonth: string, phase: ShopPhase) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1 px-1">
+        <span className="text-[12px] text-muted font-bold">マイショップ時期</span>
+        {auto && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep">
+            <Sparkles size={11} />
+            画像から自動判定
+          </span>
+        )}
+        {!hasMainImage && (
+          <span className="text-[10px] text-muted">手動選択</span>
         )}
       </div>
-      <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
-        {label}
-        {!imageUrl && <span className="text-[10px] text-muted ml-1">未設定</span>}
+      <div className="rounded-xl bg-cream border border-beige px-3 py-2 flex items-center gap-2 flex-wrap">
+        <select
+          value={yearMonth}
+          onChange={(e) => onChange(e.target.value, phase)}
+          className="flex-1 min-w-[8rem] bg-transparent outline-none text-[13px]"
+        >
+          <option value="">未指定</option>
+          {SHOP_ROUNDS.map((r) => (
+            <option key={r.yearMonth} value={r.yearMonth}>
+              {r.yearMonth} (第{r.roundNumber}回)
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center gap-1">
+          {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(yearMonth, p)}
+              className={`px-2 py-px rounded-full text-[11px] border ${
+                phase === p
+                  ? "bg-gold/20 border-gold text-gold-deep font-bold"
+                  : "bg-cream border-beige text-text/70"
+              }`}
+            >
+              {p === "ongoing" ? "開催中" : "最終日"}
+            </button>
+          ))}
+        </div>
       </div>
-    </button>
+      {yearMonth && (
+        <div className="px-1 pt-0.5 text-[10.5px] text-muted tabular-nums">
+          表示: [{formatShopPeriod(yearMonth, phase)}]
+        </div>
+      )}
+    </div>
   );
 }
 

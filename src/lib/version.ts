@@ -17,5 +17,12 @@
  *        touched until confirmation), and updateItemImage now does an
  *        explicit get + put so siblings like iconBlob survive a
  *        mainImageBlob update.
+ * 0.3.0  Crop presets for the standard 1179×2556 shop screenshot
+ *        (skipped when the top-left pixel is the dark gold tone).
+ *        Items track a shop round + phase (auto-derived from the main
+ *        image checkedAt or chosen manually) and an optional price
+ *        source for items without a main image. Main image gets an
+ *        × button to clear it. Crop coordinates moved out of the
+ *        detail page; only the cropper still shows them.
  */
-export const APP_VERSION = "0.2.4";
+export const APP_VERSION = "0.3.0";
