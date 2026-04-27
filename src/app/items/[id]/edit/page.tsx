@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Camera, Loader2, Sparkles, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
-  createItem,
   createTag,
   db,
-  getSettings,
+  updateItemImage,
+  updateItemMeta,
+  type Item,
   type Tag,
   type TagType,
 } from "@/lib/db";
 import { buildStoredImages } from "@/lib/image";
-import { getCheckedAt } from "@/lib/exif";
-import { recognizeJapanese } from "@/lib/ocr/tesseract";
-import { recognizeWithClaude } from "@/lib/ocr/claude";
-import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
 
@@ -31,112 +29,80 @@ interface FormState {
   tagIds: string[];
 }
 
-const EMPTY_FORM: FormState = {
-  name: "",
-  category: "",
-  description: "",
-  minPrice: "",
-  refPriceMin: "",
-  refPriceMax: "",
-  checkedAt: toLocalInput(Date.now()),
-  tagIds: [],
-};
-
-export default function RegisterPage() {
+export default function EditItemPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
   const router = useRouter();
-  const fileInput = useRef<HTMLInputElement>(null);
-  const [originalFile, setOriginalFile] = useState<File | undefined>();
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>();
-  const [imageBlob, setImageBlob] = useState<Blob | undefined>();
-  const [thumbBlob, setThumbBlob] = useState<Blob | undefined>();
-  const [busy, setBusy] = useState<"idle" | "compress" | "ocr" | "save">("idle");
-  const [ocrProgress, setOcrProgress] = useState<number>(0);
-  const [error, setError] = useState<string | undefined>();
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
-
+  const item = useLiveQuery(() => db().items.get(id), [id]);
   const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState<FormState | undefined>();
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [busy, setBusy] = useState<"idle" | "image" | "save">("idle");
+  const [error, setError] = useState<string | undefined>();
 
   useEffect(() => {
-    if (!previewUrl) return;
-    return () => URL.revokeObjectURL(previewUrl);
-  }, [previewUrl]);
+    if (!item) return;
+    setForm({
+      name: item.name,
+      category: item.category,
+      description: item.description,
+      minPrice: String(item.minPrice ?? ""),
+      refPriceMin: String(item.refPriceMin ?? ""),
+      refPriceMax: String(item.refPriceMax ?? ""),
+      checkedAt: toLocalInput(item.checkedAt),
+      tagIds: item.tagIds,
+    });
+  }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onPick = () => fileInput.current?.click();
+  useEffect(() => {
+    const blob = item?.imageBlob ?? item?.thumbBlob;
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    setImageUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [item?.imageBlob, item?.thumbBlob]);
 
-  const handleFile = async (file: File) => {
+  if (item === undefined || !form) {
+    return <div className="pt-6 text-center text-muted">読み込み中…</div>;
+  }
+  if (item === null) {
+    return (
+      <div className="pt-6 text-center text-muted">
+        アイテムが見つかりませんでした。
+        <div className="mt-3">
+          <Link href="/" className="text-gold-deep underline">
+            ホームへ戻る
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const i = item as Item;
+
+  const onPickImage = () => fileInput.current?.click();
+
+  const onReplaceImage = async (file: File) => {
     setError(undefined);
-    setOriginalFile(file);
-    setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
-    setAutoFilled(new Set());
-
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-
-    setBusy("compress");
+    setBusy("image");
     try {
-      const checkedAt = await getCheckedAt(file);
       const built = await buildStoredImages(file);
-      setImageBlob(built.imageBlob);
-      setThumbBlob(built.thumbBlob);
-      setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
-      setAutoFilled((prev) => new Set(prev).add("checkedAt"));
-
-      setBusy("ocr");
-      setOcrProgress(0);
-      const settings = await getSettings();
-      let extracted: ExtractedFields = {};
-      try {
-        if (settings.ocrProvider === "claude" && settings.claudeApiKey) {
-          extracted = await recognizeWithClaude(
-            built.imageBlob,
-            settings.claudeApiKey,
-            settings.claudeModel
-          );
-        } else {
-          const text = await recognizeJapanese(built.imageBlob, (p) =>
-            setOcrProgress(p)
-          );
-          extracted = parseShopText(text);
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "OCR に失敗しました";
-        setError(`OCR エラー: ${msg}`);
-      }
-
-      setForm((f) => {
-        const next = { ...f };
-        const filled = new Set(autoFilled);
-        const set = (k: keyof FormState, v: string) => {
-          if (v && !next[k]) {
-            (next as Record<keyof FormState, string | string[]>)[k] = v;
-            filled.add(k);
-          }
-        };
-        set("name", extracted.name ?? "");
-        set("category", extracted.category ?? "");
-        set("description", extracted.description ?? "");
-        if (extracted.minPrice != null)
-          set("minPrice", String(extracted.minPrice));
-        if (extracted.refPriceMin != null)
-          set("refPriceMin", String(extracted.refPriceMin));
-        if (extracted.refPriceMax != null)
-          set("refPriceMax", String(extracted.refPriceMax));
-        setAutoFilled(filled);
-        return next;
+      await updateItemImage(i.id, {
+        imageBlob: built.imageBlob,
+        thumbBlob: built.thumbBlob,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
+      setError(e instanceof Error ? e.message : "画像の更新に失敗しました");
     } finally {
       setBusy("idle");
     }
   };
 
   const onSave = async () => {
-    if (!imageBlob || !thumbBlob) {
-      setError("画像が選択されていません");
-      return;
-    }
     if (!form.name.trim()) {
       setError("アイテム名は必須です");
       return;
@@ -144,9 +110,7 @@ export default function RegisterPage() {
     setError(undefined);
     setBusy("save");
     try {
-      await createItem({
-        imageBlob,
-        thumbBlob,
+      await updateItemMeta(i.id, {
         name: form.name.trim(),
         category: form.category.trim(),
         description: form.description.trim(),
@@ -156,98 +120,77 @@ export default function RegisterPage() {
         tagIds: form.tagIds,
         checkedAt: fromLocalInput(form.checkedAt),
       });
-      router.push("/");
+      router.push(`/items/${i.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
       setBusy("idle");
     }
   };
 
-  const isAuto = (k: keyof FormState) => autoFilled.has(k);
-
   return (
-    <div className="space-y-4 pt-3 pb-6">
+    <div className="pt-3 pb-6 space-y-4">
       <input
         ref={fileInput}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) handleFile(f);
+          if (f) onReplaceImage(f);
           e.target.value = "";
         }}
       />
 
-      {!previewUrl ? (
-        <button
-          onClick={onPick}
-          className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-beige bg-cream/60 flex flex-col items-center justify-center gap-3 text-muted active:bg-beige/40"
-        >
-          <Camera size={36} strokeWidth={1.6} />
-          <div className="text-[14px] font-bold text-text">
-            お店のスクショを選ぶ
-          </div>
-          <div className="text-[12px]">タップしてカメラロールから取り込み</div>
-        </button>
-      ) : (
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="relative rounded-2xl border border-beige bg-white overflow-hidden">
+        {imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={previewUrl}
-            alt="プレビュー"
-            className="w-full max-h-96 object-contain rounded-2xl border border-beige bg-white"
+            src={imageUrl}
+            alt={form.name}
+            className="w-full max-h-72 object-contain bg-white"
           />
-          <button
-            onClick={onPick}
-            className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-cream/95 border border-beige text-[12px] text-text/80 shadow"
-          >
-            画像を変更
-          </button>
-        </div>
-      )}
+        )}
+        <button
+          onClick={onPickImage}
+          className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-cream/95 border border-beige text-[12px] text-text/80 shadow"
+        >
+          画像を差し替え
+        </button>
+      </div>
 
-      {busy !== "idle" && (
-        <div className="rounded-xl bg-beige/50 border border-beige px-3 py-2 flex items-center gap-2 text-[13px] text-text/80">
+      {busy === "image" && (
+        <div className="rounded-xl bg-beige/50 border border-beige px-3 py-2 flex items-center gap-2 text-[13px]">
           <Loader2 size={16} className="animate-spin shrink-0" />
-          <span>
-            {busy === "compress" && "画像を読み込み中…"}
-            {busy === "ocr" &&
-              `テキストを読み取り中… ${Math.round(ocrProgress * 100)}%`}
-            {busy === "save" && "保存中…"}
-          </span>
+          画像を更新中…
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl bg-pink/40 border border-pink px-3 py-2 text-[13px] text-text/85">
+        <div className="rounded-xl bg-pink/40 border border-pink px-3 py-2 text-[13px]">
           {error}
         </div>
       )}
 
-      <Field label="アイテム名" required highlighted={isAuto("name")}>
+      <Field label="アイテム名" required>
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           className="w-full bg-transparent outline-none text-[15px] font-bold text-text"
-          placeholder="例: 籐の揺りかご"
         />
       </Field>
 
-      <Field label="カテゴリ" highlighted={isAuto("category")}>
+      <Field label="カテゴリ">
         <input
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value })}
           className="w-full bg-transparent outline-none text-[14px] text-text"
-          placeholder="例: 島デコ右前"
-          list="cat-suggestions"
+          list="cat-suggestions-edit"
         />
         <CategorySuggestions />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="最低販売価格 (GP)" highlighted={isAuto("minPrice")}>
+        <Field label="最低販売価格 (GP)">
           <input
             inputMode="numeric"
             value={form.minPrice}
@@ -255,10 +198,9 @@ export default function RegisterPage() {
               setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
             }
             className="w-full bg-transparent outline-none text-[14px] text-text tabular-nums"
-            placeholder="1800"
           />
         </Field>
-        <Field label="確認日時" highlighted={isAuto("checkedAt")}>
+        <Field label="確認日時">
           <input
             type="datetime-local"
             value={form.checkedAt}
@@ -268,44 +210,35 @@ export default function RegisterPage() {
         </Field>
       </div>
 
-      <Field label="参考販売価格 (GP)" highlighted={isAuto("refPriceMin") || isAuto("refPriceMax")}>
+      <Field label="参考販売価格 (GP)">
         <div className="flex items-center gap-2">
           <input
             inputMode="numeric"
             value={form.refPriceMin}
             onChange={(e) =>
-              setForm({
-                ...form,
-                refPriceMin: e.target.value.replace(/[^\d]/g, ""),
-              })
+              setForm({ ...form, refPriceMin: e.target.value.replace(/[^\d]/g, "") })
             }
             className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
-            placeholder="4100"
           />
           <span className="text-muted">〜</span>
           <input
             inputMode="numeric"
             value={form.refPriceMax}
             onChange={(e) =>
-              setForm({
-                ...form,
-                refPriceMax: e.target.value.replace(/[^\d]/g, ""),
-              })
+              setForm({ ...form, refPriceMax: e.target.value.replace(/[^\d]/g, "") })
             }
             className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
-            placeholder="5300"
           />
           <span className="text-muted text-[12px]">GP</span>
         </div>
       </Field>
 
-      <Field label="説明文" highlighted={isAuto("description")}>
+      <Field label="説明文">
         <textarea
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
           rows={3}
           className="w-full bg-transparent outline-none text-[13px] text-text resize-y"
-          placeholder="アイテムの説明文"
         />
       </Field>
 
@@ -316,15 +249,15 @@ export default function RegisterPage() {
       />
 
       <div className="flex gap-2 pt-2">
-        <button
-          onClick={() => router.back()}
-          className="flex-1 py-3 rounded-full bg-beige/70 text-text/80 font-bold"
+        <Link
+          href={`/items/${i.id}`}
+          className="flex-1 py-3 rounded-full bg-beige/70 text-text/80 font-bold text-center"
         >
           キャンセル
-        </button>
+        </Link>
         <button
           onClick={onSave}
-          disabled={busy === "save" || !imageBlob}
+          disabled={busy === "save"}
           className="flex-[2] py-3 rounded-full bg-gold text-white font-bold disabled:opacity-50 active:bg-gold-deep"
         >
           {busy === "save" ? "保存中…" : "保存"}
@@ -337,12 +270,10 @@ export default function RegisterPage() {
 function Field({
   label,
   required,
-  highlighted,
   children,
 }: {
   label: string;
   required?: boolean;
-  highlighted?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -350,18 +281,8 @@ function Field({
       <div className="flex items-center gap-1.5 mb-1 px-1">
         <span className="text-[12px] text-muted font-bold">{label}</span>
         {required && <span className="text-[11px] text-gold-deep">*</span>}
-        {highlighted && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep">
-            <Sparkles size={11} />
-            自動入力
-          </span>
-        )}
       </div>
-      <div
-        className={`rounded-xl bg-cream border px-3 py-2 transition-colors ${
-          highlighted ? "border-gold/60 bg-mint/30" : "border-beige"
-        }`}
-      >
+      <div className="rounded-xl bg-cream border border-beige px-3 py-2">
         {children}
       </div>
     </label>
@@ -376,7 +297,7 @@ function CategorySuggestions() {
     return Array.from(set).sort();
   }, [items]);
   return (
-    <datalist id="cat-suggestions">
+    <datalist id="cat-suggestions-edit">
       {categories.map((c) => (
         <option key={c} value={c} />
       ))}
@@ -475,16 +396,6 @@ function TagPicker({
               className="px-3 py-1 rounded-md bg-gold text-white text-[12px] font-bold"
             >
               追加
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAdding(false);
-                setNewName("");
-              }}
-              className="p-1 text-muted"
-            >
-              <X size={14} />
             </button>
           </div>
         )}

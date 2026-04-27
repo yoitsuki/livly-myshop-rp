@@ -4,9 +4,13 @@ export type TagType = "period" | "gacha" | "category" | "custom";
 
 export interface Item {
   id: string;
+  /** Resized + JPEG-compressed image (default max 1600px wide). */
+  imageBlob?: Blob;
+  /** Small thumbnail (default 240px wide) for list views. */
+  thumbBlob?: Blob;
+  /** Reserved for a future Drive backup. Optional and unused for now. */
   driveFileId?: string;
   driveThumbnailUrl?: string;
-  thumbBlob?: Blob;
   name: string;
   category: string;
   description: string;
@@ -47,6 +51,12 @@ export class AppDB extends Dexie {
   constructor() {
     super("livly-myshop-rp");
     this.version(1).stores({
+      items: "id, name, category, checkedAt, createdAt, updatedAt, *tagIds",
+      tags: "id, name, type, createdAt",
+      settings: "id",
+    });
+    // v2: imageBlob added (no index changes — same store keys are reused).
+    this.version(2).stores({
       items: "id, name, category, checkedAt, createdAt, updatedAt, *tagIds",
       tags: "id, name, type, createdAt",
       settings: "id",
@@ -110,7 +120,7 @@ export async function updateItemMeta(
 /** Replace image without bumping updatedAt. */
 export async function updateItemImage(
   id: string,
-  patch: Pick<Item, "driveFileId" | "driveThumbnailUrl"> & { thumbBlob?: Blob }
+  patch: { imageBlob?: Blob; thumbBlob?: Blob }
 ): Promise<void> {
   await db().items.update(id, patch);
 }
@@ -142,5 +152,10 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 export async function patchSettings(patch: Partial<AppSettings>): Promise<void> {
-  await db().settings.update("singleton", patch);
+  const current = (await db().settings.get("singleton")) ?? {
+    id: "singleton" as const,
+    ocrProvider: "tesseract" as const,
+    claudeModel: "claude-sonnet-4-6",
+  };
+  await db().settings.put({ ...current, ...patch, id: "singleton" });
 }
