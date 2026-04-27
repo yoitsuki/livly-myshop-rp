@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --color-cream: #fff6e5;
+  --color-beige: #f0e6d2;
+  --color-beige-deep: #e6d8b8;
+  --color-gold: #c9a961;
+  --color-gold-deep: #a88842;
+  --color-pink: #ffd6e0;
+  --color-mint: #c8f4de;
+  --color-sky: #c7e9fb;
+  --color-lavender: #e0d6ff;
+  --color-text: #5a4a3a;
+  --color-muted: #a89b85;
+
+  --background: var(--color-cream);
+  --foreground: var(--color-text);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cream: var(--color-cream);
+  --color-beige: var(--color-beige);
+  --color-beige-deep: var(--color-beige-deep);
+  --color-gold: var(--color-gold);
+  --color-gold-deep: var(--color-gold-deep);
+  --color-pink: var(--color-pink);
+  --color-mint: var(--color-mint);
+  --color-sky: var(--color-sky);
+  --color-lavender: var(--color-lavender);
+  --color-text: var(--color-text);
+  --color-muted: var(--color-muted);
+  --font-sans: var(--font-rounded), "Hiragino Maru Gothic ProN",
+    "ヒラギノ丸ゴ ProN", "Meiryo", system-ui, sans-serif;
+  --font-display: var(--font-rounded), serif;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  font-family: var(--font-rounded), "Hiragino Maru Gothic ProN",
+    "ヒラギノ丸ゴ ProN", "Meiryo", system-ui, sans-serif;
+}
+
+/* Subtle paper texture for cards */
+.paper {
+  background-color: var(--color-cream);
+  background-image:
+    radial-gradient(rgba(201, 169, 97, 0.04) 1px, transparent 1px),
+    radial-gradient(rgba(201, 169, 97, 0.03) 1px, transparent 1px);
+  background-position: 0 0, 8px 8px;
+  background-size: 16px 16px;
+}
+
+/* Hide scrollbar for horizontal chip rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
