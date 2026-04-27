@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Green-based pastel palette. Class names kept (cream/beige/gold) for stability. */
-  --color-cream: #f3faee;       /* page background — pale leaf */
-  --color-beige: #dceed1;       /* card border / soft chip bg */
-  --color-beige-deep: #c2dfb1;  /* deeper leaf */
-  --color-gold: #6fa86c;        /* primary accent (CTA, FAB) — sage */
-  --color-gold-deep: #3f7a44;   /* deep accent for titles / active text */
+  /* Emerald-leaning pastel palette. Class names kept (cream/beige/gold) for stability. */
+  --color-cream: #ecf7f0;       /* page background — pale emerald */
+  --color-beige: #c8ecd6;       /* card border / soft chip bg */
+  --color-beige-deep: #9bd9b0;  /* deeper emerald wash */
+  --color-gold: #2e9d65;        /* primary accent (CTA, FAB) — emerald */
+  --color-gold-deep: #1a7d4d;   /* deep emerald for titles / prices / active */
   --color-pink: #ffd6e0;        /* tag: gacha */
-  --color-mint: #d6f0c8;        /* tag: category — green-leaning mint */
+  --color-mint: #d8f0bf;        /* tag: category — lime-leaning so it stays distinct from bg */
   --color-sky: #c7e9fb;         /* tag: custom */
   --color-lavender: #e0d6ff;    /* tag: period */
-  --color-text: #2f4530;        /* main text — dark forest */
-  --color-muted: #88a085;       /* muted text — sage */
+  --color-text: #133a25;        /* main text — dark emerald forest */
+  --color-muted: #6e9080;       /* muted — sage */
 
   --background: var(--color-cream);
   --foreground: var(--color-text);
@@ -52,8 +52,8 @@ body {
 .paper {
   background-color: var(--color-cream);
   background-image:
-    radial-gradient(rgba(63, 122, 68, 0.05) 1px, transparent 1px),
-    radial-gradient(rgba(63, 122, 68, 0.03) 1px, transparent 1px);
+    radial-gradient(rgba(26, 125, 77, 0.05) 1px, transparent 1px),
+    radial-gradient(rgba(26, 125, 77, 0.03) 1px, transparent 1px);
   background-position: 0 0, 8px 8px;
   background-size: 16px 16px;
 }

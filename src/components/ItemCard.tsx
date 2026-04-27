@@ -37,7 +37,7 @@ export default function ItemCard({
   return (
     <Link
       href={`/items/${item.id}`}
-      className="block rounded-2xl bg-cream border border-beige hover:border-gold/50 active:border-gold transition-colors shadow-[0_2px_8px_-4px_rgba(63,122,68,0.18)] overflow-hidden"
+      className="block rounded-2xl bg-cream border border-beige hover:border-gold/50 active:border-gold transition-colors shadow-[0_2px_8px_-4px_rgba(26,125,77,0.2)] overflow-hidden"
     >
       <div className="flex gap-3 p-3">
         <div className="shrink-0 w-20 h-20 rounded-xl bg-beige/70 border border-beige overflow-hidden flex items-center justify-center text-muted">
@@ -63,13 +63,13 @@ export default function ItemCard({
               🏷 {item.category}
             </div>
           )}
-          <div className="text-[13px] text-text/90 mt-1.5 leading-snug">
-            <span className="font-semibold text-gold-deep">
-              {formatPrice(item.minPrice)}GP
+          <div className="mt-1.5 leading-snug whitespace-nowrap">
+            <span className="font-bold text-gold-deep text-[14px]">
+              {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)}GP
             </span>
-            <span className="text-muted mx-1.5">/</span>
-            <span>
-              {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)}
+            <span className="text-muted mx-1.5 text-[12px]">/</span>
+            <span className="text-text/70 text-[12px]">
+              {formatPrice(item.minPrice)}GP
             </span>
           </div>
           <div className="flex items-center justify-between mt-1.5 gap-2">
