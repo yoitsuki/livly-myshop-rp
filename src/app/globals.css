@@ -1,17 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --color-cream: #fff6e5;
-  --color-beige: #f0e6d2;
-  --color-beige-deep: #e6d8b8;
-  --color-gold: #c9a961;
-  --color-gold-deep: #a88842;
-  --color-pink: #ffd6e0;
-  --color-mint: #c8f4de;
-  --color-sky: #c7e9fb;
-  --color-lavender: #e0d6ff;
-  --color-text: #5a4a3a;
-  --color-muted: #a89b85;
+  /* Green-based pastel palette. Class names kept (cream/beige/gold) for stability. */
+  --color-cream: #f3faee;       /* page background — pale leaf */
+  --color-beige: #dceed1;       /* card border / soft chip bg */
+  --color-beige-deep: #c2dfb1;  /* deeper leaf */
+  --color-gold: #6fa86c;        /* primary accent (CTA, FAB) — sage */
+  --color-gold-deep: #3f7a44;   /* deep accent for titles / active text */
+  --color-pink: #ffd6e0;        /* tag: gacha */
+  --color-mint: #d6f0c8;        /* tag: category — green-leaning mint */
+  --color-sky: #c7e9fb;         /* tag: custom */
+  --color-lavender: #e0d6ff;    /* tag: period */
+  --color-text: #2f4530;        /* main text — dark forest */
+  --color-muted: #88a085;       /* muted text — sage */
 
   --background: var(--color-cream);
   --foreground: var(--color-text);
@@ -51,8 +52,8 @@ body {
 .paper {
   background-color: var(--color-cream);
   background-image:
-    radial-gradient(rgba(201, 169, 97, 0.04) 1px, transparent 1px),
-    radial-gradient(rgba(201, 169, 97, 0.03) 1px, transparent 1px);
+    radial-gradient(rgba(63, 122, 68, 0.05) 1px, transparent 1px),
+    radial-gradient(rgba(63, 122, 68, 0.03) 1px, transparent 1px);
   background-position: 0 0, 8px 8px;
   background-size: 16px 16px;
 }

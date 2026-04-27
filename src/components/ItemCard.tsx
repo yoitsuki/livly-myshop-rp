@@ -37,7 +37,7 @@ export default function ItemCard({
   return (
     <Link
       href={`/items/${item.id}`}
-      className="block rounded-2xl bg-cream border border-beige hover:border-gold/50 active:border-gold transition-colors shadow-[0_2px_8px_-4px_rgba(168,136,66,0.18)] overflow-hidden"
+      className="block rounded-2xl bg-cream border border-beige hover:border-gold/50 active:border-gold transition-colors shadow-[0_2px_8px_-4px_rgba(63,122,68,0.18)] overflow-hidden"
     >
       <div className="flex gap-3 p-3">
         <div className="shrink-0 w-20 h-20 rounded-xl bg-beige/70 border border-beige overflow-hidden flex items-center justify-center text-muted">
