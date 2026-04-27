@@ -264,7 +264,6 @@ export default function EditItemPage({
         source={cropping ? sourceBlob ?? null : null}
         open={cropping !== null}
         title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
-        aspect={cropping === "icon" ? 1 : undefined}
         maxOutputWidth={cropping === "icon" ? 320 : 1200}
         initialRect={
           cropping === "icon"

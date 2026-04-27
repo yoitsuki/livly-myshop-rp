@@ -6,5 +6,8 @@
  *        settings cog top-right, list shows 参考価格 / 最低販売価格 labels
  * 0.2.1  Crop handles trimmed to 4 mid-edges, save crop coords on Item,
  *        version label in drawer
+ * 0.2.2  Icon crop is free-form (no aspect lock), crop frame uses dark
+ *        lines for visibility on white backgrounds, hamburger menu moved
+ *        to the top-right and the drawer slides in from the right
  */
-export const APP_VERSION = "0.2.1";
+export const APP_VERSION = "0.2.2";

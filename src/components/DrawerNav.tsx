@@ -45,8 +45,8 @@ export default function DrawerNav({
         }`}
       />
       <aside
-        className={`fixed top-0 left-0 z-50 h-dvh w-72 max-w-[80%] bg-cream border-r border-beige shadow-xl transition-transform duration-250 flex flex-col ${
-          open ? "translate-x-0" : "-translate-x-full"
+        className={`fixed top-0 right-0 z-50 h-dvh w-72 max-w-[80%] bg-cream border-l border-beige shadow-xl transition-transform duration-250 flex flex-col ${
+          open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!open}
       >
