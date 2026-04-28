@@ -76,13 +76,19 @@ export default function EditItemPage({
   const [pendingMain, setPendingMain] = useState<
     { blob: Blob; crop: ItemCropRecord } | undefined
   >();
+  // True after the user has clicked the X on the main slot — staged in
+  // component state and only persisted on 保存. Picking a new main file or
+  // confirming a fresh main crop resets this back to false.
+  const [pendingClearMain, setPendingClearMain] = useState(false);
   const [cropping, setCropping] = useState<CropTarget>(null);
 
   const savedIcon = item?.iconBlob ?? item?.thumbBlob;
   const savedMain = item?.mainImageBlob ?? item?.imageBlob;
-  // What the slot previews show: pending crop wins, otherwise the saved blob.
+  // What the slot previews show: pending crop wins, then a staged delete
+  // hides the saved blob, otherwise we fall back to whatever's on disk.
   const displayIcon = pendingIcon?.blob ?? savedIcon;
-  const displayMain = pendingMain?.blob ?? savedMain;
+  const displayMain = pendingMain?.blob
+    ?? (pendingClearMain ? undefined : savedMain);
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
 
@@ -148,6 +154,9 @@ export default function EditItemPage({
 
   const onMainFile = (file: File) => {
     setError(undefined);
+    // A fresh file overrides any staged delete — the user is providing a new
+    // main image, so we shouldn't clear it.
+    setPendingClearMain(false);
     setMainSource(file);
     setCropping("main");
   };
@@ -156,9 +165,10 @@ export default function EditItemPage({
   // then a fresh file picked this session, then the saved blob. The saved blob
   // is wrapped in a fresh Blob so IndexedDB never sees a mutation.
   const startCrop = (target: "icon" | "main") => {
+    const mainSavedIfNotCleared = pendingClearMain ? undefined : savedMain;
     const sources = target === "icon"
       ? [pendingIcon?.blob, iconSource, savedIcon]
-      : [pendingMain?.blob, mainSource, savedMain];
+      : [pendingMain?.blob, mainSource, mainSavedIfNotCleared];
     const src = sources.find((b): b is Blob => !!b);
     if (!src) {
       setError(
@@ -177,7 +187,7 @@ export default function EditItemPage({
   const cropperSource: Blob | null = cropping === "icon"
     ? pendingIcon?.blob ?? iconSource ?? savedIcon ?? null
     : cropping === "main"
-      ? pendingMain?.blob ?? mainSource ?? savedMain ?? null
+      ? pendingMain?.blob ?? mainSource ?? (pendingClearMain ? null : savedMain ?? null)
       : null;
 
   const onSave = async () => {
@@ -191,19 +201,25 @@ export default function EditItemPage({
       // Persist any staged crop results first so the meta-edit save sees the
       // freshest state. Each slot is updated independently — leaving one
       // untouched doesn't disturb the other on disk.
-      if (pendingIcon || pendingMain) {
+      if (pendingIcon) {
         await updateItemImage(i.id, {
-          ...(pendingIcon && {
-            iconBlob: pendingIcon.blob,
-            iconCrop: pendingIcon.crop,
-          }),
-          ...(pendingMain && {
-            mainImageBlob: pendingMain.blob,
-            mainCrop: pendingMain.crop,
-          }),
+          iconBlob: pendingIcon.blob,
+          iconCrop: pendingIcon.crop,
         });
       }
-      const hasMainAfterSave = !!(pendingMain?.blob ?? i.mainImageBlob);
+      // pendingClearMain wins over a stale pendingMain (kept mutually
+      // exclusive in the handlers, but we still defend against both being set).
+      if (pendingClearMain) {
+        await clearMainImage(i.id);
+      } else if (pendingMain) {
+        await updateItemImage(i.id, {
+          mainImageBlob: pendingMain.blob,
+          mainCrop: pendingMain.crop,
+        });
+      }
+      const hasMainAfterSave = pendingClearMain
+        ? false
+        : !!(pendingMain?.blob ?? i.mainImageBlob);
       const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
         ? {
             yearMonth: form.shopYearMonth,
@@ -230,11 +246,16 @@ export default function EditItemPage({
     }
   };
 
-  const onClearMain = async () => {
-    if (!confirm("メイン画像と切り抜き座標を削除します。よろしいですか？")) return;
+  const onClearMain = () => {
+    if (
+      !confirm(
+        "メイン画像を削除します（保存ボタンを押すまで反映されません）。よろしいですか？"
+      )
+    )
+      return;
     setPendingMain(undefined);
     setMainSource(undefined);
-    await clearMainImage(i.id);
+    setPendingClearMain(true);
   };
 
   return (
@@ -274,7 +295,11 @@ export default function EditItemPage({
           imageUrl={mainUrl}
           onClickCrop={() => startCrop("main")}
           onPick={onPickMainFile}
-          onClear={savedMain || pendingMain ? onClearMain : undefined}
+          onClear={
+            !pendingClearMain && (pendingMain || savedMain)
+              ? onClearMain
+              : undefined
+          }
         />
       </div>
       <p className="text-[11px] text-muted px-1 -mt-2">
@@ -444,6 +469,8 @@ export default function EditItemPage({
           if (cropping === "icon") {
             setPendingIcon({ blob: result.blob, crop: record });
           } else if (cropping === "main") {
+            // Confirming a fresh main crop overrides any staged delete.
+            setPendingClearMain(false);
             setPendingMain({ blob: result.blob, crop: record });
           }
           setCropping(null);

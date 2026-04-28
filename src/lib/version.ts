@@ -69,5 +69,10 @@
  *        saturation for older rounds (instead of getting brighter):
  *        vivid teal → muted → faded → near-grey. Tiers stay readable
  *        with white text and stay dark enough not to wash out.
+ * 0.5.4  Edit screen: "メイン画像を削除" is now staged like crops —
+ *        nothing hits IndexedDB until 保存, and キャンセル / back
+ *        cleanly discards the pending delete. Picking a new main file
+ *        or confirming a new main crop also overrides the staged
+ *        delete, restoring the slot.
  */
-export const APP_VERSION = "0.5.3";
+export const APP_VERSION = "0.5.4";
