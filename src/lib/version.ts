@@ -65,5 +65,9 @@
  *        adjust the current crop" intent. Fixes the broken initial frame
  *        and resulting blank output when the icon was re-cropped on an
  *        item without a main image.
+ * 0.5.3  Period badge gradient widens its visible spread by lowering
+ *        saturation for older rounds (instead of getting brighter):
+ *        vivid teal → muted → faded → near-grey. Tiers stay readable
+ *        with white text and stay dark enough not to wash out.
  */
-export const APP_VERSION = "0.5.2";
+export const APP_VERSION = "0.5.3";

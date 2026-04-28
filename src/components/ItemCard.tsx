@@ -9,19 +9,23 @@ import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 
 /**
- * Period badge color tier — gradient from the primary button teal toward
- * lighter shades, all kept dark enough that white text stays legible.
- *   index 0 (newest)     → primary teal (matches the FAB / CTA color)
- *   index 1 (one before) → one step lighter
- *   index 2 and older    → two steps lighter
- *   unknown              → faintest shade
+ * Period badge color tier — anchored on the primary button teal for the
+ * newest round, then stepping toward less saturated, near-grey teals for
+ * older rounds. Lightness stays constant so older tiers look more muted
+ * (not brighter), and white text keeps comfortable contrast on every tier.
+ *   index 0 (newest)     → vivid primary teal
+ *   index 1 (one before) → muted teal
+ *   index 2              → faded teal
+ *   index 3 and older    → near-grey teal
+ *   unknown              → near-grey teal (same as oldest tier)
  */
 function periodBadgeClass(yearMonth: string): string {
   const idx = roundAgeIndex(yearMonth);
   if (idx === 0) return "bg-[#15a496] text-white";
-  if (idx === 1) return "bg-[#28b3a4] text-white";
-  if (idx >= 2) return "bg-[#3ec3b6] text-white";
-  return "bg-[#56cdc1] text-white";
+  if (idx === 1) return "bg-[#2e8a81] text-white";
+  if (idx === 2) return "bg-[#427772] text-white";
+  if (idx >= 3) return "bg-[#4e6a67] text-white";
+  return "bg-[#4e6a67] text-white";
 }
 
 export default function ItemCard({
