@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ImageIcon } from "lucide-react";
-import type { Item, Tag } from "@/lib/db";
+import { latestPriceEntry, type Item, type Tag } from "@/lib/db";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
@@ -36,8 +36,7 @@ export default function ItemCard({
   tags: Tag[];
 }) {
   const itemTags = tags.filter((t) => item.tagIds.includes(t.id));
-  const thumbSource =
-    item.iconBlob ?? item.thumbBlob ?? item.mainImageBlob ?? item.imageBlob;
+  const thumbSource = item.iconBlob ?? item.mainImageBlob;
   const [thumbUrl, setThumbUrl] = useState<string | undefined>(
     item.driveThumbnailUrl
   );
@@ -49,8 +48,9 @@ export default function ItemCard({
     return () => URL.revokeObjectURL(url);
   }, [thumbSource]);
 
-  const periodLabel = item.shopPeriod
-    ? formatShopPeriod(item.shopPeriod.yearMonth, item.shopPeriod.phase)
+  const latest = latestPriceEntry(item);
+  const periodLabel = latest?.shopPeriod
+    ? formatShopPeriod(latest.shopPeriod.yearMonth, latest.shopPeriod.phase)
     : null;
 
   return (
@@ -78,12 +78,14 @@ export default function ItemCard({
           <div>
             <span className="text-muted">参考価格 </span>
             <span className="text-gold-deep">
-              {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)} GP
+              {latest
+                ? `${formatPrice(latest.refPriceMin)}〜${formatPrice(latest.refPriceMax)} GP`
+                : "—"}
             </span>
           </div>
-          {periodLabel && item.shopPeriod && (
+          {periodLabel && latest?.shopPeriod && (
             <span
-              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] ${periodBadgeClass(item.shopPeriod.yearMonth)}`}
+              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] ${periodBadgeClass(latest.shopPeriod.yearMonth)}`}
             >
               {periodLabel}
             </span>
@@ -91,16 +93,18 @@ export default function ItemCard({
         </div>
         <div className="text-[11px] tabular-nums whitespace-nowrap">
           <span className="text-muted">最低販売価格 </span>
-          <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
+          <span className="text-text/70">
+            {latest ? `${formatPrice(latest.minPrice)} GP` : "—"}
+          </span>
         </div>
-        {(itemTags.length > 0 || item.priceSource) && (
+        {(itemTags.length > 0 || latest?.priceSource) && (
           <div className="flex items-center flex-wrap gap-0.5 mt-px">
             {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}
-            {item.priceSource && (
+            {latest?.priceSource && (
               <span className="px-1.5 py-px rounded-full text-[10.5px] leading-[15px] font-medium text-text/85 bg-sky whitespace-nowrap">
-                {item.priceSource}
+                {latest.priceSource}
               </span>
             )}
           </div>

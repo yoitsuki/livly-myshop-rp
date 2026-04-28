@@ -9,7 +9,9 @@ import {
   createTag,
   db,
   getSettings,
+  uid,
   type ItemCropRecord,
+  type PriceEntry,
   type ShopPeriodRecord,
   type Tag,
   type TagType,
@@ -247,6 +249,18 @@ export default function RegisterPage() {
             auto: !!mainBlob && form.shopAuto,
           }
         : undefined;
+      const now = Date.now();
+      const initialEntry: PriceEntry = {
+        id: uid(),
+        shopPeriod,
+        refPriceMin: Number(form.refPriceMin) || 0,
+        refPriceMax: Number(form.refPriceMax) || 0,
+        minPrice: Number(form.minPrice) || 0,
+        checkedAt: fromLocalInput(form.checkedAt),
+        priceSource:
+          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        createdAt: now,
+      };
       await createItem({
         iconBlob,
         mainImageBlob: mainBlob,
@@ -254,13 +268,8 @@ export default function RegisterPage() {
         mainCrop,
         name: form.name.trim(),
         category: form.category.trim(),
-        minPrice: Number(form.minPrice) || 0,
-        refPriceMin: Number(form.refPriceMin) || 0,
-        refPriceMax: Number(form.refPriceMax) || 0,
         tagIds: form.tagIds,
-        checkedAt: fromLocalInput(form.checkedAt),
-        shopPeriod,
-        priceSource: !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        priceEntries: [initialEntry],
       });
       router.push("/");
     } catch (e) {

@@ -4,44 +4,23 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Crop, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
+import { Crop, Loader2, RefreshCw, X } from "lucide-react";
 import {
   createTag,
   db,
   type Item,
   type ItemCropRecord,
-  type ShopPeriodRecord,
   type Tag,
   type TagType,
 } from "@/lib/db";
-import {
-  formatShopPeriod,
-  SHOP_ROUNDS,
-  type ShopPhase,
-} from "@/lib/shopPeriods";
-import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 
 interface FormState {
   name: string;
   category: string;
-  minPrice: string;
-  refPriceMin: string;
-  refPriceMax: string;
-  checkedAt: string;
   tagIds: string[];
-  shopYearMonth: string;
-  shopPhase: ShopPhase;
-  shopAuto: boolean;
-  priceSource: string;
 }
-
-const SOURCE_PRESETS: Array<{ value: string; label: string }> = [
-  { value: "", label: "選択しない" },
-  { value: "なんおし", label: "なんおし" },
-  { value: "その他", label: "その他" },
-];
 
 type CropTarget = "icon" | "main" | null;
 
@@ -71,16 +50,11 @@ export default function EditItemPage({
   const [pendingMain, setPendingMain] = useState<
     { blob: Blob; crop: ItemCropRecord } | undefined
   >();
-  // True after the user has clicked the X on the main slot — staged in
-  // component state and only persisted on 保存. Picking a new main file or
-  // confirming a fresh main crop resets this back to false.
   const [pendingClearMain, setPendingClearMain] = useState(false);
   const [cropping, setCropping] = useState<CropTarget>(null);
 
-  const savedIcon = item?.iconBlob ?? item?.thumbBlob;
-  const savedMain = item?.mainImageBlob ?? item?.imageBlob;
-  // What the slot previews show: pending crop wins, then a staged delete
-  // hides the saved blob, otherwise we fall back to whatever's on disk.
+  const savedIcon = item?.iconBlob;
+  const savedMain = item?.mainImageBlob;
   const displayIcon = pendingIcon?.blob ?? savedIcon;
   const displayMain = pendingMain?.blob
     ?? (pendingClearMain ? undefined : savedMain);
@@ -92,15 +66,7 @@ export default function EditItemPage({
     setForm({
       name: item.name,
       category: item.category,
-      minPrice: String(item.minPrice ?? ""),
-      refPriceMin: String(item.refPriceMin ?? ""),
-      refPriceMax: String(item.refPriceMax ?? ""),
-      checkedAt: toLocalInput(item.checkedAt),
       tagIds: item.tagIds,
-      shopYearMonth: item.shopPeriod?.yearMonth ?? "",
-      shopPhase: item.shopPeriod?.phase ?? "ongoing",
-      shopAuto: item.shopPeriod?.auto ?? false,
-      priceSource: item.priceSource ?? "",
     });
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -136,8 +102,6 @@ export default function EditItemPage({
 
   const i = item as Item;
 
-  // Per-slot file pickers — picking on the icon slot only touches the icon
-  // source, and vice-versa. We never share a source between the two slots.
   const onPickIconFile = () => iconFileInput.current?.click();
   const onPickMainFile = () => mainFileInput.current?.click();
 
@@ -149,16 +113,11 @@ export default function EditItemPage({
 
   const onMainFile = (file: File) => {
     setError(undefined);
-    // A fresh file overrides any staged delete — the user is providing a new
-    // main image, so we shouldn't clear it.
     setPendingClearMain(false);
     setMainSource(file);
     setCropping("main");
   };
 
-  // Re-crop a slot using its own most recent blob: pending crop result first,
-  // then a fresh file picked this session, then the saved blob. The saved blob
-  // is wrapped in a fresh Blob so IndexedDB never sees a mutation.
   const startCrop = (target: "icon" | "main") => {
     const mainSavedIfNotCleared = pendingClearMain ? undefined : savedMain;
     const sources = target === "icon"
@@ -177,8 +136,6 @@ export default function EditItemPage({
     setCropping(target);
   };
 
-  // Source the cropper actually sees while open — distinct per target so the
-  // icon flow never touches the main image and vice-versa.
   const cropperSource: Blob | null = cropping === "icon"
     ? pendingIcon?.blob ?? iconSource ?? savedIcon ?? null
     : cropping === "main"
@@ -193,21 +150,10 @@ export default function EditItemPage({
     setError(undefined);
     setBusy("save");
     try {
-      const hasMainAfterSave = pendingClearMain
-        ? false
-        : !!(pendingMain?.blob ?? i.mainImageBlob);
-      const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
-        ? {
-            yearMonth: form.shopYearMonth,
-            phase: form.shopPhase,
-            auto: hasMainAfterSave && form.shopAuto,
-          }
-        : undefined;
-
       // Apply every change in a single transaction with one read + one put.
-      // Splitting this into multiple transactions causes Safari/Chrome to
-      // throw "Error preparing Blob/File data..." when sibling Blobs survive
-      // a record across transaction boundaries.
+      // Splitting into multiple transactions causes Safari/Chrome to throw
+      // "Error preparing Blob/File data..." when sibling Blobs survive a
+      // record across transaction boundaries.
       await db().transaction("rw", db().items, async () => {
         const current = await db().items.get(i.id);
         if (!current) throw new Error("アイテムが見つかりませんでした");
@@ -220,7 +166,6 @@ export default function EditItemPage({
         if (pendingClearMain) {
           delete next.mainImageBlob;
           delete next.mainCrop;
-          delete next.imageBlob;
         } else if (pendingMain) {
           next.mainImageBlob = pendingMain.blob;
           next.mainCrop = pendingMain.crop;
@@ -228,21 +173,7 @@ export default function EditItemPage({
 
         next.name = form.name.trim();
         next.category = form.category.trim();
-        next.minPrice = Number(form.minPrice) || 0;
-        next.refPriceMin = Number(form.refPriceMin) || 0;
-        next.refPriceMax = Number(form.refPriceMax) || 0;
         next.tagIds = form.tagIds;
-        next.checkedAt = fromLocalInput(form.checkedAt);
-        if (shopPeriod) {
-          next.shopPeriod = shopPeriod;
-        } else {
-          delete next.shopPeriod;
-        }
-        if (!hasMainAfterSave && form.priceSource) {
-          next.priceSource = form.priceSource.trim();
-        } else {
-          delete next.priceSource;
-        }
         next.updatedAt = Date.now();
 
         await db().items.put(next);
@@ -313,6 +244,7 @@ export default function EditItemPage({
       <p className="text-[11px] text-muted px-1 -mt-2">
         「ファイル」で画像を選び直すか、「切り抜き」で現在の画像を
         微調整できます。保存ボタンを押すまでは反映されません。
+        マイショップごとの参考価格は詳細画面から追加・編集します。
       </p>
 
       {error && (
@@ -337,81 +269,6 @@ export default function EditItemPage({
           list="cat-suggestions-edit"
         />
         <CategorySuggestions />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="最低販売価格 (GP)">
-          <input
-            inputMode="numeric"
-            value={form.minPrice}
-            onChange={(e) =>
-              setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
-            }
-            className="w-full bg-transparent outline-none text-[14px] text-text tabular-nums"
-          />
-        </Field>
-        <Field label="確認日時">
-          <input
-            type="datetime-local"
-            value={form.checkedAt}
-            onChange={(e) => setForm({ ...form, checkedAt: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px] text-text"
-          />
-        </Field>
-      </div>
-
-      <ShopPeriodField
-        yearMonth={form.shopYearMonth}
-        phase={form.shopPhase}
-        auto={form.shopAuto && !!i.mainImageBlob}
-        hasMainImage={!!i.mainImageBlob}
-        onChange={(yearMonth, phase) =>
-          setForm({
-            ...form,
-            shopYearMonth: yearMonth,
-            shopPhase: phase,
-            shopAuto: false,
-          })
-        }
-      />
-
-      {!displayMain && (
-        <Field label="情報元 (メイン画像が無いとき)">
-          <select
-            value={form.priceSource}
-            onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px] text-text"
-          >
-            {SOURCE_PRESETS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-
-      <Field label="参考販売価格 (GP)">
-        <div className="flex items-center gap-2">
-          <input
-            inputMode="numeric"
-            value={form.refPriceMin}
-            onChange={(e) =>
-              setForm({ ...form, refPriceMin: e.target.value.replace(/[^\d]/g, "") })
-            }
-            className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
-          />
-          <span className="text-muted">〜</span>
-          <input
-            inputMode="numeric"
-            value={form.refPriceMax}
-            onChange={(e) =>
-              setForm({ ...form, refPriceMax: e.target.value.replace(/[^\d]/g, "") })
-            }
-            className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
-          />
-          <span className="text-muted text-[12px]">GP</span>
-        </div>
       </Field>
 
       <TagPicker
@@ -448,9 +305,6 @@ export default function EditItemPage({
         open={cropping !== null}
         title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
         maxOutputWidth={cropping === "icon" ? 320 : 1200}
-        // Edit-mode crops are fine adjustments on the already-cropped blob:
-        // ignore presets/saved rect entirely and start with the full extent so
-        // the user nudges the frame inward as needed.
         fillExtent
         onCancel={() => setCropping(null)}
         onConfirm={(result) => {
@@ -467,7 +321,6 @@ export default function EditItemPage({
           if (cropping === "icon") {
             setPendingIcon({ blob: result.blob, crop: record });
           } else if (cropping === "main") {
-            // Confirming a fresh main crop overrides any staged delete.
             setPendingClearMain(false);
             setPendingMain({ blob: result.blob, crop: record });
           }
@@ -534,72 +387,6 @@ function SlotPreview({
         >
           <X size={14} strokeWidth={2.6} />
         </button>
-      )}
-    </div>
-  );
-}
-
-function ShopPeriodField({
-  yearMonth,
-  phase,
-  auto,
-  hasMainImage,
-  onChange,
-}: {
-  yearMonth: string;
-  phase: ShopPhase;
-  auto: boolean;
-  hasMainImage: boolean;
-  onChange: (yearMonth: string, phase: ShopPhase) => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">マイショップ時期</span>
-        {auto && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep">
-            <Sparkles size={11} />
-            画像から自動判定
-          </span>
-        )}
-        {!hasMainImage && (
-          <span className="text-[10px] text-muted">手動選択</span>
-        )}
-      </div>
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2 flex items-center gap-2 flex-wrap">
-        <select
-          value={yearMonth}
-          onChange={(e) => onChange(e.target.value, phase)}
-          className="flex-1 min-w-[8rem] bg-transparent outline-none text-[13px]"
-        >
-          <option value="">未指定</option>
-          {SHOP_ROUNDS.map((r) => (
-            <option key={r.yearMonth} value={r.yearMonth}>
-              {r.yearMonth} (第{r.roundNumber}回)
-            </option>
-          ))}
-        </select>
-        <div className="flex items-center gap-1">
-          {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onChange(yearMonth, p)}
-              className={`px-2 py-px rounded-full text-[11px] border ${
-                phase === p
-                  ? "bg-gold/20 border-gold text-gold-deep font-bold"
-                  : "bg-cream border-beige text-text/70"
-              }`}
-            >
-              {p === "ongoing" ? "開催中" : "最終日"}
-            </button>
-          ))}
-        </div>
-      </div>
-      {yearMonth && (
-        <div className="px-1 pt-0.5 text-[10.5px] text-muted tabular-nums">
-          表示: [{formatShopPeriod(yearMonth, phase)}]
-        </div>
       )}
     </div>
   );

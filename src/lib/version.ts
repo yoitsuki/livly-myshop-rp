@@ -85,5 +85,18 @@
  *        with a metadata change no longer trips Safari / Chrome's
  *        "Error preparing Blob/File data to be stored in object store"
  *        error caused by re-putting sibling Blobs across transactions.
+ * 0.6.0  Items now keep an array of price entries (priceEntries) instead
+ *        of single-shot price fields. Each entry pins its own shop
+ *        period, ref/min prices, checkedAt, and optional priceSource.
+ *        The list and detail header surface the latest entry; the
+ *        detail page lists every entry with per-entry edit / delete
+ *        buttons and a "+価格を追加" CTA. New flows live at
+ *        /items/[id]/prices/new and /items/[id]/prices/[entryId]/edit.
+ *        Price entries can be added without re-cropping the main image
+ *        — picking a screenshot in the form auto-fills checkedAt and
+ *        shopPeriod from EXIF, but the picked image itself is not
+ *        stored. The item-edit screen drops all price fields (it now
+ *        handles only name / category / tags / images). Dexie schema
+ *        bumps to v3; pre-launch upgrade clears existing items.
  */
-export const APP_VERSION = "0.5.6";
+export const APP_VERSION = "0.6.0";
