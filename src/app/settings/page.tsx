@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Eye, EyeOff } from "lucide-react";
-import {
-  db,
-  getSettings,
-  patchSettings,
-  type AppSettings,
-} from "@/lib/db";
+import { Eye, EyeOff, Home } from "lucide-react";
+import { db, getSettings, patchSettings, type AppSettings } from "@/lib/db";
+import { describePreset, type CropPreset } from "@/lib/preset";
 
 const DEFAULT_SETTINGS: AppSettings = {
   id: "singleton",
@@ -158,6 +155,19 @@ export default function SettingsPage() {
         </div>
       </Section>
 
+      <Section
+        title="切り抜きプリセット"
+        hint="画像取り込み時のクロップ範囲を保存します。詳細は専用画面で編集します。"
+      >
+        <CropPresetSummary presets={settings.cropPresets ?? []} />
+        <Link
+          href="/presets"
+          className="mt-2 inline-flex items-center gap-1 text-[12px] text-gold-deep font-bold underline"
+        >
+          プリセット管理を開く
+        </Link>
+      </Section>
+
       <Section title="クラウド連携 (将来)" hint="Drive バックアップは未実装です。">
         <p className="text-[12px] text-muted px-1 leading-relaxed">
           現時点では画像とメタデータをすべて端末内 (IndexedDB)
@@ -166,6 +176,14 @@ export default function SettingsPage() {
           後ほど Google Drive バックアップを追加予定です。
         </p>
       </Section>
+
+      <Link
+        href="/"
+        className="mt-2 w-full py-3 rounded-full bg-beige/70 text-text/85 font-bold text-center inline-flex items-center justify-center gap-1.5"
+      >
+        <Home size={16} />
+        ホームに戻る
+      </Link>
 
       {saved && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-text text-cream text-[12px] shadow-lg">
@@ -247,4 +265,27 @@ function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function CropPresetSummary({ presets }: { presets: CropPreset[] }) {
+  if (presets.length === 0) {
+    return (
+      <p className="text-[12px] text-muted px-1">
+        登録済みプリセットはありません。
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-1.5">
+      {presets.map((p) => (
+        <li
+          key={p.id}
+          className="rounded-lg border border-beige bg-beige/30 px-2.5 py-1.5"
+        >
+          <div className="text-[12.5px] font-bold text-text/90">{p.name}</div>
+          <div className="text-[10.5px] text-muted">{describePreset(p)}</div>
+        </li>
+      ))}
+    </ul>
+  );
 }

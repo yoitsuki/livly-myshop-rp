@@ -5,7 +5,23 @@ import { useEffect, useState } from "react";
 import { ImageIcon } from "lucide-react";
 import type { Item, Tag } from "@/lib/db";
 import { formatPrice } from "@/lib/utils/parsePrice";
+import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
+
+/**
+ * Period badge color tier:
+ *   index 0 (newest)         → vivid deep teal
+ *   index 1 (one before)     → mid teal
+ *   index 2 and older        → muted sage
+ *   unknown                  → neutral beige
+ */
+function periodBadgeClass(yearMonth: string): string {
+  const idx = roundAgeIndex(yearMonth);
+  if (idx === 0) return "bg-gold-deep text-cream";
+  if (idx === 1) return "bg-gold text-cream";
+  if (idx >= 2) return "bg-beige-deep text-text/85";
+  return "bg-beige text-text/70";
+}
 
 export default function ItemCard({
   item,
@@ -28,6 +44,10 @@ export default function ItemCard({
     return () => URL.revokeObjectURL(url);
   }, [thumbSource]);
 
+  const periodLabel = item.shopPeriod
+    ? formatShopPeriod(item.shopPeriod.yearMonth, item.shopPeriod.phase)
+    : null;
+
   return (
     <Link
       href={`/items/${item.id}`}
@@ -49,21 +69,35 @@ export default function ItemCard({
         <h3 className="font-bold text-[14px] text-text break-words">
           {item.name || "(名称未設定)"}
         </h3>
-        <div className="text-[11px] tabular-nums whitespace-nowrap">
-          <span className="text-muted">参考価格 </span>
-          <span className="text-gold-deep">
-            {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)} GP
-          </span>
+        <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums whitespace-nowrap">
+          <div>
+            <span className="text-muted">参考価格 </span>
+            <span className="text-gold-deep">
+              {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)} GP
+            </span>
+          </div>
+          {periodLabel && item.shopPeriod && (
+            <span
+              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] ${periodBadgeClass(item.shopPeriod.yearMonth)}`}
+            >
+              {periodLabel}
+            </span>
+          )}
         </div>
         <div className="text-[11px] tabular-nums whitespace-nowrap">
           <span className="text-muted">最低販売価格 </span>
           <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
         </div>
-        {itemTags.length > 0 && (
+        {(itemTags.length > 0 || item.priceSource) && (
           <div className="flex items-center flex-wrap gap-0.5 mt-px">
             {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}
+            {item.priceSource && (
+              <span className="text-[10px] text-muted truncate max-w-[180px]">
+                #{item.priceSource}
+              </span>
+            )}
           </div>
         )}
       </div>

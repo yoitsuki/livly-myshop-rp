@@ -3,20 +3,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Crop, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
+import { Crop, ImagePlus, Loader2, ScanText, Sparkles, X } from "lucide-react";
 import {
   createItem,
   createTag,
   db,
   getSettings,
+  type ItemCropRecord,
+  type ShopPeriodRecord,
   type Tag,
   type TagType,
 } from "@/lib/db";
-import { compressImage } from "@/lib/image";
+import { compressImage, type CropRect } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
 import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
+import {
+  formatShopPeriod,
+  resolveShopPeriod,
+  SHOP_ROUNDS,
+  type ShopPhase,
+} from "@/lib/shopPeriods";
+import { findMatchingPreset, SEED_PRESETS } from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
@@ -29,7 +38,20 @@ interface FormState {
   refPriceMax: string;
   checkedAt: string;
   tagIds: string[];
+  /** YYYYMM key. Empty = no period selected. */
+  shopYearMonth: string;
+  shopPhase: ShopPhase;
+  shopAuto: boolean;
+  priceSource: string;
 }
+
+const SOURCE_PRESETS: Array<{ value: string; label: string }> = [
+  { value: "", label: "選択しない" },
+  { value: "ライブリーガイド (https://livly-guide.com/)", label: "ライブリーガイド" },
+  { value: "公式 X / 旧 Twitter", label: "公式 X / 旧 Twitter" },
+  { value: "個人ブログ", label: "個人ブログ" },
+  { value: "他プレイヤーのお店", label: "他プレイヤーのお店" },
+];
 
 const EMPTY_FORM: FormState = {
   name: "",
@@ -39,6 +61,10 @@ const EMPTY_FORM: FormState = {
   refPriceMax: "",
   checkedAt: toLocalInput(Date.now()),
   tagIds: [],
+  shopYearMonth: "",
+  shopPhase: "ongoing",
+  shopAuto: false,
+  priceSource: "",
 };
 
 type CropTarget = "icon" | "main" | null;
@@ -50,9 +76,14 @@ export default function RegisterPage() {
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const [iconBlob, setIconBlob] = useState<Blob | undefined>();
   const [mainBlob, setMainBlob] = useState<Blob | undefined>();
+  const [iconCrop, setIconCrop] = useState<ItemCropRecord | undefined>();
+  const [mainCrop, setMainCrop] = useState<ItemCropRecord | undefined>();
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
   const [cropping, setCropping] = useState<CropTarget>(null);
+  const [presets, setPresets] = useState<{ icon: CropRect; main: CropRect } | null>(
+    null
+  );
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [error, setError] = useState<string | undefined>();
@@ -60,6 +91,8 @@ export default function RegisterPage() {
   const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
 
   const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
+  const settings = useLiveQuery(() => db().settings.get("singleton"), []);
+  const [ocrDone, setOcrDone] = useState(false);
 
   useEffect(() => {
     if (!previewUrl) return;
@@ -93,31 +126,68 @@ export default function RegisterPage() {
     setSourceBlob(file);
     setIconBlob(undefined);
     setMainBlob(undefined);
+    setIconCrop(undefined);
+    setMainCrop(undefined);
+    setPresets(null);
     setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
     setAutoFilled(new Set());
+    setOcrDone(false);
 
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
 
     setBusy("load");
     try {
+      const s = await getSettings();
+
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
 
-      // OCR runs against a downscaled copy for speed
-      const downscaled = await compressImage(file, { maxWidth: 1600, quality: 0.8 });
+      // Auto-resolve shop period from the picked image's checkedAt
+      const resolved = resolveShopPeriod(checkedAt);
+      if (resolved) {
+        setForm((f) => ({
+          ...f,
+          shopYearMonth: resolved.round.yearMonth,
+          shopPhase: resolved.phase,
+          shopAuto: true,
+        }));
+      }
 
-      setBusy("ocr");
-      setOcrProgress(0);
-      const settings = await getSettings();
+      // Detect crop preset that matches the picked source
+      try {
+        const list = s.cropPresets ?? SEED_PRESETS;
+        const matched = await findMatchingPreset(file, list);
+        setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
+      } catch {
+        // ignore — fall back to default crop rect
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
+    } finally {
+      setBusy("idle");
+    }
+  };
+
+  const runOcr = async () => {
+    if (!sourceBlob) return;
+    setError(undefined);
+    setBusy("ocr");
+    setOcrProgress(0);
+    try {
+      const s = await getSettings();
+      const downscaled = await compressImage(sourceBlob, {
+        maxWidth: 1600,
+        quality: 0.8,
+      });
       let extracted: ExtractedFields = {};
       try {
-        if (settings.ocrProvider === "claude" && settings.claudeApiKey) {
+        if (s.ocrProvider === "claude" && s.claudeApiKey) {
           extracted = await recognizeWithClaude(
             downscaled,
-            settings.claudeApiKey,
-            settings.claudeModel
+            s.claudeApiKey,
+            s.claudeModel
           );
         } else {
           const text = await recognizeJapanese(downscaled, (p) =>
@@ -128,30 +198,33 @@ export default function RegisterPage() {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "OCR に失敗しました";
         setError(`OCR エラー: ${msg}`);
+        return;
       }
 
       setForm((f) => {
-        const next = { ...f };
+        const next: FormState = { ...f };
         const filled = new Set(autoFilled);
-        const set = (k: keyof FormState, v: string) => {
+        const setStringField = (
+          k: "name" | "category" | "minPrice" | "refPriceMin" | "refPriceMax",
+          v: string
+        ) => {
           if (v && !next[k]) {
-            (next as Record<keyof FormState, string | string[]>)[k] = v;
+            next[k] = v;
             filled.add(k);
           }
         };
-        set("name", extracted.name ?? "");
-        set("category", extracted.category ?? "");
+        setStringField("name", extracted.name ?? "");
+        setStringField("category", extracted.category ?? "");
         if (extracted.minPrice != null)
-          set("minPrice", String(extracted.minPrice));
+          setStringField("minPrice", String(extracted.minPrice));
         if (extracted.refPriceMin != null)
-          set("refPriceMin", String(extracted.refPriceMin));
+          setStringField("refPriceMin", String(extracted.refPriceMin));
         if (extracted.refPriceMax != null)
-          set("refPriceMax", String(extracted.refPriceMax));
+          setStringField("refPriceMax", String(extracted.refPriceMax));
         setAutoFilled(filled);
         return next;
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
+      setOcrDone(true);
     } finally {
       setBusy("idle");
     }
@@ -169,9 +242,18 @@ export default function RegisterPage() {
     setError(undefined);
     setBusy("save");
     try {
+      const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
+        ? {
+            yearMonth: form.shopYearMonth,
+            phase: form.shopPhase,
+            auto: !!mainBlob && form.shopAuto,
+          }
+        : undefined;
       await createItem({
         iconBlob,
         mainImageBlob: mainBlob,
+        iconCrop,
+        mainCrop,
         name: form.name.trim(),
         category: form.category.trim(),
         minPrice: Number(form.minPrice) || 0,
@@ -179,6 +261,8 @@ export default function RegisterPage() {
         refPriceMax: Number(form.refPriceMax) || 0,
         tagIds: form.tagIds,
         checkedAt: fromLocalInput(form.checkedAt),
+        shopPeriod,
+        priceSource: !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
       });
       router.push("/");
     } catch (e) {
@@ -236,14 +320,49 @@ export default function RegisterPage() {
               label="アイコン"
               imageUrl={iconUrl}
               onClick={() => setCropping("icon")}
+              onClear={
+                iconBlob
+                  ? () => {
+                      setIconBlob(undefined);
+                      setIconCrop(undefined);
+                    }
+                  : undefined
+              }
             />
             <CropSlot
               label="メイン画像"
               imageUrl={mainUrl}
               onClick={() => setCropping("main")}
+              onClear={
+                mainBlob
+                  ? () => {
+                      setMainBlob(undefined);
+                      setMainCrop(undefined);
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>
+      )}
+
+      {previewUrl && (
+        <button
+          type="button"
+          onClick={runOcr}
+          disabled={busy !== "idle" || !sourceBlob}
+          className="w-full py-2.5 rounded-full border border-mint bg-mint/30 text-text font-bold text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-50 active:bg-mint/50"
+        >
+          <ScanText size={16} />
+          {ocrDone ? "OCR を再実行" : "OCR で自動入力"}
+          <span className="text-[11px] text-muted font-normal">
+            (
+            {settings?.ocrProvider === "claude" && settings?.claudeApiKey
+              ? `Claude API・${settings.claudeModel ?? "claude-sonnet-4-6"}`
+              : "Tesseract (端末内)"}
+            )
+          </span>
+        </button>
       )}
 
       {busy !== "idle" && busy !== "save" && (
@@ -305,6 +424,42 @@ export default function RegisterPage() {
         </Field>
       </div>
 
+      <ShopPeriodField
+        yearMonth={form.shopYearMonth}
+        phase={form.shopPhase}
+        auto={form.shopAuto && !!mainBlob}
+        hasMainImage={!!mainBlob}
+        onChange={(yearMonth, phase) =>
+          setForm({ ...form, shopYearMonth: yearMonth, shopPhase: phase, shopAuto: false })
+        }
+      />
+
+      {!mainBlob && (
+        <Field label="情報元 (メイン画像が無いとき)">
+          <select
+            value={
+              SOURCE_PRESETS.some((p) => p.value === form.priceSource)
+                ? form.priceSource
+                : ""
+            }
+            onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
+            className="w-full bg-transparent outline-none text-[13px] text-text mb-1"
+          >
+            {SOURCE_PRESETS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={form.priceSource}
+            onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
+            placeholder="自由入力 (URL や説明)"
+            className="w-full bg-transparent outline-none text-[13px] text-text border-t border-beige/60 pt-1.5"
+          />
+        </Field>
+      )}
+
       <Field
         label="参考販売価格 (GP)"
         highlighted={isAuto("refPriceMin") || isAuto("refPriceMax")}
@@ -365,12 +520,33 @@ export default function RegisterPage() {
         source={cropping ? sourceBlob ?? null : null}
         open={cropping !== null}
         title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
-        aspect={cropping === "icon" ? 1 : undefined}
         maxOutputWidth={cropping === "icon" ? 320 : 1200}
+        initialRect={
+          cropping === "icon"
+            ? iconCrop?.rect ?? presets?.icon
+            : cropping === "main"
+              ? mainCrop?.rect ?? presets?.main
+              : undefined
+        }
         onCancel={() => setCropping(null)}
-        onConfirm={(blob) => {
-          if (cropping === "icon") setIconBlob(blob);
-          else if (cropping === "main") setMainBlob(blob);
+        onConfirm={(result) => {
+          const record: ItemCropRecord = {
+            rect: {
+              x: Math.round(result.rect.x),
+              y: Math.round(result.rect.y),
+              w: Math.round(result.rect.w),
+              h: Math.round(result.rect.h),
+            },
+            source: result.source,
+            croppedAt: Date.now(),
+          };
+          if (cropping === "icon") {
+            setIconBlob(result.blob);
+            setIconCrop(record);
+          } else if (cropping === "main") {
+            setMainBlob(result.blob);
+            setMainCrop(record);
+          }
           setCropping(null);
         }}
       />
@@ -382,34 +558,117 @@ function CropSlot({
   label,
   imageUrl,
   onClick,
+  onClear,
 }: {
   label: string;
   imageUrl?: string;
   onClick: () => void;
+  onClear?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-xl border border-beige bg-cream overflow-hidden"
-    >
-      <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={label}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <Crop size={28} strokeWidth={1.6} />
+    <div className="relative rounded-xl border border-beige bg-cream overflow-hidden">
+      <button
+        type="button"
+        onClick={onClick}
+        className="block w-full"
+      >
+        <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={label}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Crop size={28} strokeWidth={1.6} />
+          )}
+        </div>
+        <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
+          {label}
+          {!imageUrl && <span className="text-[10px] text-muted ml-1">未設定</span>}
+        </div>
+      </button>
+      {onClear && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClear();
+          }}
+          aria-label={`${label}を削除`}
+          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-cream flex items-center justify-center hover:bg-text"
+        >
+          <X size={14} strokeWidth={2.6} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ShopPeriodField({
+  yearMonth,
+  phase,
+  auto,
+  hasMainImage,
+  onChange,
+}: {
+  yearMonth: string;
+  phase: ShopPhase;
+  auto: boolean;
+  hasMainImage: boolean;
+  onChange: (yearMonth: string, phase: ShopPhase) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1 px-1">
+        <span className="text-[12px] text-muted font-bold">マイショップ時期</span>
+        {auto && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep">
+            <Sparkles size={11} />
+            画像から自動判定
+          </span>
+        )}
+        {!hasMainImage && (
+          <span className="text-[10px] text-muted">手動選択</span>
         )}
       </div>
-      <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
-        {label}
-        {!imageUrl && <span className="text-[10px] text-muted ml-1">未設定</span>}
+      <div className="rounded-xl bg-cream border border-beige px-3 py-2 flex items-center gap-2 flex-wrap">
+        <select
+          value={yearMonth}
+          onChange={(e) => onChange(e.target.value, phase)}
+          className="flex-1 min-w-[8rem] bg-transparent outline-none text-[13px]"
+        >
+          <option value="">未指定</option>
+          {SHOP_ROUNDS.map((r) => (
+            <option key={r.yearMonth} value={r.yearMonth}>
+              {r.yearMonth} (第{r.roundNumber}回)
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center gap-1">
+          {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(yearMonth, p)}
+              className={`px-2 py-px rounded-full text-[11px] border ${
+                phase === p
+                  ? "bg-gold/20 border-gold text-gold-deep font-bold"
+                  : "bg-cream border-beige text-text/70"
+              }`}
+            >
+              {p === "ongoing" ? "開催中" : "最終日"}
+            </button>
+          ))}
+        </div>
       </div>
-    </button>
+      {yearMonth && (
+        <div className="px-1 pt-0.5 text-[10.5px] text-muted tabular-nums">
+          表示: [{formatShopPeriod(yearMonth, phase)}]
+        </div>
+      )}
+    </div>
   );
 }
 

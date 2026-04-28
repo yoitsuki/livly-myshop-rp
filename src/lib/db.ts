@@ -1,6 +1,27 @@
 import Dexie, { type EntityTable } from "dexie";
+import type { CropRect } from "./image";
+import type { CropPreset } from "./preset";
+import { SEED_PRESETS } from "./preset";
+import type { ShopPhase } from "./shopPeriods";
 
 export type TagType = "period" | "gacha" | "category" | "custom";
+
+/** Crop rectangle in source-image pixel coordinates, plus the source dimensions. */
+export interface ItemCropRecord {
+  rect: CropRect;
+  source: { width: number; height: number };
+  /** Encoded epoch ms when the crop was made. */
+  croppedAt: number;
+}
+
+/** Shop round metadata captured per item. */
+export interface ShopPeriodRecord {
+  /** YYYYMM in JST. */
+  yearMonth: string;
+  phase: ShopPhase;
+  /** Whether the value was auto-derived from the main image checkedAt. */
+  auto: boolean;
+}
 
 export interface Item {
   id: string;
@@ -8,6 +29,10 @@ export interface Item {
   iconBlob?: Blob;
   /** Cropped main image — shown large on the detail page. */
   mainImageBlob?: Blob;
+  /** Crop coordinates that produced iconBlob (pixel coords on the source). */
+  iconCrop?: ItemCropRecord;
+  /** Crop coordinates that produced mainImageBlob. */
+  mainCrop?: ItemCropRecord;
   /** Legacy v2 field; preserved on read for older records. */
   imageBlob?: Blob;
   /** Legacy v2 thumbnail; preserved for older records. */
@@ -21,6 +46,11 @@ export interface Item {
   refPriceMin: number;
   refPriceMax: number;
   tagIds: string[];
+  /** Shop round + phase. Populated automatically from checkedAt when a main
+   * image is present, or chosen by the user when not. */
+  shopPeriod?: ShopPeriodRecord;
+  /** Free-text price source when no main image exists (e.g. site name + URL). */
+  priceSource?: string;
   /** EXIF DateTimeOriginal — epoch ms */
   checkedAt: number;
   /** Record creation — never overwritten */
@@ -44,6 +74,8 @@ export interface AppSettings {
   claudeModel?: string;
   googleClientId?: string;
   driveFolderId?: string;
+  /** Ordered list of crop presets — first match wins during detection. */
+  cropPresets?: CropPreset[];
 }
 
 export class AppDB extends Dexie {
@@ -108,6 +140,8 @@ export type ItemMetaPatch = Partial<
     | "refPriceMax"
     | "tagIds"
     | "checkedAt"
+    | "shopPeriod"
+    | "priceSource"
   >
 >;
 
@@ -116,15 +150,45 @@ export async function updateItemMeta(
   id: string,
   patch: ItemMetaPatch
 ): Promise<void> {
-  await db().items.update(id, { ...patch, updatedAt: Date.now() });
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(id);
+    if (!current) return;
+    await db().items.put({ ...current, ...patch, updatedAt: Date.now() });
+  });
+}
+
+/** Remove the main image (and its crop record) from an item. */
+export async function clearMainImage(id: string): Promise<void> {
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(id);
+    if (!current) return;
+    const next: Item = { ...current };
+    delete next.mainImageBlob;
+    delete next.mainCrop;
+    delete next.imageBlob;
+    await db().items.put(next);
+  });
 }
 
 /** Replace icon and/or main image without bumping updatedAt. */
 export async function updateItemImage(
   id: string,
-  patch: { iconBlob?: Blob; mainImageBlob?: Blob }
+  patch: {
+    iconBlob?: Blob;
+    mainImageBlob?: Blob;
+    iconCrop?: ItemCropRecord;
+    mainCrop?: ItemCropRecord;
+  }
 ): Promise<void> {
-  await db().items.update(id, patch);
+  // Use an explicit get + put inside a transaction so other Blob fields on
+  // the record (iconBlob / mainImageBlob etc.) survive the round-trip. Some
+  // browsers' IndexedDB implementations can lose sibling Blobs on a partial
+  // update of a record that already contains Blobs.
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(id);
+    if (!current) return;
+    await db().items.put({ ...current, ...patch });
+  });
 }
 
 export async function deleteItem(id: string): Promise<void> {
@@ -143,11 +207,19 @@ export async function deleteTag(id: string): Promise<void> {
 
 export async function getSettings(): Promise<AppSettings> {
   const existing = await db().settings.get("singleton");
-  if (existing) return existing;
+  if (existing) {
+    if (!existing.cropPresets || existing.cropPresets.length === 0) {
+      const next = { ...existing, cropPresets: SEED_PRESETS };
+      await db().settings.put(next);
+      return next;
+    }
+    return existing;
+  }
   const initial: AppSettings = {
     id: "singleton",
     ocrProvider: "tesseract",
     claudeModel: "claude-sonnet-4-6",
+    cropPresets: SEED_PRESETS,
   };
   await db().settings.put(initial);
   return initial;
@@ -158,6 +230,7 @@ export async function patchSettings(patch: Partial<AppSettings>): Promise<void> 
     id: "singleton" as const,
     ocrProvider: "tesseract" as const,
     claudeModel: "claude-sonnet-4-6",
+    cropPresets: SEED_PRESETS,
   };
   await db().settings.put({ ...current, ...patch, id: "singleton" });
 }

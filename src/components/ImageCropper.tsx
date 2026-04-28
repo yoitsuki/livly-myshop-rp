@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { cropAndEncode, getImageSize, type CropRect } from "@/lib/image";
 
+export interface CropperResult {
+  blob: Blob;
+  rect: CropRect;
+  source: { width: number; height: number };
+}
+
 interface Props {
   source: Blob | null;
   open: boolean;
@@ -12,22 +18,21 @@ interface Props {
   maxOutputWidth?: number;
   /** Force a fixed aspect ratio (w/h). Omit for free-form. */
   aspect?: number;
+  /** Initial crop rectangle. If omitted, defaults to a centered region. */
+  initialRect?: CropRect;
   onCancel: () => void;
-  onConfirm: (croppedBlob: Blob) => void;
+  onConfirm: (result: CropperResult) => void;
 }
 
+// Match the bundled card_uploader sample: only mid-edge handles (n/e/s/w).
 const HANDLES: Array<{
-  key: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+  key: "n" | "e" | "s" | "w";
   cursor: string;
   pos: string;
 }> = [
-  { key: "nw", cursor: "nwse-resize", pos: "top-0 left-0 -translate-x-1/2 -translate-y-1/2" },
   { key: "n", cursor: "ns-resize", pos: "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2" },
-  { key: "ne", cursor: "nesw-resize", pos: "top-0 right-0 translate-x-1/2 -translate-y-1/2" },
   { key: "e", cursor: "ew-resize", pos: "top-1/2 right-0 translate-x-1/2 -translate-y-1/2" },
-  { key: "se", cursor: "nwse-resize", pos: "bottom-0 right-0 translate-x-1/2 translate-y-1/2" },
   { key: "s", cursor: "ns-resize", pos: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2" },
-  { key: "sw", cursor: "nesw-resize", pos: "bottom-0 left-0 -translate-x-1/2 translate-y-1/2" },
   { key: "w", cursor: "ew-resize", pos: "top-1/2 left-0 -translate-x-1/2 -translate-y-1/2" },
 ];
 
@@ -39,6 +44,7 @@ export default function ImageCropper({
   title,
   maxOutputWidth,
   aspect,
+  initialRect,
   onCancel,
   onConfirm,
 }: Props) {
@@ -70,12 +76,13 @@ export default function ImageCropper({
     setPreviewUrl(url);
     getImageSize(source).then((size) => {
       setImgSize(size);
-      // Default rect: centered with a sensible size
-      const init = defaultRect(size, aspect);
+      const init = initialRect
+        ? clampRect(initialRect, size)
+        : defaultRect(size, aspect);
       setRect(init);
     });
     return () => URL.revokeObjectURL(url);
-  }, [source, aspect]);
+  }, [source, aspect, initialRect]);
 
   // Drag handlers
   useEffect(() => {
@@ -223,14 +230,14 @@ export default function ImageCropper({
       : null;
 
   const onConfirmClick = async () => {
-    if (!source || !rect) return;
+    if (!source || !rect || !imgSize) return;
     setBusy(true);
     try {
       const blob = await cropAndEncode(source, rect, {
         maxWidth: maxOutputWidth,
         quality: 0.85,
       });
-      onConfirm(blob);
+      onConfirm({ blob, rect, source: imgSize });
     } finally {
       setBusy(false);
     }
@@ -296,30 +303,31 @@ export default function ImageCropper({
                   )`,
                 }}
               />
-              {/* selection rect */}
+              {/* selection rect — dark teal stroke + light interior handles */}
               <div
                 data-handle="move"
-                className="absolute border-2 border-cream cursor-move"
+                className="absolute cursor-move"
                 style={{
                   left: dispRect.left,
                   top: dispRect.top,
                   width: dispRect.width,
                   height: dispRect.height,
                   pointerEvents: "auto",
+                  boxShadow: "inset 0 0 0 2px #047366",
                 }}
               >
                 {/* grid lines */}
                 <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute left-1/3 top-0 bottom-0 border-l border-cream/40" />
-                  <div className="absolute left-2/3 top-0 bottom-0 border-l border-cream/40" />
-                  <div className="absolute top-1/3 left-0 right-0 border-t border-cream/40" />
-                  <div className="absolute top-2/3 left-0 right-0 border-t border-cream/40" />
+                  <div className="absolute left-1/3 top-0 bottom-0 border-l border-gold-deep/50" />
+                  <div className="absolute left-2/3 top-0 bottom-0 border-l border-gold-deep/50" />
+                  <div className="absolute top-1/3 left-0 right-0 border-t border-gold-deep/50" />
+                  <div className="absolute top-2/3 left-0 right-0 border-t border-gold-deep/50" />
                 </div>
                 {HANDLES.map((h) => (
                   <span
                     key={h.key}
                     data-handle={h.key}
-                    className={`absolute w-5 h-5 rounded-full bg-cream border-2 border-gold-deep ${h.pos}`}
+                    className={`absolute w-5 h-5 rounded-full bg-beige border-2 border-gold-deep ${h.pos}`}
                     style={{ cursor: h.cursor }}
                   />
                 ))}
@@ -328,11 +336,32 @@ export default function ImageCropper({
           )}
         </div>
       </div>
-      <div className="px-4 py-3 text-cream/80 text-[12px] text-center">
-        枠の角・辺をドラッグして切り抜き範囲を調整してください。
+      <div className="px-4 py-3 text-cream/80 text-[12px] text-center space-y-1">
+        <div>枠の辺・中央をドラッグして切り抜き範囲を調整してください。</div>
+        {rect && imgSize && (
+          <div className="font-mono text-[11px] text-cream/70 tabular-nums">
+            x={Math.round(rect.x)}, y={Math.round(rect.y)}, w=
+            {Math.round(rect.w)}, h={Math.round(rect.h)}
+            <span className="text-cream/50">
+              {" "}
+              / 元画像 {imgSize.width}×{imgSize.height}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function clampRect(
+  r: CropRect,
+  size: { width: number; height: number }
+): CropRect {
+  const x = Math.max(0, Math.min(size.width, r.x));
+  const y = Math.max(0, Math.min(size.height, r.y));
+  const w = Math.max(1, Math.min(size.width - x, r.w));
+  const h = Math.max(1, Math.min(size.height - y, r.h));
+  return { x, y, w, h };
 }
 
 function defaultRect(
