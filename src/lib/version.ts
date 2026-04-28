@@ -56,5 +56,14 @@
  * 0.5.1  Period badge palette becomes a smoother teal gradient anchored
  *        on the primary button color (#15a496) and stepping lighter for
  *        older rounds, with white text across all tiers.
+ * 0.5.2  Edit screen: icon and main image are cropped fully independently
+ *        — each slot owns its own file input and source, so editing the
+ *        icon never reaches into the main image (and vice-versa). Crops
+ *        are staged in component state and only persisted on 保存; cancel
+ *        / back discards them. Edit-mode crops ignore presets and start
+ *        with the full extent of the existing blob, matching the "fine
+ *        adjust the current crop" intent. Fixes the broken initial frame
+ *        and resulting blank output when the icon was re-cropped on an
+ *        item without a main image.
  */
-export const APP_VERSION = "0.5.1";
+export const APP_VERSION = "0.5.2";

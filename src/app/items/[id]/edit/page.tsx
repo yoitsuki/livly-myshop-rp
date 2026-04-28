@@ -9,7 +9,6 @@ import {
   clearMainImage,
   createTag,
   db,
-  getSettings,
   updateItemImage,
   updateItemMeta,
   type Item,
@@ -18,11 +17,8 @@ import {
   type Tag,
   type TagType,
 } from "@/lib/db";
-import { type CropRect } from "@/lib/image";
-import { findMatchingPreset, SEED_PRESETS } from "@/lib/preset";
 import {
   formatShopPeriod,
-  resolveShopPeriod,
   SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
@@ -63,19 +59,30 @@ export default function EditItemPage({
   const router = useRouter();
   const item = useLiveQuery(() => db().items.get(id), [id]);
   const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const iconFileInput = useRef<HTMLInputElement>(null);
+  const mainFileInput = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState | undefined>();
   const [busy, setBusy] = useState<"idle" | "save">("idle");
   const [error, setError] = useState<string | undefined>();
 
-  const [sourceBlob, setSourceBlob] = useState<Blob | undefined>();
+  // Per-slot pending source (a fresh file picked this session) and pending
+  // crop result (output of the cropper). Nothing here is written to IndexedDB
+  // until the user presses 保存; cancel/back simply discards it all.
+  const [iconSource, setIconSource] = useState<Blob | undefined>();
+  const [mainSource, setMainSource] = useState<Blob | undefined>();
+  const [pendingIcon, setPendingIcon] = useState<
+    { blob: Blob; crop: ItemCropRecord } | undefined
+  >();
+  const [pendingMain, setPendingMain] = useState<
+    { blob: Blob; crop: ItemCropRecord } | undefined
+  >();
   const [cropping, setCropping] = useState<CropTarget>(null);
-  const [presets, setPresets] = useState<{ icon: CropRect; main: CropRect } | null>(
-    null
-  );
 
-  const iconSrc = item?.iconBlob ?? item?.thumbBlob;
-  const mainSrc = item?.mainImageBlob ?? item?.imageBlob;
+  const savedIcon = item?.iconBlob ?? item?.thumbBlob;
+  const savedMain = item?.mainImageBlob ?? item?.imageBlob;
+  // What the slot previews show: pending crop wins, otherwise the saved blob.
+  const displayIcon = pendingIcon?.blob ?? savedIcon;
+  const displayMain = pendingMain?.blob ?? savedMain;
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
 
@@ -97,18 +104,18 @@ export default function EditItemPage({
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!iconSrc) return setIconUrl(undefined);
-    const url = URL.createObjectURL(iconSrc);
+    if (!displayIcon) return setIconUrl(undefined);
+    const url = URL.createObjectURL(displayIcon);
     setIconUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [iconSrc]);
+  }, [displayIcon]);
 
   useEffect(() => {
-    if (!mainSrc) return setMainUrl(undefined);
-    const url = URL.createObjectURL(mainSrc);
+    if (!displayMain) return setMainUrl(undefined);
+    const url = URL.createObjectURL(displayMain);
     setMainUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [mainSrc]);
+  }, [displayMain]);
 
   if (item === undefined || !form) {
     return <div className="pt-6 text-center text-muted">読み込み中…</div>;
@@ -128,42 +135,50 @@ export default function EditItemPage({
 
   const i = item as Item;
 
-  const onPickFile = () => fileInput.current?.click();
+  // Per-slot file pickers — picking on the icon slot only touches the icon
+  // source, and vice-versa. We never share a source between the two slots.
+  const onPickIconFile = () => iconFileInput.current?.click();
+  const onPickMainFile = () => mainFileInput.current?.click();
 
-  const onFile = async (file: File) => {
+  const onIconFile = (file: File) => {
     setError(undefined);
-    setSourceBlob(file);
-    try {
-      const settings = await getSettings();
-      const list = settings.cropPresets ?? SEED_PRESETS;
-      const matched = await findMatchingPreset(file, list);
-      setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
-    } catch {
-      setPresets(null);
-    }
+    setIconSource(file);
     setCropping("icon");
   };
 
-  // The cropper falls back to the most recent main/icon blob when the user has
-  // not picked a fresh source file in this session. We always work on a *copy*
-  // of the saved blob so the stored record is never mutated until the cropper
-  // confirmation persists a fresh result.
+  const onMainFile = (file: File) => {
+    setError(undefined);
+    setMainSource(file);
+    setCropping("main");
+  };
+
+  // Re-crop a slot using its own most recent blob: pending crop result first,
+  // then a fresh file picked this session, then the saved blob. The saved blob
+  // is wrapped in a fresh Blob so IndexedDB never sees a mutation.
   const startCrop = (target: "icon" | "main") => {
-    if (sourceBlob) {
-      setError(undefined);
-      setCropping(target);
-      return;
-    }
-    const saved = mainSrc ?? iconSrc;
-    if (!saved) {
-      setError("先にファイルを選んでください");
+    const sources = target === "icon"
+      ? [pendingIcon?.blob, iconSource, savedIcon]
+      : [pendingMain?.blob, mainSource, savedMain];
+    const src = sources.find((b): b is Blob => !!b);
+    if (!src) {
+      setError(
+        target === "icon"
+          ? "アイコン画像が登録されていません。先に「ファイル」から画像を選んでください"
+          : "メイン画像が登録されていません。先に「ファイル」から画像を選んでください"
+      );
       return;
     }
     setError(undefined);
-    const copy = new Blob([saved], { type: saved.type || "image/jpeg" });
-    setSourceBlob(copy);
     setCropping(target);
   };
+
+  // Source the cropper actually sees while open — distinct per target so the
+  // icon flow never touches the main image and vice-versa.
+  const cropperSource: Blob | null = cropping === "icon"
+    ? pendingIcon?.blob ?? iconSource ?? savedIcon ?? null
+    : cropping === "main"
+      ? pendingMain?.blob ?? mainSource ?? savedMain ?? null
+      : null;
 
   const onSave = async () => {
     if (!form.name.trim()) {
@@ -173,11 +188,27 @@ export default function EditItemPage({
     setError(undefined);
     setBusy("save");
     try {
+      // Persist any staged crop results first so the meta-edit save sees the
+      // freshest state. Each slot is updated independently — leaving one
+      // untouched doesn't disturb the other on disk.
+      if (pendingIcon || pendingMain) {
+        await updateItemImage(i.id, {
+          ...(pendingIcon && {
+            iconBlob: pendingIcon.blob,
+            iconCrop: pendingIcon.crop,
+          }),
+          ...(pendingMain && {
+            mainImageBlob: pendingMain.blob,
+            mainCrop: pendingMain.crop,
+          }),
+        });
+      }
+      const hasMainAfterSave = !!(pendingMain?.blob ?? i.mainImageBlob);
       const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
         ? {
             yearMonth: form.shopYearMonth,
             phase: form.shopPhase,
-            auto: !!i.mainImageBlob && form.shopAuto,
+            auto: hasMainAfterSave && form.shopAuto,
           }
         : undefined;
       await updateItemMeta(i.id, {
@@ -190,7 +221,7 @@ export default function EditItemPage({
         checkedAt: fromLocalInput(form.checkedAt),
         shopPeriod,
         priceSource:
-          !i.mainImageBlob && form.priceSource ? form.priceSource.trim() : undefined,
+          !hasMainAfterSave && form.priceSource ? form.priceSource.trim() : undefined,
       });
       router.push(`/items/${i.id}`);
     } catch (e) {
@@ -201,19 +232,32 @@ export default function EditItemPage({
 
   const onClearMain = async () => {
     if (!confirm("メイン画像と切り抜き座標を削除します。よろしいですか？")) return;
+    setPendingMain(undefined);
+    setMainSource(undefined);
     await clearMainImage(i.id);
   };
 
   return (
     <div className="pt-3 pb-6 space-y-4">
       <input
-        ref={fileInput}
+        ref={iconFileInput}
         type="file"
         accept="image/*"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) onFile(f);
+          if (f) onIconFile(f);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={mainFileInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onMainFile(f);
           e.target.value = "";
         }}
       />
@@ -223,19 +267,19 @@ export default function EditItemPage({
           label="アイコン"
           imageUrl={iconUrl}
           onClickCrop={() => startCrop("icon")}
-          onPick={onPickFile}
+          onPick={onPickIconFile}
         />
         <SlotPreview
           label="メイン画像"
           imageUrl={mainUrl}
           onClickCrop={() => startCrop("main")}
-          onPick={onPickFile}
-          onClear={mainSrc ? onClearMain : undefined}
+          onPick={onPickMainFile}
+          onClear={savedMain || pendingMain ? onClearMain : undefined}
         />
       </div>
       <p className="text-[11px] text-muted px-1 -mt-2">
-        「ファイル」で画像を選び直すか、「切り抜き」で保存済みのメイン画像を
-        トリミングし直せます。
+        「ファイル」で画像を選び直すか、「切り抜き」で現在の画像を
+        微調整できます。保存ボタンを押すまでは反映されません。
       </p>
 
       {error && (
@@ -377,19 +421,16 @@ export default function EditItemPage({
       </div>
 
       <ImageCropper
-        source={cropping ? sourceBlob ?? null : null}
+        source={cropperSource}
         open={cropping !== null}
         title={cropping === "icon" ? "アイコンを切り抜き" : "メイン画像を切り抜き"}
         maxOutputWidth={cropping === "icon" ? 320 : 1200}
-        initialRect={
-          cropping === "icon"
-            ? i.iconCrop?.rect ?? presets?.icon
-            : cropping === "main"
-              ? i.mainCrop?.rect ?? presets?.main
-              : undefined
-        }
+        // Edit-mode crops are fine adjustments on the already-cropped blob:
+        // ignore presets/saved rect entirely and start with the full extent so
+        // the user nudges the frame inward as needed.
+        fillExtent
         onCancel={() => setCropping(null)}
-        onConfirm={async (result) => {
+        onConfirm={(result) => {
           const record: ItemCropRecord = {
             rect: {
               x: Math.round(result.rect.x),
@@ -401,12 +442,9 @@ export default function EditItemPage({
             croppedAt: Date.now(),
           };
           if (cropping === "icon") {
-            await updateItemImage(i.id, { iconBlob: result.blob, iconCrop: record });
+            setPendingIcon({ blob: result.blob, crop: record });
           } else if (cropping === "main") {
-            await updateItemImage(i.id, {
-              mainImageBlob: result.blob,
-              mainCrop: record,
-            });
+            setPendingMain({ blob: result.blob, crop: record });
           }
           setCropping(null);
         }}
