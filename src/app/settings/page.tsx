@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Home } from "lucide-react";
 import {
   db,
   getSettings,
@@ -166,6 +167,14 @@ export default function SettingsPage() {
           後ほど Google Drive バックアップを追加予定です。
         </p>
       </Section>
+
+      <Link
+        href="/"
+        className="mt-2 w-full py-3 rounded-full bg-beige/70 text-text/85 font-bold text-center inline-flex items-center justify-center gap-1.5"
+      >
+        <Home size={16} />
+        ホームに戻る
+      </Link>
 
       {saved && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-text text-cream text-[12px] shadow-lg">

@@ -113,3 +113,11 @@ export function formatShopPeriod(yearMonth: string, phase: ShopPhase): string {
 export function findRound(yearMonth: string): ShopRound | undefined {
   return SHOP_ROUNDS.find((r) => r.yearMonth === yearMonth);
 }
+
+/**
+ * Index of a round in `SHOP_ROUNDS` (which is sorted newest first).
+ * Returns -1 for unknown values.
+ */
+export function roundAgeIndex(yearMonth: string): number {
+  return SHOP_ROUNDS.findIndex((r) => r.yearMonth === yearMonth);
+}

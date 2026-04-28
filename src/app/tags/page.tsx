@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Trash2 } from "lucide-react";
+import { Home, Trash2 } from "lucide-react";
 import {
   createTag,
   db,
@@ -155,6 +156,14 @@ export default function TagsPage() {
           </div>
         )}
       </div>
+
+      <Link
+        href="/"
+        className="mt-4 w-full py-3 rounded-full bg-beige/70 text-text/85 font-bold text-center inline-flex items-center justify-center gap-1.5"
+      >
+        <Home size={16} />
+        ホームに戻る
+      </Link>
     </div>
   );
 }

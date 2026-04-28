@@ -24,5 +24,12 @@
  *        source for items without a main image. Main image gets an
  *        × button to clear it. Crop coordinates moved out of the
  *        detail page; only the cropper still shows them.
+ * 0.3.1  Drop the top-left pixel exclusion from the preset detector
+ *        (presets now apply on every 1179×2556 source). List rows put
+ *        the price on the left and the period as a colored badge on
+ *        the right; badge color steps from vivid teal (newest round)
+ *        to a muted sage for rounds three and older. Settings is back
+ *        in the drawer; the header cog is removed. /tags and
+ *        /settings get a "ホームに戻る" button at the bottom.
  */
-export const APP_VERSION = "0.3.0";
+export const APP_VERSION = "0.3.1";

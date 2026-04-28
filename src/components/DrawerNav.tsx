@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PlusCircle, Tag, X } from "lucide-react";
+import { Home, PlusCircle, Tag, Settings, X } from "lucide-react";
 import { useEffect } from "react";
 import { APP_VERSION } from "@/lib/version";
 
@@ -10,6 +10,7 @@ const items = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/register", label: "新規登録", icon: PlusCircle },
   { href: "/tags", label: "タグ管理", icon: Tag },
+  { href: "/settings", label: "設定", icon: Settings },
 ];
 
 export default function DrawerNav({
