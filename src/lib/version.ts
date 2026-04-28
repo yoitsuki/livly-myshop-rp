@@ -145,5 +145,17 @@
  *        buttons md/lg), rounded-xl → rounded-md (inputs, search
  *        bar, header buttons, sm buttons). Pills stay only on true
  *        round elements (FAB, period badges, category tabs).
+ * 0.8.0  Visual-language refresh — Step 2: migrates the remaining
+ *        screens (/register, /items/[id]/edit, /tags, /settings,
+ *        /presets list + form) and ImageCropper to the new
+ *        primitives. The legacy "yellow fill = auto-filled" indicator
+ *        is replaced with a mint border (border-gold) on the input
+ *        itself plus a small Sparkles label adornment, so the green
+ *        accent meaningfully marks fields the user should verify.
+ *        Field shells drop the cream-on-cream containerization in
+ *        favor of white inputs with neutral hairlines and mint focus
+ *        rings. ImageCropper overlay shifts to a deep teal tint and
+ *        handles become white with gold-deep stroke for cohesion.
+ *        Footer "ホームに戻る" links use the secondary Button.
  */
-export const APP_VERSION = "0.7.1";
+export const APP_VERSION = "0.8.0";

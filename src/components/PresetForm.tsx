@@ -12,6 +12,7 @@ import {
   type ColorCondition,
   type CropPreset,
 } from "@/lib/preset";
+import { Button, Field, fieldInputClass } from "@/components/ui";
 
 const COLOR_MODES: Array<{ value: ColorCondition; label: string }> = [
   { value: "none", label: "なし" },
@@ -98,13 +99,13 @@ export default function PresetForm({
   };
 
   return (
-    <div className="pt-3 pb-6 space-y-4">
+    <div className="pt-3 pb-8 space-y-5">
       <Field label="プリセット名" required>
         <input
           value={draft.name}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           placeholder="例: 通常レイアウト"
-          className="w-full bg-transparent outline-none text-[15px] font-bold text-text"
+          className={`${fieldInputClass} font-bold text-[15px]`}
         />
       </Field>
 
@@ -122,69 +123,74 @@ export default function PresetForm({
       </div>
 
       <Field label="色条件">
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {COLOR_MODES.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => setDraft({ ...draft, colorMode: m.value })}
-              className={`px-2.5 py-1 rounded-full text-[12px] border transition-colors ${
-                draft.colorMode === m.value
-                  ? "bg-gold/15 border-gold text-gold-deep font-bold"
-                  : "bg-cream border-beige text-text/70"
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        {draft.colorMode !== "none" && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={draft.topLeftHex ?? ""}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    topLeftHex: e.target.value.trim() || undefined,
-                  })
-                }
-                placeholder="#77663e"
-                className="flex-1 bg-transparent outline-none text-[13px] font-mono tabular-nums"
-              />
-              <span
-                className="w-6 h-6 rounded-full border border-beige-deep shrink-0"
-                style={{ backgroundColor: draft.topLeftHex ?? "#ffffff" }}
-                aria-hidden
-              />
-            </div>
-            <div className="flex items-center gap-2 border-t border-beige/60 pt-2">
-              <span className="text-[11px] text-muted shrink-0">
-                許容誤差 (HSV)
-              </span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={180}
-                value={draft.colorTolerance ?? DEFAULT_COLOR_TOLERANCE}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (!Number.isFinite(n)) return;
-                  setDraft({
-                    ...draft,
-                    colorTolerance: Math.max(0, Math.min(180, Math.round(n))),
-                  });
-                }}
-                className="w-16 bg-beige/40 rounded px-1.5 py-1 outline-none text-[12px] tabular-nums text-text"
-              />
-              <span className="text-[10.5px] text-muted leading-tight">
-                H/S/V 各成分の差がこの値以内なら一致と判定 (既定 25)
-              </span>
-            </div>
+        <div className="space-y-2">
+          <div className="inline-flex bg-white border border-[var(--color-line)] rounded-md p-0.5 flex-wrap">
+            {COLOR_MODES.map((m) => {
+              const active = draft.colorMode === m.value;
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => setDraft({ ...draft, colorMode: m.value })}
+                  className={`px-3 h-9 rounded text-[12px] transition-colors ${
+                    active
+                      ? "bg-gold text-white font-bold"
+                      : "text-text/70 hover:text-text"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
-        )}
+          {draft.colorMode !== "none" && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={draft.topLeftHex ?? ""}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      topLeftHex: e.target.value.trim() || undefined,
+                    })
+                  }
+                  placeholder="#77663e"
+                  className={`${fieldInputClass} font-mono tabular-nums flex-1`}
+                />
+                <span
+                  className="w-10 h-11 rounded-md border border-[var(--color-line)] shrink-0"
+                  style={{ backgroundColor: draft.topLeftHex ?? "#ffffff" }}
+                  aria-hidden
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted shrink-0">
+                  許容誤差 (HSV)
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={180}
+                  value={draft.colorTolerance ?? DEFAULT_COLOR_TOLERANCE}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (!Number.isFinite(n)) return;
+                    setDraft({
+                      ...draft,
+                      colorTolerance: Math.max(0, Math.min(180, Math.round(n))),
+                    });
+                  }}
+                  className={`${fieldInputClass} w-20 text-center tabular-nums`}
+                />
+                <span className="text-[10.5px] text-muted leading-tight">
+                  H/S/V 各成分の差がこの値以内なら一致 (既定 25)
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </Field>
 
       <RectFieldset
@@ -201,32 +207,35 @@ export default function PresetForm({
       <button
         type="button"
         onClick={onResetDefaults}
-        className="text-[12px] text-muted underline inline-flex items-center gap-1"
+        className="text-[12px] text-muted hover:text-text inline-flex items-center gap-1"
       >
         <RotateCcw size={12} />
         既定値 (1179×2556) に戻す
       </button>
 
       {error && (
-        <div className="rounded-xl bg-pink/40 border border-pink px-3 py-2 text-[13px]">
+        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
 
       <div className="flex gap-2 pt-2">
-        <Link
-          href={cancelHref}
-          className="flex-1 py-3 rounded-full bg-beige/70 text-text/80 font-bold text-center"
-        >
-          キャンセル
+        <Link href={cancelHref} className="flex-1">
+          <Button variant="secondary" size="lg" fullWidth>
+            キャンセル
+          </Button>
         </Link>
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="flex-[2] py-3 rounded-full bg-gold text-white font-bold disabled:opacity-50 active:bg-gold-deep"
-        >
-          {saving ? "保存中…" : submitLabel}
-        </button>
+        <div className="flex-[2]">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={onSave}
+            loading={saving}
+          >
+            {saving ? "保存中…" : submitLabel}
+          </Button>
+        </div>
       </div>
 
       {onDelete && (
@@ -237,34 +246,12 @@ export default function PresetForm({
             await onDelete();
             router.push("/presets");
           }}
-          className="text-[12px] text-pink/90 hover:text-pink underline"
+          className="text-[12px] text-[var(--color-danger)] hover:underline"
         >
           このプリセットを削除
         </button>
       )}
     </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">{label}</span>
-        {required && <span className="text-[11px] text-gold-deep">*</span>}
-      </div>
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2">
-        {children}
-      </div>
-    </label>
   );
 }
 
@@ -287,7 +274,7 @@ function NumberField({
           const n = Number(e.target.value);
           if (Number.isFinite(n)) onChange(Math.max(0, Math.round(n)));
         }}
-        className="w-full bg-transparent outline-none text-[13px] tabular-nums"
+        className={`${fieldInputClass} tabular-nums`}
       />
     </Field>
   );
@@ -303,25 +290,28 @@ function RectFieldset({
   onChange: (patch: Partial<CropRect>) => void;
 }) {
   return (
-    <fieldset className="border border-beige rounded-xl px-2 py-1.5 bg-cream">
-      <legend className="px-1 text-[11px] text-muted font-bold">{legend}</legend>
-      <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+    <div className="space-y-1.5">
+      <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold-deep px-1">
+        {legend}
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
         {(["x", "y", "w", "h"] as const).map((k) => (
-          <label key={k} className="text-[11px] text-muted">
-            {k}
+          <label key={k} className="block">
+            <span className="text-[10px] text-muted px-1">{k}</span>
             <input
               type="number"
               inputMode="numeric"
               value={rect[k]}
               onChange={(e) => {
                 const n = Number(e.target.value);
-                if (Number.isFinite(n)) onChange({ [k]: Math.max(0, Math.round(n)) });
+                if (Number.isFinite(n))
+                  onChange({ [k]: Math.max(0, Math.round(n)) });
               }}
-              className="w-full bg-beige/40 rounded px-1.5 py-1 outline-none text-[12px] tabular-nums text-text"
+              className={`${fieldInputClass} h-9 px-2 tabular-nums text-[12px]`}
             />
           </label>
         ))}
       </div>
-    </fieldset>
+    </div>
   );
 }

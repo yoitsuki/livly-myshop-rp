@@ -31,6 +31,7 @@ import { findMatchingPreset, SEED_PRESETS } from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
+import { Button, Field, inputClass } from "@/components/ui";
 
 interface FormState {
   name: string;
@@ -40,7 +41,6 @@ interface FormState {
   refPriceMax: string;
   checkedAt: string;
   tagIds: string[];
-  /** YYYYMM key. Empty = no period selected. */
   shopYearMonth: string;
   shopPhase: ShopPhase;
   shopAuto: boolean;
@@ -144,7 +144,6 @@ export default function RegisterPage() {
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
 
-      // Auto-resolve shop period from the picked image's checkedAt
       const resolved = resolveShopPeriod(checkedAt);
       if (resolved) {
         setForm((f) => ({
@@ -155,13 +154,12 @@ export default function RegisterPage() {
         }));
       }
 
-      // Detect crop preset that matches the picked source
       try {
         const list = s.cropPresets ?? SEED_PRESETS;
         const matched = await findMatchingPreset(file, list);
         setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
       } catch {
-        // ignore — fall back to default crop rect
+        // fall back to default crop rect
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
@@ -279,9 +277,15 @@ export default function RegisterPage() {
   };
 
   const isAuto = (k: keyof FormState) => autoFilled.has(k);
+  const autoBadge = (
+    <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
+      <Sparkles size={11} />
+      自動入力
+    </span>
+  );
 
   return (
-    <div className="space-y-4 pt-3 pb-6">
+    <div className="space-y-5 pt-3 pb-8">
       <input
         ref={fileInput}
         type="file"
@@ -297,12 +301,12 @@ export default function RegisterPage() {
       {!previewUrl ? (
         <button
           onClick={onPick}
-          className="w-full h-32 rounded-2xl border-2 border-dashed border-beige bg-cream/60 flex items-center justify-center gap-3 text-muted active:bg-beige/40"
+          className="w-full h-32 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-white flex items-center justify-center gap-3 text-text/85 hover:bg-[var(--color-line-soft)] transition-colors duration-150 ease-out"
         >
-          <ImagePlus size={26} strokeWidth={1.6} />
+          <ImagePlus size={26} strokeWidth={1.6} className="text-gold-deep" />
           <div className="text-left">
             <div className="text-[14px] font-bold text-text">スクショを選ぶ</div>
-            <div className="text-[11px]">タップしてファイルから取り込み</div>
+            <div className="text-[11px] text-muted">タップしてファイルから取り込み</div>
           </div>
         </button>
       ) : (
@@ -312,11 +316,11 @@ export default function RegisterPage() {
             <img
               src={previewUrl}
               alt="プレビュー"
-              className="w-full max-h-72 object-contain rounded-2xl border border-beige bg-white"
+              className="w-full max-h-72 object-contain rounded-lg border border-[var(--color-line)] bg-white"
             />
             <button
               onClick={onPick}
-              className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full bg-cream/95 border border-beige text-[12px] text-text/80 shadow"
+              className="absolute bottom-2 right-2 px-3 h-8 rounded-md bg-white/95 border border-[var(--color-line)] text-[12px] text-text/80 shadow-[var(--shadow-sm)]"
             >
               画像を変更
             </button>
@@ -354,13 +358,16 @@ export default function RegisterPage() {
       )}
 
       {previewUrl && (
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="md"
+          fullWidth
           onClick={runOcr}
+          loading={busy === "ocr"}
           disabled={busy !== "idle" || !sourceBlob}
-          className="w-full py-2.5 rounded-full border border-mint bg-mint/30 text-text font-bold text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-50 active:bg-mint/50"
+          icon={busy === "ocr" ? undefined : <ScanText size={16} />}
         >
-          <ScanText size={16} />
           {ocrDone ? "OCR を再実行" : "OCR で自動入力"}
           <span className="text-[11px] text-muted font-normal">
             (
@@ -369,12 +376,12 @@ export default function RegisterPage() {
               : "Tesseract (端末内)"}
             )
           </span>
-        </button>
+        </Button>
       )}
 
       {busy !== "idle" && busy !== "save" && (
-        <div className="rounded-xl bg-beige/50 border border-beige px-3 py-2 flex items-center gap-2 text-[13px] text-text/80">
-          <Loader2 size={16} className="animate-spin shrink-0" />
+        <div className="rounded-md bg-[var(--color-line-soft)] border border-[var(--color-line)] px-3 py-2 flex items-center gap-2 text-[13px] text-text/80">
+          <Loader2 size={16} className="animate-spin shrink-0 text-gold-deep" />
           <span>
             {busy === "load" && "画像を読み込み中…"}
             {busy === "ocr" &&
@@ -384,25 +391,32 @@ export default function RegisterPage() {
       )}
 
       {error && (
-        <div className="rounded-xl bg-pink/40 border border-pink px-3 py-2 text-[13px] text-text/85">
+        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
 
-      <Field label="アイテム名" required highlighted={isAuto("name")}>
+      <Field
+        label="アイテム名"
+        required
+        labelAdornment={isAuto("name") ? autoBadge : undefined}
+      >
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="w-full bg-transparent outline-none text-[15px] font-bold text-text"
+          className={`${inputClass({ highlighted: isAuto("name") })} font-bold text-[15px]`}
           placeholder="例: 籐の揺りかご"
         />
       </Field>
 
-      <Field label="カテゴリ" highlighted={isAuto("category")}>
+      <Field
+        label="カテゴリ"
+        labelAdornment={isAuto("category") ? autoBadge : undefined}
+      >
         <input
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value })}
-          className="w-full bg-transparent outline-none text-[14px] text-text"
+          className={inputClass({ highlighted: isAuto("category") })}
           placeholder="例: 島デコ右前"
           list="cat-suggestions"
         />
@@ -410,23 +424,29 @@ export default function RegisterPage() {
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="最低販売価格 (GP)" highlighted={isAuto("minPrice")}>
+        <Field
+          label="最低販売価格 (GP)"
+          labelAdornment={isAuto("minPrice") ? autoBadge : undefined}
+        >
           <input
             inputMode="numeric"
             value={form.minPrice}
             onChange={(e) =>
               setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
             }
-            className="w-full bg-transparent outline-none text-[14px] text-text tabular-nums"
+            className={`${inputClass({ highlighted: isAuto("minPrice") })} tabular-nums`}
             placeholder="1800"
           />
         </Field>
-        <Field label="確認日時" highlighted={isAuto("checkedAt")}>
+        <Field
+          label="確認日時"
+          labelAdornment={isAuto("checkedAt") ? autoBadge : undefined}
+        >
           <input
             type="datetime-local"
             value={form.checkedAt}
             onChange={(e) => setForm({ ...form, checkedAt: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px] text-text"
+            className={`${inputClass({ highlighted: isAuto("checkedAt") })} text-[13px]`}
           />
         </Field>
       </div>
@@ -446,7 +466,7 @@ export default function RegisterPage() {
           <select
             value={form.priceSource}
             onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px] text-text"
+            className={inputClass()}
           >
             {SOURCE_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -459,9 +479,13 @@ export default function RegisterPage() {
 
       <Field
         label="参考販売価格 (GP)"
-        highlighted={isAuto("refPriceMin") || isAuto("refPriceMax")}
+        labelAdornment={
+          isAuto("refPriceMin") || isAuto("refPriceMax") ? autoBadge : undefined
+        }
       >
-        <div className="flex items-center gap-2">
+        <div
+          className={`${inputClass({ highlighted: isAuto("refPriceMin") || isAuto("refPriceMax") })} flex items-center gap-2 focus-within:border-gold focus-within:shadow-[var(--shadow-focus)]`}
+        >
           <input
             inputMode="numeric"
             value={form.refPriceMin}
@@ -471,7 +495,7 @@ export default function RegisterPage() {
                 refPriceMin: e.target.value.replace(/[^\d]/g, ""),
               })
             }
-            className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
+            className="w-20 bg-transparent outline-none text-[14px] text-text tabular-nums"
             placeholder="4100"
           />
           <span className="text-muted">〜</span>
@@ -484,10 +508,10 @@ export default function RegisterPage() {
                 refPriceMax: e.target.value.replace(/[^\d]/g, ""),
               })
             }
-            className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
+            className="w-20 bg-transparent outline-none text-[14px] text-text tabular-nums"
             placeholder="5300"
           />
-          <span className="text-muted text-[12px]">GP</span>
+          <span className="text-muted text-[12px] ml-auto">GP</span>
         </div>
       </Field>
 
@@ -498,19 +522,26 @@ export default function RegisterPage() {
       />
 
       <div className="flex gap-2 pt-2">
-        <button
+        <Button
+          variant="secondary"
+          size="lg"
           onClick={() => router.back()}
-          className="flex-1 py-3 rounded-full bg-beige/70 text-text/80 font-bold"
+          className="flex-1"
         >
           キャンセル
-        </button>
-        <button
-          onClick={onSave}
-          disabled={busy === "save" || (!iconBlob && !mainBlob)}
-          className="flex-[2] py-3 rounded-full bg-gold text-white font-bold disabled:opacity-50 active:bg-gold-deep"
-        >
-          {busy === "save" ? "保存中…" : "保存"}
-        </button>
+        </Button>
+        <div className="flex-[2]">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={onSave}
+            loading={busy === "save"}
+            disabled={busy === "save" || (!iconBlob && !mainBlob)}
+          >
+            {busy === "save" ? "保存中…" : "保存"}
+          </Button>
+        </div>
       </div>
 
       <ImageCropper
@@ -563,13 +594,9 @@ function CropSlot({
   onClear?: () => void;
 }) {
   return (
-    <div className="relative rounded-xl border border-beige bg-cream overflow-hidden">
-      <button
-        type="button"
-        onClick={onClick}
-        className="block w-full"
-      >
-        <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
+    <div className="relative rounded-lg border border-[var(--color-line)] bg-white overflow-hidden">
+      <button type="button" onClick={onClick} className="block w-full">
+        <div className="aspect-square bg-[var(--color-line-soft)] flex items-center justify-center text-muted">
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -581,7 +608,7 @@ function CropSlot({
             <Crop size={28} strokeWidth={1.6} />
           )}
         </div>
-        <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
+        <div className="px-2 py-1.5 text-[11px] font-medium text-text/80 text-center tracking-wide">
           {label}
           {!imageUrl && <span className="text-[10px] text-muted ml-1">未設定</span>}
         </div>
@@ -594,7 +621,7 @@ function CropSlot({
             onClear();
           }}
           aria-label={`${label}を削除`}
-          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-cream flex items-center justify-center hover:bg-text"
+          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-white flex items-center justify-center hover:bg-text transition-colors"
         >
           <X size={14} strokeWidth={2.6} />
         </button>
@@ -616,25 +643,32 @@ function ShopPeriodField({
   hasMainImage: boolean;
   onChange: (yearMonth: string, phase: ShopPhase) => void;
 }) {
+  const adornment = auto ? (
+    <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
+      <Sparkles size={11} />
+      画像から自動判定
+    </span>
+  ) : !hasMainImage ? (
+    <span className="text-[10px] text-muted normal-case tracking-normal">
+      手動選択
+    </span>
+  ) : undefined;
+
   return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">マイショップ時期</span>
-        {auto && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep">
-            <Sparkles size={11} />
-            画像から自動判定
-          </span>
-        )}
-        {!hasMainImage && (
-          <span className="text-[10px] text-muted">手動選択</span>
-        )}
-      </div>
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2 flex items-center gap-2 flex-wrap">
+    <Field
+      label="マイショップ時期"
+      labelAdornment={adornment}
+      hint={
+        yearMonth
+          ? `表示: [${formatShopPeriod(yearMonth, phase)}]`
+          : undefined
+      }
+    >
+      <div className="flex items-center gap-2 flex-wrap">
         <select
           value={yearMonth}
           onChange={(e) => onChange(e.target.value, phase)}
-          className="flex-1 min-w-[8rem] bg-transparent outline-none text-[13px]"
+          className={`${inputClass({ highlighted: auto })} flex-1 min-w-[10rem] text-[13px]`}
         >
           <option value="">未指定</option>
           {SHOP_ROUNDS.map((r) => (
@@ -643,63 +677,27 @@ function ShopPeriodField({
             </option>
           ))}
         </select>
-        <div className="flex items-center gap-1">
-          {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onChange(yearMonth, p)}
-              className={`px-2 py-px rounded-full text-[11px] border ${
-                phase === p
-                  ? "bg-gold/20 border-gold text-gold-deep font-bold"
-                  : "bg-cream border-beige text-text/70"
-              }`}
-            >
-              {p === "ongoing" ? "開催中" : "最終日"}
-            </button>
-          ))}
+        <div className="inline-flex bg-white border border-[var(--color-line)] rounded-md p-0.5">
+          {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => {
+            const active = phase === p;
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onChange(yearMonth, p)}
+                className={`px-3 h-9 rounded text-[12px] transition-colors ${
+                  active
+                    ? "bg-gold text-white font-bold"
+                    : "text-text/70 hover:text-text"
+                }`}
+              >
+                {p === "ongoing" ? "開催中" : "最終日"}
+              </button>
+            );
+          })}
         </div>
       </div>
-      {yearMonth && (
-        <div className="px-1 pt-0.5 text-[10.5px] text-muted tabular-nums">
-          表示: [{formatShopPeriod(yearMonth, phase)}]
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  highlighted,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  highlighted?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">{label}</span>
-        {required && <span className="text-[11px] text-gold-deep">*</span>}
-        {highlighted && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep">
-            <Sparkles size={11} />
-            自動入力
-          </span>
-        )}
-      </div>
-      <div
-        className={`rounded-xl bg-cream border px-3 py-2 transition-colors ${
-          highlighted ? "border-gold/60 bg-mint/30" : "border-beige"
-        }`}
-      >
-        {children}
-      </div>
-    </label>
+    </Field>
   );
 }
 
@@ -748,11 +746,8 @@ function TagPicker({
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">タグ</span>
-      </div>
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2 space-y-2">
+    <Field label="タグ">
+      <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {tags.map((t) => {
             const on = selected.includes(t.id);
@@ -761,10 +756,10 @@ function TagPicker({
                 key={t.id}
                 type="button"
                 onClick={() => toggle(t.id)}
-                className={`px-2 py-px rounded-full text-[11px] border transition-colors ${
+                className={`px-2.5 h-7 rounded-md text-[12px] border transition-colors ${
                   on
-                    ? "bg-gold/15 border-gold text-gold-deep font-bold"
-                    : "bg-cream border-beige text-text/70"
+                    ? "bg-gold text-white border-gold font-bold"
+                    : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
               >
                 #{t.name}
@@ -775,7 +770,7 @@ function TagPicker({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="px-2 py-px rounded-full text-[11px] border border-dashed border-beige-deep text-muted"
+              className="px-2.5 h-7 rounded-md text-[12px] border border-dashed border-[var(--color-line-strong)] text-muted hover:text-text hover:border-gold/60 transition-colors"
             >
               ＋ 新規タグ
             </button>
@@ -788,7 +783,7 @@ function TagPicker({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="タグ名"
-              className="flex-1 min-w-0 px-2 py-1 rounded-md bg-beige/40 outline-none text-[13px]"
+              className={`${inputClass()} flex-1 h-9`}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -799,34 +794,30 @@ function TagPicker({
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as TagType)}
-              className="px-2 py-1 rounded-md bg-beige/40 text-[12px] outline-none"
+              className={`${inputClass()} w-24 h-9 text-[12px]`}
             >
               <option value="period">期間</option>
               <option value="gacha">ガチャ</option>
               <option value="category">分類</option>
               <option value="custom">カスタム</option>
             </select>
-            <button
-              type="button"
-              onClick={add}
-              className="px-3 py-1 rounded-md bg-gold text-white text-[12px] font-bold"
-            >
+            <Button onClick={add} size="sm">
               追加
-            </button>
+            </Button>
             <button
               type="button"
               onClick={() => {
                 setAdding(false);
                 setNewName("");
               }}
-              className="p-1 text-muted"
+              className="p-1 text-muted hover:text-text"
             >
               <X size={14} />
             </button>
           </div>
         )}
         {selected.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1 border-t border-beige/50">
+          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[var(--color-line)]">
             {tags
               .filter((t) => selected.includes(t.id))
               .map((t) => (
@@ -835,6 +826,6 @@ function TagPicker({
           </div>
         )}
       </div>
-    </div>
+    </Field>
   );
 }

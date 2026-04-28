@@ -7,12 +7,14 @@ export interface FieldProps {
   htmlFor?: string;
   /** Optional adornment shown next to the label (e.g. an "auto" badge). */
   labelAdornment?: ReactNode;
+  /** Whether to show a small "*" required marker next to the label. */
+  required?: boolean;
   children: ReactNode;
 }
 
 /**
  * Form field shell: label above + control below + optional hint / error.
- * The control itself owns its visual border (see `fieldInputClass` below).
+ * The control itself owns its visual border (see `inputClass` below).
  */
 export default function Field({
   label,
@@ -20,6 +22,7 @@ export default function Field({
   error,
   htmlFor,
   labelAdornment,
+  required,
   children,
 }: FieldProps) {
   return (
@@ -32,6 +35,11 @@ export default function Field({
               className="text-[11px] font-medium tracking-[0.06em] uppercase text-muted"
             >
               {label}
+              {required && (
+                <span className="text-gold-deep ml-1" aria-label="必須">
+                  *
+                </span>
+              )}
             </label>
           )}
           {labelAdornment}
@@ -50,20 +58,43 @@ export default function Field({
 }
 
 /**
- * Reusable className for raw <input> / <select> / <textarea> elements
- * inside a Field. Includes the hairline border, focus ring, and rounded
- * corners that make a control look "tappable".
+ * Compute the className for a raw <input> / <select> / <textarea> inside a
+ * Field. Accepts tone overrides:
+ *   - `highlighted: true` → mint border (used to mark OCR auto-filled values)
+ *   - `error: true`       → danger border
+ *   - `multiline: true`   → drops the fixed h-11 (use for textareas)
+ *
+ * Designed so the rendered class always carries the focus ring rules; only
+ * the resting border color changes.
  */
-export const fieldInputClass =
-  "w-full bg-white border border-[var(--color-line)] rounded-md px-3 h-11 " +
-  "text-[14px] text-text placeholder:text-muted/80 outline-none " +
-  "transition-all duration-150 ease-out " +
-  "focus:border-gold focus:shadow-[var(--shadow-focus)] " +
-  "disabled:bg-[var(--color-line-soft)] disabled:text-muted";
+export interface InputClassOpts {
+  highlighted?: boolean;
+  error?: boolean;
+  multiline?: boolean;
+}
 
-/** Same as fieldInputClass but auto-sizing for textareas. */
-export const fieldTextareaClass =
-  "w-full bg-white border border-[var(--color-line)] rounded-md px-3 py-2 " +
-  "text-[14px] text-text placeholder:text-muted/80 outline-none " +
-  "transition-all duration-150 ease-out " +
-  "focus:border-gold focus:shadow-[var(--shadow-focus)]";
+export function inputClass(opts?: InputClassOpts): string {
+  const { highlighted, error, multiline } = opts ?? {};
+  const borderColor = error
+    ? "border-[var(--color-danger)]"
+    : highlighted
+      ? "border-gold"
+      : "border-[var(--color-line)]";
+  const sizing = multiline ? "py-2" : "h-11";
+  return [
+    "w-full bg-white border",
+    borderColor,
+    "rounded-md px-3",
+    sizing,
+    "text-[14px] text-text placeholder:text-muted/80 outline-none",
+    "transition-all duration-150 ease-out",
+    "focus:border-gold focus:shadow-[var(--shadow-focus)]",
+    "disabled:bg-[var(--color-line-soft)] disabled:text-muted",
+  ].join(" ");
+}
+
+/** Default-state input className (no highlighted / error tone). */
+export const fieldInputClass = inputClass();
+
+/** Default-state textarea className. */
+export const fieldTextareaClass = inputClass({ multiline: true });

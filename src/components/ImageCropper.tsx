@@ -253,23 +253,27 @@ export default function ImageCropper({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-text/90 flex flex-col" role="dialog">
-      <div className="flex items-center justify-between px-3 py-2 text-cream">
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      role="dialog"
+      style={{ background: "rgba(20, 40, 38, 0.92)" }}
+    >
+      <div className="flex items-center justify-between px-3 h-12 text-white border-b border-white/10">
         <button
           onClick={onCancel}
           aria-label="キャンセル"
-          className="p-2 -ml-1 rounded-full hover:bg-white/10"
+          className="p-2 -ml-1 rounded-md hover:bg-white/10 transition-colors"
         >
-          <X size={22} />
+          <X size={22} strokeWidth={2.2} />
         </button>
-        <div className="text-[14px] font-bold">{title}</div>
+        <div className="text-[13px] font-bold tracking-wide">{title}</div>
         <button
           onClick={onConfirmClick}
           disabled={busy || !rect}
           aria-label="決定"
-          className="p-2 -mr-1 rounded-full hover:bg-white/10 disabled:opacity-50"
+          className="p-2 -mr-1 rounded-md hover:bg-white/10 disabled:opacity-50 transition-colors"
         >
-          <Check size={22} />
+          <Check size={22} strokeWidth={2.4} />
         </button>
       </div>
 
@@ -301,7 +305,7 @@ export default function ImageCropper({
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
-                  boxShadow: `0 0 0 9999px rgba(0,0,0,0.55)`,
+                  boxShadow: `0 0 0 9999px rgba(20, 40, 38, 0.72)`,
                   clipPath: `polygon(
                     0 0, 100% 0, 100% 100%, 0 100%, 0 0,
                     ${dispRect.left}px ${dispRect.top}px,
@@ -336,7 +340,7 @@ export default function ImageCropper({
                   <span
                     key={h.key}
                     data-handle={h.key}
-                    className={`absolute w-5 h-5 rounded-full bg-beige border-2 border-gold-deep ${h.pos}`}
+                    className={`absolute w-4 h-4 rounded-full bg-white border-2 border-gold-deep ${h.pos}`}
                     style={{ cursor: h.cursor }}
                   />
                 ))}
@@ -345,13 +349,13 @@ export default function ImageCropper({
           )}
         </div>
       </div>
-      <div className="px-4 py-3 text-cream/80 text-[12px] text-center space-y-1">
+      <div className="px-4 py-3 text-white/80 text-[12px] text-center space-y-1 border-t border-white/10">
         <div>枠の辺・中央をドラッグして切り抜き範囲を調整してください。</div>
         {rect && imgSize && (
-          <div className="font-mono text-[11px] text-cream/70 tabular-nums">
+          <div className="font-mono text-[11px] text-white/65 tabular-nums">
             x={Math.round(rect.x)}, y={Math.round(rect.y)}, w=
             {Math.round(rect.w)}, h={Math.round(rect.h)}
-            <span className="text-cream/50">
+            <span className="text-white/45">
               {" "}
               / 元画像 {imgSize.width}×{imgSize.height}
             </span>
