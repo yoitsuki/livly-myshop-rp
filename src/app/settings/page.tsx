@@ -3,18 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Eye, EyeOff, Home, RotateCcw } from "lucide-react";
-import {
-  db,
-  getSettings,
-  patchSettings,
-  type AppSettings,
-} from "@/lib/db";
-import {
-  DEFAULT_CROP_PRESET,
-  type CropPresetConfig,
-} from "@/lib/preset";
-import type { CropRect } from "@/lib/image";
+import { Eye, EyeOff, Home } from "lucide-react";
+import { db, getSettings, patchSettings, type AppSettings } from "@/lib/db";
+import { describePreset, type CropPreset } from "@/lib/preset";
 
 const DEFAULT_SETTINGS: AppSettings = {
   id: "singleton",
@@ -164,10 +155,18 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      <CropPresetSection
-        config={settings.cropPreset ?? DEFAULT_CROP_PRESET}
-        onSave={(next) => update({ cropPreset: next })}
-      />
+      <Section
+        title="切り抜きプリセット"
+        hint="画像取り込み時のクロップ範囲を保存します。詳細は専用画面で編集します。"
+      >
+        <CropPresetSummary presets={settings.cropPresets ?? []} />
+        <Link
+          href="/presets"
+          className="mt-2 inline-flex items-center gap-1 text-[12px] text-gold-deep font-bold underline"
+        >
+          プリセット管理を開く
+        </Link>
+      </Section>
 
       <Section title="クラウド連携 (将来)" hint="Drive バックアップは未実装です。">
         <p className="text-[12px] text-muted px-1 leading-relaxed">
@@ -268,177 +267,25 @@ function formatBytes(n: number): string {
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-function CropPresetSection({
-  config,
-  onSave,
-}: {
-  config: CropPresetConfig;
-  onSave: (next: CropPresetConfig) => void;
-}) {
-  const [draft, setDraft] = useState<CropPresetConfig>(config);
-  const [editing, setEditing] = useState(false);
-
-  // Re-sync the draft whenever the saved config changes from outside.
-  useEffect(() => {
-    if (!editing) setDraft(config);
-  }, [config, editing]);
-
-  const onCommit = () => {
-    onSave(draft);
-    setEditing(false);
-  };
-
-  const onResetDefaults = () => {
-    setDraft(DEFAULT_CROP_PRESET);
-    setEditing(true);
-  };
-
-  const setRect = (which: "icon" | "main", patch: Partial<CropRect>) => {
-    setEditing(true);
-    setDraft({
-      ...draft,
-      [which]: { ...draft[which], ...patch },
-    });
-  };
-
+function CropPresetSummary({ presets }: { presets: CropPreset[] }) {
+  if (presets.length === 0) {
+    return (
+      <p className="text-[12px] text-muted px-1">
+        登録済みプリセットはありません。
+      </p>
+    );
+  }
   return (
-    <Section
-      title="切り抜きプリセット"
-      hint="取り込んだ画像のサイズと左上ピクセル色が一致したときに適用されるプリセット範囲。マイショップの画面構成が変わった場合はここで調整します。"
-    >
-      <div className="grid grid-cols-2 gap-2">
-        <NumberField
-          label="幅 (px)"
-          value={draft.width}
-          onChange={(v) => {
-            setEditing(true);
-            setDraft({ ...draft, width: v });
-          }}
-        />
-        <NumberField
-          label="高さ (px)"
-          value={draft.height}
-          onChange={(v) => {
-            setEditing(true);
-            setDraft({ ...draft, height: v });
-          }}
-        />
-      </div>
-
-      <Field label="左上ピクセル除外色 (HEX)">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={draft.excludeTopLeftHex ?? ""}
-            onChange={(e) => {
-              setEditing(true);
-              setDraft({
-                ...draft,
-                excludeTopLeftHex: e.target.value.trim() || undefined,
-              });
-            }}
-            placeholder="#77663e"
-            className="flex-1 bg-transparent outline-none text-[13px] font-mono tabular-nums"
-          />
-          <span
-            className="w-6 h-6 rounded-full border border-beige-deep shrink-0"
-            style={{ backgroundColor: draft.excludeTopLeftHex ?? "#ffffff" }}
-            aria-hidden
-          />
-        </div>
-        <p className="text-[10.5px] text-muted mt-1">
-          この色と一致する場合は別レイアウトと判断してプリセットを適用しません。空欄にすると除外なし。
-        </p>
-      </Field>
-
-      <RectFieldset
-        legend="アイコン (icon)"
-        rect={draft.icon}
-        onChange={(p) => setRect("icon", p)}
-      />
-      <RectFieldset
-        legend="メイン (main)"
-        rect={draft.main}
-        onChange={(p) => setRect("main", p)}
-      />
-
-      <div className="flex items-center gap-2 pt-1">
-        <button
-          type="button"
-          onClick={onResetDefaults}
-          className="px-3 py-1.5 rounded-full bg-beige/60 text-text/85 text-[12px] inline-flex items-center gap-1"
+    <ul className="space-y-1.5">
+      {presets.map((p) => (
+        <li
+          key={p.id}
+          className="rounded-lg border border-beige bg-beige/30 px-2.5 py-1.5"
         >
-          <RotateCcw size={12} />
-          既定値に戻す
-        </button>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={onCommit}
-          disabled={!editing}
-          className="px-4 py-1.5 rounded-full bg-gold text-white text-[12px] font-bold disabled:opacity-50"
-        >
-          保存
-        </button>
-      </div>
-    </Section>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <Field label={label}>
-      <input
-        type="number"
-        inputMode="numeric"
-        value={value}
-        onChange={(e) => {
-          const n = Number(e.target.value);
-          if (Number.isFinite(n)) onChange(Math.max(0, Math.round(n)));
-        }}
-        className="w-full bg-transparent outline-none text-[13px] tabular-nums"
-      />
-    </Field>
-  );
-}
-
-function RectFieldset({
-  legend,
-  rect,
-  onChange,
-}: {
-  legend: string;
-  rect: CropRect;
-  onChange: (patch: Partial<CropRect>) => void;
-}) {
-  return (
-    <fieldset className="border border-beige rounded-xl px-2 py-1.5">
-      <legend className="px-1 text-[11px] text-muted font-bold">{legend}</legend>
-      <div className="grid grid-cols-4 gap-1.5 pt-0.5">
-        {(["x", "y", "w", "h"] as const).map((k) => (
-          <label key={k} className="text-[11px] text-muted">
-            {k}
-            <input
-              type="number"
-              inputMode="numeric"
-              value={rect[k]}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                if (Number.isFinite(n)) onChange({ [k]: Math.max(0, Math.round(n)) });
-              }}
-              className="w-full bg-beige/40 rounded px-1.5 py-1 outline-none text-[12px] tabular-nums text-text"
-            />
-          </label>
-        ))}
-      </div>
-    </fieldset>
+          <div className="text-[12.5px] font-bold text-text/90">{p.name}</div>
+          <div className="text-[10.5px] text-muted">{describePreset(p)}</div>
+        </li>
+      ))}
+    </ul>
   );
 }

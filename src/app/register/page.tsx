@@ -25,7 +25,7 @@ import {
   SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
-import { detectPresetCrops, DEFAULT_CROP_PRESET } from "@/lib/preset";
+import { findMatchingPreset, SEED_PRESETS } from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
@@ -135,6 +135,8 @@ export default function RegisterPage() {
 
     setBusy("load");
     try {
+      const settings = await getSettings();
+
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
@@ -150,12 +152,11 @@ export default function RegisterPage() {
         }));
       }
 
-      // Detect crop presets when the source matches the user-configured layout
+      // Detect crop preset that matches the picked source
       try {
-        const settings = await getSettings();
-        const config = settings.cropPreset ?? DEFAULT_CROP_PRESET;
-        const detected = await detectPresetCrops(file, config);
-        setPresets(detected);
+        const list = settings.cropPresets ?? SEED_PRESETS;
+        const matched = await findMatchingPreset(file, list);
+        setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
       } catch {
         // ignore — fall back to default crop rect
       }
@@ -165,7 +166,6 @@ export default function RegisterPage() {
 
       setBusy("ocr");
       setOcrProgress(0);
-      const settings = await getSettings();
       let extracted: ExtractedFields = {};
       try {
         if (settings.ocrProvider === "claude" && settings.claudeApiKey) {

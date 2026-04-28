@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { CropRect } from "./image";
-import type { CropPresetConfig } from "./preset";
+import type { CropPreset } from "./preset";
+import { SEED_PRESETS } from "./preset";
 import type { ShopPhase } from "./shopPeriods";
 
 export type TagType = "period" | "gacha" | "category" | "custom";
@@ -73,8 +74,8 @@ export interface AppSettings {
   claudeModel?: string;
   googleClientId?: string;
   driveFolderId?: string;
-  /** User-tunable crop preset (image size + exclusion color + rects). */
-  cropPreset?: CropPresetConfig;
+  /** Ordered list of crop presets — first match wins during detection. */
+  cropPresets?: CropPreset[];
 }
 
 export class AppDB extends Dexie {
@@ -206,11 +207,19 @@ export async function deleteTag(id: string): Promise<void> {
 
 export async function getSettings(): Promise<AppSettings> {
   const existing = await db().settings.get("singleton");
-  if (existing) return existing;
+  if (existing) {
+    if (!existing.cropPresets || existing.cropPresets.length === 0) {
+      const next = { ...existing, cropPresets: SEED_PRESETS };
+      await db().settings.put(next);
+      return next;
+    }
+    return existing;
+  }
   const initial: AppSettings = {
     id: "singleton",
     ocrProvider: "tesseract",
     claudeModel: "claude-sonnet-4-6",
+    cropPresets: SEED_PRESETS,
   };
   await db().settings.put(initial);
   return initial;
@@ -221,6 +230,7 @@ export async function patchSettings(patch: Partial<AppSettings>): Promise<void> 
     id: "singleton" as const,
     ocrProvider: "tesseract" as const,
     claudeModel: "claude-sonnet-4-6",
+    cropPresets: SEED_PRESETS,
   };
   await db().settings.put({ ...current, ...patch, id: "singleton" });
 }

@@ -19,7 +19,7 @@ import {
   type TagType,
 } from "@/lib/db";
 import { type CropRect } from "@/lib/image";
-import { detectPresetCrops, DEFAULT_CROP_PRESET } from "@/lib/preset";
+import { findMatchingPreset, SEED_PRESETS } from "@/lib/preset";
 import {
   formatShopPeriod,
   resolveShopPeriod,
@@ -135,9 +135,9 @@ export default function EditItemPage({
     setSourceBlob(file);
     try {
       const settings = await getSettings();
-      const config = settings.cropPreset ?? DEFAULT_CROP_PRESET;
-      const detected = await detectPresetCrops(file, config);
-      setPresets(detected);
+      const list = settings.cropPresets ?? SEED_PRESETS;
+      const matched = await findMatchingPreset(file, list);
+      setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
     } catch {
       setPresets(null);
     }

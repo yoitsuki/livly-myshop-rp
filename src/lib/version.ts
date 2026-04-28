@@ -35,5 +35,12 @@
  *        (image size, top-left exclusion HEX, icon/main rect). The
  *        top-left color exclusion is restored on the detector so the
  *        brown-header layout no longer triggers the standard preset.
+ * 0.4.0  Multi-preset support. AppSettings.cropPresets holds an
+ *        ordered list; each preset has a name and a per-preset color
+ *        condition (none / match / exclude). findMatchingPreset
+ *        evaluates the list top-down. /presets manages the list with
+ *        list / new / edit pages; the settings page only shows a
+ *        summary with a link to the manager. Drawer gains a
+ *        "プリセット管理" entry above 設定.
  */
-export const APP_VERSION = "0.3.2";
+export const APP_VERSION = "0.4.0";
