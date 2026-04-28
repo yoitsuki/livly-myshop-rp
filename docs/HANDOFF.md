@@ -17,18 +17,7 @@
 
 ---
 
-## 2. リポジトリと運用ルール
-
-- リポジトリ: `yoitsuki/livly-myshop-rp`
-- **作業ブランチ: `claude/item-price-tracker-app-w21Vj`**（必ずこちら）
-- **main へは絶対にコミット/プッシュしない**（ユーザー指示）
-- PR は明示的に依頼されたときだけ作る
-
-git push は `git push -u origin claude/item-price-tracker-app-w21Vj` で OK。
-
----
-
-## 3. 技術スタック
+## 2. 技術スタック
 
 | 領域 | 採用 | メモ |
 |---|---|---|
@@ -49,7 +38,7 @@ git push は `git push -u origin claude/item-price-tracker-app-w21Vj` で OK。
 
 ---
 
-## 4. 現在のバージョン
+## 3. 現在のバージョン
 
 `src/lib/version.ts` の `APP_VERSION` を更新する運用。Drawer 下部に表示される。
 
@@ -66,7 +55,7 @@ git push は `git push -u origin claude/item-price-tracker-app-w21Vj` で OK。
 
 ---
 
-## 5. データモデル（要点だけ）
+## 4. データモデル（要点だけ）
 
 `src/lib/db.ts` を読むのが正確。Item の主なフィールド:
 
@@ -103,7 +92,7 @@ interface Item {
 
 ---
 
-## 6. ファイル地図
+## 5. ファイル地図
 
 ```
 src/
@@ -149,7 +138,7 @@ docs/
 
 ---
 
-## 7. ユーザー（作者）の好み・地雷
+## 6. ユーザー（作者）の好み・地雷
 
 これを覚えておくと往復が減ります:
 
@@ -185,7 +174,7 @@ docs/
 
 ---
 
-## 8. ハマりやすいポイント
+## 7. ハマりやすいポイント
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
@@ -198,7 +187,7 @@ docs/
 
 ---
 
-## 9. 検証コマンド
+## 8. 検証コマンド
 
 ```bash
 pnpm install
@@ -211,7 +200,7 @@ UI 変更を含む場合は dev サーバ起動 + ブラウザで操作確認す
 
 ---
 
-## 10. 未着手 / 今後の候補
+## 9. 未着手 / 今後の候補
 
 ユーザーから明示要望は今のところ無し。可能性のある次タスク:
 
@@ -225,10 +214,9 @@ UI 変更を含む場合は dev サーバ起動 + ブラウザで操作確認す
 
 ---
 
-## 11. 新セッション開始時のチェックリスト
+## 10. 新セッション開始時のチェックリスト
 
 1. このファイル全文を読む
 2. `git status` / `git log -5 --oneline` / `git branch --show-current` を確認
 3. `src/lib/version.ts` の最新バージョンと変更履歴を読む
 4. ユーザーの最初の要望を聞いてから動く（先回りで実装しない）
-5. 着手前に作業ブランチが `claude/item-price-tracker-app-w21Vj` であることを再確認
