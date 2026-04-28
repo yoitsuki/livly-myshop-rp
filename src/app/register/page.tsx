@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Crop, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
+import { Crop, ImagePlus, Loader2, ScanText, Sparkles, X } from "lucide-react";
 import {
   createItem,
   createTag,
@@ -91,6 +91,8 @@ export default function RegisterPage() {
   const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
 
   const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
+  const settings = useLiveQuery(() => db().settings.get("singleton"), []);
+  const [ocrDone, setOcrDone] = useState(false);
 
   useEffect(() => {
     if (!previewUrl) return;
@@ -129,13 +131,14 @@ export default function RegisterPage() {
     setPresets(null);
     setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
     setAutoFilled(new Set());
+    setOcrDone(false);
 
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
 
     setBusy("load");
     try {
-      const settings = await getSettings();
+      const s = await getSettings();
 
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
@@ -154,25 +157,37 @@ export default function RegisterPage() {
 
       // Detect crop preset that matches the picked source
       try {
-        const list = settings.cropPresets ?? SEED_PRESETS;
+        const list = s.cropPresets ?? SEED_PRESETS;
         const matched = await findMatchingPreset(file, list);
         setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
       } catch {
         // ignore — fall back to default crop rect
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
+    } finally {
+      setBusy("idle");
+    }
+  };
 
-      // OCR runs against a downscaled copy for speed
-      const downscaled = await compressImage(file, { maxWidth: 1600, quality: 0.8 });
-
-      setBusy("ocr");
-      setOcrProgress(0);
+  const runOcr = async () => {
+    if (!sourceBlob) return;
+    setError(undefined);
+    setBusy("ocr");
+    setOcrProgress(0);
+    try {
+      const s = await getSettings();
+      const downscaled = await compressImage(sourceBlob, {
+        maxWidth: 1600,
+        quality: 0.8,
+      });
       let extracted: ExtractedFields = {};
       try {
-        if (settings.ocrProvider === "claude" && settings.claudeApiKey) {
+        if (s.ocrProvider === "claude" && s.claudeApiKey) {
           extracted = await recognizeWithClaude(
             downscaled,
-            settings.claudeApiKey,
-            settings.claudeModel
+            s.claudeApiKey,
+            s.claudeModel
           );
         } else {
           const text = await recognizeJapanese(downscaled, (p) =>
@@ -183,6 +198,7 @@ export default function RegisterPage() {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "OCR に失敗しました";
         setError(`OCR エラー: ${msg}`);
+        return;
       }
 
       setForm((f) => {
@@ -208,8 +224,7 @@ export default function RegisterPage() {
         setAutoFilled(filled);
         return next;
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
+      setOcrDone(true);
     } finally {
       setBusy("idle");
     }
@@ -329,6 +344,25 @@ export default function RegisterPage() {
             />
           </div>
         </div>
+      )}
+
+      {previewUrl && (
+        <button
+          type="button"
+          onClick={runOcr}
+          disabled={busy !== "idle" || !sourceBlob}
+          className="w-full py-2.5 rounded-full border border-mint bg-mint/30 text-text font-bold text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-50 active:bg-mint/50"
+        >
+          <ScanText size={16} />
+          {ocrDone ? "OCR を再実行" : "OCR で自動入力"}
+          <span className="text-[11px] text-muted font-normal">
+            (
+            {settings?.ocrProvider === "claude" && settings?.claudeApiKey
+              ? `Claude API・${settings.claudeModel ?? "claude-sonnet-4-6"}`
+              : "Tesseract (端末内)"}
+            )
+          </span>
+        </button>
       )}
 
       {busy !== "idle" && busy !== "save" && (

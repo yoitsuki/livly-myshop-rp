@@ -46,5 +46,12 @@
  *        (47,821 / 172×174) and drops the "要調整" suffix from its
  *        name. Existing user data is left untouched on upgrade —
  *        only fresh installs (or "既定の2件に戻す") see the new value.
+ * 0.5.0  Preset color condition switches from exact HEX to HSV
+ *        tolerance (per-preset, default 25), so near-identical
+ *        browns like #77663e / #78663f all match the brown-header
+ *        layout. PresetForm exposes the tolerance value. OCR no
+ *        longer fires on file pick — register screen now has a
+ *        manual "OCR で自動入力" button so the wrong-screenshot
+ *        case doesn't burn a Claude API call.
  */
-export const APP_VERSION = "0.4.1";
+export const APP_VERSION = "0.5.0";

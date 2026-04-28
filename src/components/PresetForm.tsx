@@ -6,6 +6,7 @@ import Link from "next/link";
 import { RotateCcw } from "lucide-react";
 import type { CropRect } from "@/lib/image";
 import {
+  DEFAULT_COLOR_TOLERANCE,
   newPresetId,
   SEED_PRESETS,
   type ColorCondition,
@@ -44,6 +45,7 @@ export default function PresetForm({
       height: 2556,
       colorMode: "exclude",
       topLeftHex: "#77663e",
+      colorTolerance: DEFAULT_COLOR_TOLERANCE,
       icon: { x: 388, y: 835, w: 402, h: 405 },
       main: { x: 0, y: 742, w: 1179, h: 1814 },
     }
@@ -89,6 +91,7 @@ export default function PresetForm({
       height: seed.height,
       colorMode: seed.colorMode,
       topLeftHex: seed.topLeftHex,
+      colorTolerance: seed.colorTolerance ?? DEFAULT_COLOR_TOLERANCE,
       icon: { ...seed.icon },
       main: { ...seed.main },
     });
@@ -136,24 +139,50 @@ export default function PresetForm({
           ))}
         </div>
         {draft.colorMode !== "none" && (
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={draft.topLeftHex ?? ""}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  topLeftHex: e.target.value.trim() || undefined,
-                })
-              }
-              placeholder="#77663e"
-              className="flex-1 bg-transparent outline-none text-[13px] font-mono tabular-nums"
-            />
-            <span
-              className="w-6 h-6 rounded-full border border-beige-deep shrink-0"
-              style={{ backgroundColor: draft.topLeftHex ?? "#ffffff" }}
-              aria-hidden
-            />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={draft.topLeftHex ?? ""}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    topLeftHex: e.target.value.trim() || undefined,
+                  })
+                }
+                placeholder="#77663e"
+                className="flex-1 bg-transparent outline-none text-[13px] font-mono tabular-nums"
+              />
+              <span
+                className="w-6 h-6 rounded-full border border-beige-deep shrink-0"
+                style={{ backgroundColor: draft.topLeftHex ?? "#ffffff" }}
+                aria-hidden
+              />
+            </div>
+            <div className="flex items-center gap-2 border-t border-beige/60 pt-2">
+              <span className="text-[11px] text-muted shrink-0">
+                許容誤差 (HSV)
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={180}
+                value={draft.colorTolerance ?? DEFAULT_COLOR_TOLERANCE}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (!Number.isFinite(n)) return;
+                  setDraft({
+                    ...draft,
+                    colorTolerance: Math.max(0, Math.min(180, Math.round(n))),
+                  });
+                }}
+                className="w-16 bg-beige/40 rounded px-1.5 py-1 outline-none text-[12px] tabular-nums text-text"
+              />
+              <span className="text-[10.5px] text-muted leading-tight">
+                H/S/V 各成分の差がこの値以内なら一致と判定 (既定 25)
+              </span>
+            </div>
           </div>
         )}
       </Field>
