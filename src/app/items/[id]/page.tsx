@@ -24,6 +24,7 @@ import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
+import { Button, Card } from "@/components/ui";
 
 function periodBadgeClass(yearMonth: string): string {
   const idx = roundAgeIndex(yearMonth);
@@ -106,7 +107,7 @@ export default function ItemDetailPage({
   return (
     <div className="pt-3 pb-6 space-y-4">
       <div className="flex items-start gap-3">
-        <div className="shrink-0 w-20 h-20 rounded-xl border border-beige bg-white overflow-hidden flex items-center justify-center">
+        <div className="shrink-0 w-20 h-20 rounded-2xl border border-[var(--color-line)] bg-white overflow-hidden flex items-center justify-center">
           {iconUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={iconUrl} alt="アイコン" className="w-full h-full object-cover" />
@@ -127,7 +128,7 @@ export default function ItemDetailPage({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-beige bg-white overflow-hidden">
+      <Card padding="none" className="overflow-hidden">
         {mainUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -140,34 +141,37 @@ export default function ItemDetailPage({
             メイン画像が登録されていません
           </div>
         )}
-      </div>
+      </Card>
 
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {tags.map((t) => (
             <TagChip key={t.id} tag={t} />
           ))}
         </div>
       )}
 
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2 text-[13px]">
-        <span className="text-muted text-[12px]">最低販売価格 </span>
-        <span className="text-text font-bold tabular-nums">
-          {formatPrice(i.minPrice)} GP
-        </span>
-      </div>
+      <Card padding="sm">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[10px] text-muted uppercase tracking-[0.12em] font-medium">
+            最低販売価格
+          </span>
+          <span className="text-[18px] font-bold text-text tabular-nums">
+            {formatPrice(i.minPrice)}{" "}
+            <span className="text-[11px] text-muted font-medium">GP</span>
+          </span>
+        </div>
+      </Card>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[13px] font-bold text-text/85">
             マイショップ参考価格 ({entries.length})
           </h3>
-          <Link
-            href={`/items/${i.id}/prices/new`}
-            className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gold text-white text-[12px] font-bold active:bg-gold-deep"
-          >
-            <Plus size={13} />
-            価格を追加
+          <Link href={`/items/${i.id}/prices/new`}>
+            <Button variant="primary" size="sm" icon={<Plus size={14} />}>
+              価格を追加
+            </Button>
           </Link>
         </div>
         <ul className="space-y-2">
@@ -186,7 +190,7 @@ export default function ItemDetailPage({
         </ul>
       </div>
 
-      <div className="text-[11px] text-muted pt-2 border-t border-beige/50">
+      <div className="text-[11px] text-muted pt-2 border-t border-[var(--color-line)] tabular-nums">
         登録 {formatDateTime(i.createdAt)}
         {i.updatedAt !== i.createdAt && (
           <> / 更新 {formatDateTime(i.updatedAt)}</>
@@ -194,19 +198,23 @@ export default function ItemDetailPage({
       </div>
 
       <div className="flex gap-2 pt-2">
-        <button
+        <Button
+          variant="danger"
+          size="lg"
           onClick={onDelete}
-          className="px-4 py-2.5 rounded-full bg-pink/40 text-text/80 font-bold flex items-center gap-1.5"
+          icon={<Trash2 size={15} />}
         >
-          <Trash2 size={15} />
           削除
-        </button>
-        <Link
-          href={`/items/${i.id}/edit`}
-          className="flex-1 py-2.5 rounded-full bg-gold text-white font-bold text-center flex items-center justify-center gap-1.5"
-        >
-          <Pencil size={15} />
-          編集
+        </Button>
+        <Link href={`/items/${i.id}/edit`} className="flex-1">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            icon={<Pencil size={15} />}
+          >
+            編集
+          </Button>
         </Link>
       </div>
     </div>
@@ -228,7 +236,7 @@ function PriceEntryCard({
     ? formatShopPeriod(entry.shopPeriod.yearMonth, entry.shopPeriod.phase)
     : null;
   return (
-    <div className="rounded-xl border border-beige bg-white px-3 py-2 space-y-1">
+    <Card padding="sm">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         {periodLabel && entry.shopPeriod ? (
           <span
@@ -244,7 +252,7 @@ function PriceEntryCard({
             type="button"
             onClick={onEdit}
             aria-label="価格を編集"
-            className="p-1.5 rounded-full text-text/70 hover:bg-beige/50"
+            className="p-1.5 rounded-lg text-text/70 hover:bg-[var(--color-line-soft)] transition-colors"
           >
             <Pencil size={14} />
           </button>
@@ -253,30 +261,31 @@ function PriceEntryCard({
             onClick={onDelete}
             disabled={!deletable}
             aria-label="価格を削除"
-            className="p-1.5 rounded-full text-text/70 hover:bg-beige/50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="p-1.5 rounded-lg text-text/70 hover:bg-[var(--color-line-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Trash2 size={14} />
           </button>
         </div>
       </div>
-      <div className="text-[13px] tabular-nums">
-        <span className="text-muted text-[11.5px]">参考価格 </span>
-        <span className="font-bold text-gold-deep">
-          {formatPrice(entry.refPriceMin)}〜{formatPrice(entry.refPriceMax)} GP
+      <div className="text-[13px] tabular-nums mt-1">
+        <span className="text-muted text-[10px] uppercase tracking-wider mr-1.5">
+          ref
         </span>
+        <span className="font-bold text-gold-deep text-[15px]">
+          {formatPrice(entry.refPriceMin)}〜{formatPrice(entry.refPriceMax)}
+        </span>
+        <span className="text-[10px] text-muted ml-1">GP</span>
       </div>
       {entry.priceSource && (
-        <div className="text-[11px] text-muted flex items-center gap-1">
+        <div className="text-[11px] text-muted flex items-center gap-1.5 mt-1">
           情報元
-          <span className="px-1.5 py-px rounded-full text-[10.5px] leading-[15px] font-medium text-text/85 bg-sky whitespace-nowrap">
-            {entry.priceSource}
-          </span>
+          <span className="tag-chip bg-sky">{entry.priceSource}</span>
         </div>
       )}
-      <div className="text-[10.5px] text-muted flex items-center gap-1 pt-0.5">
+      <div className="text-[10.5px] text-muted flex items-center gap-1 pt-1">
         <CalendarDays size={11} strokeWidth={2.2} />
         確認 {formatDateTime(entry.checkedAt)}
       </div>
-    </div>
+    </Card>
   );
 }

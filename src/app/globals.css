@@ -2,9 +2,11 @@
 
 :root {
   /* Mint Modern palette: white background with mint/teal accents. Legacy
-   * class names (cream/beige/gold) are preserved; only the values changed. */
+   * class names (cream/beige/gold) are preserved for back-compat; only the
+   * values changed. New code should prefer the line / shadow / text tokens
+   * below for hairlines, focus rings, and typography. */
   --color-cream: #ffffff;       /* page background — white */
-  --color-beige: #c7e9e3;       /* row divider / soft chip bg — light mint */
+  --color-beige: #c7e9e3;       /* strong divider / accent border — light mint */
   --color-beige-deep: #98d8c8;  /* mint wash */
   --color-gold: #65a79d;        /* primary accent (CTA, FAB) — deep teal */
   --color-gold-deep: #3f7b72;   /* darker teal for titles / prices / active */
@@ -14,6 +16,18 @@
   --color-lavender: #e0d6ff;    /* tag: period */
   --color-text: #404040;        /* main text — dark gray */
   --color-muted: #7c8c89;       /* muted — sage-grey */
+
+  /* Step-1 design tokens. */
+  --color-line: #eef5f3;        /* hairline divider / default field border */
+  --color-line-strong: #c7e9e3; /* one step stronger — same as beige */
+  --color-line-soft: #f5fbfa;   /* hover wash for cards / rows */
+  --color-danger: #c46070;      /* error border / danger text */
+  --color-danger-soft: #fdf3f5; /* danger button bg */
+
+  --shadow-sm: 0 1px 2px rgba(64, 64, 64, 0.04);
+  --shadow-card: 0 1px 3px rgba(64, 64, 64, 0.05);
+  --shadow-focus: 0 0 0 3px rgba(101, 167, 157, 0.15);
+  --shadow-fab: 0 6px 16px -6px rgba(63, 123, 114, 0.4);
 
   --background: var(--color-cream);
   --foreground: var(--color-text);
@@ -33,9 +47,13 @@
   --color-lavender: var(--color-lavender);
   --color-text: var(--color-text);
   --color-muted: var(--color-muted);
-  --font-sans: var(--font-rounded), "Hiragino Maru Gothic ProN",
-    "ヒラギノ丸ゴ ProN", "Meiryo", system-ui, sans-serif;
-  --font-display: var(--font-rounded), serif;
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+  --color-line-soft: var(--color-line-soft);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --font-sans: var(--font-inter), var(--font-noto-jp), system-ui, sans-serif;
+  --font-display: var(--font-inter), var(--font-noto-jp), system-ui, sans-serif;
 }
 
 html,
@@ -45,11 +63,12 @@ body {
 }
 
 body {
-  font-family: var(--font-rounded), "Hiragino Maru Gothic ProN",
-    "ヒラギノ丸ゴ ProN", "Meiryo", system-ui, sans-serif;
+  font-family: var(--font-inter), var(--font-noto-jp), system-ui,
+    "Hiragino Sans", "Meiryo", sans-serif;
+  font-feature-settings: "palt";
 }
 
-/* Subtle paper texture for cards */
+/* Subtle paper texture for cards (kept for back-compat; unused in Step 1). */
 .paper {
   background-color: var(--color-cream);
   background-image:
@@ -66,4 +85,35 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Travel-tag chip: pentagonal silhouette with a notch on the left and a
+ * round eyelet "hole" near the tip. Page background is white, so the
+ * eyelet uses --color-cream to read as transparency at minimal cost.
+ * ──────────────────────────────────────────────────────────────────────── */
+.tag-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px 0 16px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--color-text);
+  /* point on the left, 9px deep so the eyelet has room. */
+  clip-path: polygon(9px 0, 100% 0, 100% 100%, 9px 100%, 0 50%);
+}
+.tag-chip::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--color-cream);
+  transform: translateY(-50%);
 }

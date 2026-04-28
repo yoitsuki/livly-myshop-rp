@@ -4,7 +4,6 @@ import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Loader2 } from "lucide-react";
 import {
   addPriceEntry,
   db,
@@ -17,6 +16,7 @@ import PriceEntryForm, {
   EMPTY_PRICE_ENTRY_FORM,
   type PriceEntryFormValue,
 } from "@/components/PriceEntryForm";
+import { Button } from "@/components/ui";
 
 export default function NewPriceEntryPage({
   params,
@@ -89,7 +89,7 @@ export default function NewPriceEntryPage({
       </h2>
 
       {error && (
-        <div className="rounded-xl bg-pink/40 border border-pink px-3 py-2 text-[13px]">
+        <div className="rounded-xl bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
@@ -102,26 +102,22 @@ export default function NewPriceEntryPage({
       />
 
       <div className="flex gap-2 pt-2">
-        <Link
-          href={`/items/${i.id}`}
-          className="flex-1 py-3 rounded-full bg-beige/70 text-text/80 font-bold text-center"
-        >
-          キャンセル
+        <Link href={`/items/${i.id}`} className="flex-1">
+          <Button variant="secondary" size="lg" fullWidth>
+            キャンセル
+          </Button>
         </Link>
-        <button
-          onClick={onSave}
-          disabled={busy}
-          className="flex-[2] py-3 rounded-full bg-gold text-white font-bold disabled:opacity-50 active:bg-gold-deep"
-        >
-          {busy ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Loader2 size={14} className="animate-spin" />
-              保存中…
-            </span>
-          ) : (
-            "保存"
-          )}
-        </button>
+        <div className="flex-[2]">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={onSave}
+            loading={busy}
+          >
+            {busy ? "保存中…" : "保存"}
+          </Button>
+        </div>
       </div>
     </div>
   );

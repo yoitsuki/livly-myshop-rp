@@ -16,6 +16,7 @@ import {
   type ShopPhase,
 } from "@/lib/shopPeriods";
 import { toLocalInput } from "@/lib/utils/date";
+import { Button, Field, fieldInputClass } from "@/components/ui";
 
 export interface PriceEntryFormValue {
   refPriceMin: string;
@@ -116,8 +117,6 @@ export default function PriceEntryForm({
         const text = await recognizeJapanese(downscaled);
         extracted = parseShopText(text);
       }
-      // Only the reference-price fields belong on a price entry now —
-      // minPrice lives on Item, and name/category belong to the item too.
       const next: PriceEntryFormValue = { ...value };
       if (extracted.refPriceMin != null && !next.refPriceMin) {
         next.refPriceMin = String(extracted.refPriceMin);
@@ -158,9 +157,11 @@ export default function PriceEntryForm({
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
-              className="w-full py-3 rounded-2xl border-2 border-dashed border-beige bg-cream/60 flex items-center justify-center gap-2 text-text/85 active:bg-beige/40"
+              className="w-full py-3 rounded-2xl border border-dashed border-[var(--color-line-strong)] bg-white
+                flex items-center justify-center gap-2 text-text/85 hover:bg-[var(--color-line-soft)]
+                transition-colors duration-150 ease-out"
             >
-              <ImagePlus size={20} strokeWidth={1.6} />
+              <ImagePlus size={20} strokeWidth={1.8} className="text-gold-deep" />
               <div className="text-left">
                 <div className="text-[14px] font-bold">スクショから自動入力</div>
                 <div className="text-[10.5px] text-muted">画像は保存されません</div>
@@ -168,12 +169,12 @@ export default function PriceEntryForm({
             </button>
           ) : (
             <>
-              <div className="rounded-2xl border border-beige bg-white flex items-center gap-2 p-2">
+              <div className="rounded-2xl border border-[var(--color-line)] bg-white flex items-center gap-2 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt="読み込み中の画像"
-                  className="w-16 h-16 object-cover rounded-md shrink-0"
+                  className="w-16 h-16 object-cover rounded-lg shrink-0"
                 />
                 <div className="min-w-0 flex-1 text-[12px] text-text/85">
                   <div className="truncate font-bold">
@@ -190,32 +191,35 @@ export default function PriceEntryForm({
                     )}
                   </div>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => fileInput.current?.click()}
-                  className="text-[11px] text-text/70 hover:text-text px-2 py-1 rounded-md bg-beige/50 shrink-0"
                 >
                   変更
-                </button>
+                </Button>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="md"
+                fullWidth
                 onClick={runOcr}
-                disabled={busy !== "idle"}
-                className="w-full py-2.5 rounded-full border border-mint bg-mint/30 text-text font-bold text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-50 active:bg-mint/50"
+                loading={busy === "ocr"}
+                icon={
+                  busy === "ocr" ? undefined : (
+                    <ScanText size={16} strokeWidth={2} />
+                  )
+                }
               >
-                {busy === "ocr" ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <ScanText size={16} />
-                )}
                 {ocrDone ? "OCR を再実行" : "OCR で自動入力"}
                 <span className="text-[11px] text-muted font-normal">
                   ({ocrLabel})
                 </span>
-              </button>
+              </Button>
               {ocrError && (
-                <div className="text-[12px] text-text/85 bg-pink/40 border border-pink rounded-md px-2 py-1.5">
+                <div className="text-[12px] text-text/85 bg-[var(--color-danger-soft)] border border-[#e9b9c0] rounded-xl px-2.5 py-1.5">
                   {ocrError}
                 </div>
               )}
@@ -225,14 +229,16 @@ export default function PriceEntryForm({
       )}
 
       <Field label="参考販売価格 (GP)">
-        <div className="flex items-center gap-2">
+        <div
+          className={`${fieldInputClass} flex items-center gap-2 px-3 focus-within:border-gold focus-within:shadow-[var(--shadow-focus)]`}
+        >
           <input
             inputMode="numeric"
             value={value.refPriceMin}
             onChange={(e) =>
               onChange({ ...value, refPriceMin: e.target.value.replace(/[^\d]/g, "") })
             }
-            className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
+            className="w-20 bg-transparent outline-none text-[14px] text-text tabular-nums"
             placeholder="4100"
           />
           <span className="text-muted">〜</span>
@@ -242,10 +248,10 @@ export default function PriceEntryForm({
             onChange={(e) =>
               onChange({ ...value, refPriceMax: e.target.value.replace(/[^\d]/g, "") })
             }
-            className="w-24 bg-transparent outline-none text-[14px] text-text tabular-nums"
+            className="w-20 bg-transparent outline-none text-[14px] text-text tabular-nums"
             placeholder="5300"
           />
-          <span className="text-muted text-[12px]">GP</span>
+          <span className="text-muted text-[12px] ml-auto">GP</span>
         </div>
       </Field>
 
@@ -254,27 +260,33 @@ export default function PriceEntryForm({
           type="datetime-local"
           value={value.checkedAt}
           onChange={(e) => onChange({ ...value, checkedAt: e.target.value })}
-          className="w-full bg-transparent outline-none text-[13px] text-text"
+          className={fieldInputClass}
         />
       </Field>
 
-      <div>
-        <div className="flex items-center gap-1.5 mb-1 px-1">
-          <span className="text-[12px] text-muted font-bold">マイショップ時期</span>
-          {value.shopAuto && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep">
+      <Field
+        label="マイショップ時期"
+        labelAdornment={
+          value.shopAuto ? (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
               <Sparkles size={11} />
               画像から自動判定
             </span>
-          )}
-        </div>
-        <div className="rounded-xl bg-cream border border-beige px-3 py-2 flex items-center gap-2 flex-wrap">
+          ) : undefined
+        }
+        hint={
+          value.shopYearMonth
+            ? `表示: [${formatShopPeriod(value.shopYearMonth, value.shopPhase)}]`
+            : undefined
+        }
+      >
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={value.shopYearMonth}
             onChange={(e) =>
               onChange({ ...value, shopYearMonth: e.target.value, shopAuto: false })
             }
-            className="flex-1 min-w-[8rem] bg-transparent outline-none text-[13px]"
+            className={`${fieldInputClass} flex-1 min-w-[10rem]`}
           >
             <option value="">未指定</option>
             {SHOP_ROUNDS.map((r) => (
@@ -283,36 +295,34 @@ export default function PriceEntryForm({
               </option>
             ))}
           </select>
-          <div className="flex items-center gap-1">
-            {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onChange({ ...value, shopPhase: p, shopAuto: false })}
-                className={`px-2 py-px rounded-full text-[11px] border ${
-                  value.shopPhase === p
-                    ? "bg-gold/20 border-gold text-gold-deep font-bold"
-                    : "bg-cream border-beige text-text/70"
-                }`}
-              >
-                {p === "ongoing" ? "開催中" : "最終日"}
-              </button>
-            ))}
+          <div className="inline-flex bg-white border border-[var(--color-line)] rounded-xl p-0.5">
+            {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => {
+              const active = value.shopPhase === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => onChange({ ...value, shopPhase: p, shopAuto: false })}
+                  className={`px-3 h-9 rounded-lg text-[12px] transition-colors ${
+                    active
+                      ? "bg-gold text-white font-bold"
+                      : "text-text/70 hover:text-text"
+                  }`}
+                >
+                  {p === "ongoing" ? "開催中" : "最終日"}
+                </button>
+              );
+            })}
           </div>
         </div>
-        {value.shopYearMonth && (
-          <div className="px-1 pt-0.5 text-[10.5px] text-muted tabular-nums">
-            表示: [{formatShopPeriod(value.shopYearMonth, value.shopPhase)}]
-          </div>
-        )}
-      </div>
+      </Field>
 
       {showPriceSource && (
         <Field label="情報元 (メイン画像が無いとき)">
           <select
             value={value.priceSource}
             onChange={(e) => onChange({ ...value, priceSource: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px] text-text"
+            className={fieldInputClass}
           >
             {PRICE_SOURCE_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -323,24 +333,5 @@ export default function PriceEntryForm({
         </Field>
       )}
     </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">{label}</span>
-      </div>
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2">
-        {children}
-      </div>
-    </label>
   );
 }

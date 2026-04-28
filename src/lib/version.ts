@@ -117,5 +117,24 @@
  *        warm sand so it no longer collides with the new green
  *        accents). CSS variable names (cream / beige / gold) are
  *        unchanged — only the values move.
+ * 0.7.0  Visual-language refresh — Step 1: typeface swaps from
+ *        M PLUS Rounded 1c to Inter + Noto Sans JP for a smarter,
+ *        more modern feel. New design tokens (--color-line,
+ *        --color-line-soft, --shadow-focus, --shadow-fab) replace
+ *        the cream-on-cream container look with white surfaces and
+ *        1px hairline dividers. Adds Button / Field / Card UI
+ *        primitives under src/components/ui/; CTAs move from
+ *        rounded-full to rounded-2xl, while pill / circle shapes
+ *        stay only on true round elements (FAB, period badges,
+ *        category tabs). Inputs gain visible borders + focus rings.
+ *        TagChip becomes a luggage-tag silhouette with a notched
+ *        left edge and a circular eyelet hole. Header drops the
+ *        cream wash + double title for a tighter single-line
+ *        version with a scroll-driven hairline; the drawer drops
+ *        the "R" avatar in favor of the wordmark and uses a
+ *        left-bar active indicator. Migrated surfaces: home,
+ *        item detail, price add / edit; remaining pages
+ *        (register, item edit, presets, tags, settings) keep
+ *        the legacy look until Step 2.
  */
-export const APP_VERSION = "0.6.2";
+export const APP_VERSION = "0.7.0";

@@ -1,12 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { M_PLUS_Rounded_1c } from "next/font/google";
+import { Inter, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
 
-const rounded = M_PLUS_Rounded_1c({
-  variable: "--font-rounded",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "700", "800"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const notoJp = Noto_Sans_JP({
+  variable: "--font-noto-jp",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
   display: "swap",
 });
 
@@ -29,7 +36,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${rounded.variable} h-full antialiased`}>
+    <html
+      lang="ja"
+      className={`${inter.variable} ${notoJp.variable} h-full antialiased`}
+    >
       <body className="min-h-full bg-cream text-text">
         <AppShell>{children}</AppShell>
       </body>
