@@ -53,5 +53,8 @@
  *        longer fires on file pick — register screen now has a
  *        manual "OCR で自動入力" button so the wrong-screenshot
  *        case doesn't burn a Claude API call.
+ * 0.5.1  Period badge palette becomes a smoother teal gradient anchored
+ *        on the primary button color (#15a496) and stepping lighter for
+ *        older rounds, with white text across all tiers.
  */
-export const APP_VERSION = "0.5.0";
+export const APP_VERSION = "0.5.1";
