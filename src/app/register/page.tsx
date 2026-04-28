@@ -25,7 +25,7 @@ import {
   SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
-import { detectPresetCrops } from "@/lib/preset";
+import { detectPresetCrops, DEFAULT_CROP_PRESET } from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
@@ -150,9 +150,11 @@ export default function RegisterPage() {
         }));
       }
 
-      // Detect crop presets when the source matches our reference layout
+      // Detect crop presets when the source matches the user-configured layout
       try {
-        const detected = await detectPresetCrops(file);
+        const settings = await getSettings();
+        const config = settings.cropPreset ?? DEFAULT_CROP_PRESET;
+        const detected = await detectPresetCrops(file, config);
         setPresets(detected);
       } catch {
         // ignore — fall back to default crop rect

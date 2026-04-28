@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { CropRect } from "./image";
+import type { CropPresetConfig } from "./preset";
 import type { ShopPhase } from "./shopPeriods";
 
 export type TagType = "period" | "gacha" | "category" | "custom";
@@ -72,6 +73,8 @@ export interface AppSettings {
   claudeModel?: string;
   googleClientId?: string;
   driveFolderId?: string;
+  /** User-tunable crop preset (image size + exclusion color + rects). */
+  cropPreset?: CropPresetConfig;
 }
 
 export class AppDB extends Dexie {

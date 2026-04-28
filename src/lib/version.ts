@@ -31,5 +31,9 @@
  *        to a muted sage for rounds three and older. Settings is back
  *        in the drawer; the header cog is removed. /tags and
  *        /settings get a "ホームに戻る" button at the bottom.
+ * 0.3.2  Crop preset is now user-tunable from the settings page
+ *        (image size, top-left exclusion HEX, icon/main rect). The
+ *        top-left color exclusion is restored on the detector so the
+ *        brown-header layout no longer triggers the standard preset.
  */
-export const APP_VERSION = "0.3.1";
+export const APP_VERSION = "0.3.2";

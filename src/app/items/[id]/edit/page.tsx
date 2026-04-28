@@ -9,6 +9,7 @@ import {
   clearMainImage,
   createTag,
   db,
+  getSettings,
   updateItemImage,
   updateItemMeta,
   type Item,
@@ -18,7 +19,7 @@ import {
   type TagType,
 } from "@/lib/db";
 import { type CropRect } from "@/lib/image";
-import { detectPresetCrops } from "@/lib/preset";
+import { detectPresetCrops, DEFAULT_CROP_PRESET } from "@/lib/preset";
 import {
   formatShopPeriod,
   resolveShopPeriod,
@@ -133,7 +134,9 @@ export default function EditItemPage({
     setError(undefined);
     setSourceBlob(file);
     try {
-      const detected = await detectPresetCrops(file);
+      const settings = await getSettings();
+      const config = settings.cropPreset ?? DEFAULT_CROP_PRESET;
+      const detected = await detectPresetCrops(file, config);
       setPresets(detected);
     } catch {
       setPresets(null);
