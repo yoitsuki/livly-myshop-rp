@@ -199,11 +199,14 @@ docs/
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
-| 画像差替え後に sibling Blob が消える | partial update | `db().transaction("rw", ..., async () => { get → put })` パターンを使う |
+| `Error preparing Blob/File data to be stored in object store` | 別 transaction にまたがって sibling Blob を get→put した | 1つのトランザクション内で完結させる。edit 画面の `onSave` のように **1 transaction + 1 put** で全変更を流す |
+| 画像差替え後に sibling Blob が消える | partial update | 同上。`db().transaction("rw", ..., async () => { get → put })` |
 | useLiveQuery の中で書き込みエラー | read 内で書いている | useLiveQuery は読みだけ。seed 等の書き込みは別 useEffect に |
 | `(0 || tags?.length) && ...` で "0" が描画される | falsy が 0 で短絡 | `> 0` を明示する |
 | Eruda のコンソール警告 | ユーザーのモバイル devtools | アプリ側のエラーではない |
 | top-left ピクセル色が機種で微妙にズレる | スクショ圧縮の影響 | v0.5.0 で HSV 許容誤差導入済 |
+| アイコン編集時にメイン画像が表示される | source を共有してた古い実装 | v0.5.2 で per-slot に分離済。アイコン編集はアイコン Blob、メイン編集はメイン Blob のみを参照 |
+| 編集画面で切り抜き枠の初期位置がズレる | 元スクショ用の rect を、すでに切り抜き済 Blob に当てていた | v0.5.2 で `ImageCropper` に `fillExtent` prop を追加。編集モードでは presets を無視して画像全体を初期枠にする |
 
 ---
 
@@ -229,6 +232,7 @@ UI 変更を含む場合は dev サーバ起動 + ブラウザで操作確認す
 - アイテムの一括エクスポート/インポート（バックアップ）
 - 詳細ページの画像長押しで保存
 - OCR ボタンの label を "Claude API・claude-sonnet-4-6" のようにしているが、長すぎたらアイコン化検討
+- 価格エントリの並び順をユーザー側で切り替えたい要望が出るかも（現状は shopPeriod 降順固定）
 
 「まだまだ修正したい所がある」とユーザーは仰っているので、要望を待ってから着手するのが正解。
 
