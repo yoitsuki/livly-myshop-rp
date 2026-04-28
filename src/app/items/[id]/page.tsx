@@ -27,11 +27,11 @@ import TagChip from "@/components/TagChip";
 
 function periodBadgeClass(yearMonth: string): string {
   const idx = roundAgeIndex(yearMonth);
-  if (idx === 0) return "bg-[#15a496] text-white";
-  if (idx === 1) return "bg-[#2e8a81] text-white";
-  if (idx === 2) return "bg-[#427772] text-white";
-  if (idx >= 3) return "bg-[#4e6a67] text-white";
-  return "bg-[#4e6a67] text-white";
+  if (idx === 0) return "bg-[#65a79d] text-white";
+  if (idx === 1) return "bg-[#6f938c] text-white";
+  if (idx === 2) return "bg-[#7a8a86] text-white";
+  if (idx >= 3) return "bg-[#838786] text-white";
+  return "bg-[#838786] text-white";
 }
 
 export default function ItemDetailPage({

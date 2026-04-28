@@ -322,7 +322,7 @@ export default function ImageCropper({
                   width: dispRect.width,
                   height: dispRect.height,
                   pointerEvents: "auto",
-                  boxShadow: "inset 0 0 0 2px #047366",
+                  boxShadow: "inset 0 0 0 2px #3f7b72",
                 }}
               >
                 {/* grid lines */}

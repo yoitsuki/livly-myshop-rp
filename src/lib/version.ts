@@ -107,5 +107,15 @@
  *        and exposes an OCR button that fills only the reference-
  *        price fields. Dexie schema bumps to v4; pre-launch upgrade
  *        clears existing items per user request.
+ * 0.6.2  Color scheme switches to a "Mint Modern" palette: page
+ *        background is now plain white, with mint/teal accents
+ *        (#65a79d primary, #98d8c8 wash, #c7e9e3 chip / divider) and
+ *        a neutral dark-gray text (#404040). Period badges, FAB
+ *        shadow, cropper stroke, and the PWA theme color all switch
+ *        to teals derived from the new primary. Tag-type pastels
+ *        keep their distinct hues (the category swatch shifts to a
+ *        warm sand so it no longer collides with the new green
+ *        accents). CSS variable names (cream / beige / gold) are
+ *        unchanged — only the values move.
  */
-export const APP_VERSION = "0.6.1";
+export const APP_VERSION = "0.6.2";

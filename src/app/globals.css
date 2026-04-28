@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  /* Turquoise-leaning emerald pastel palette. Class names kept (cream/beige/gold). */
-  --color-cream: #ebf6f4;       /* page background — pale turquoise mist */
-  --color-beige: #c4e6df;       /* row divider / soft chip bg */
-  --color-beige-deep: #8fd0c4;  /* deeper teal wash */
-  --color-gold: #15a496;        /* primary accent (CTA, FAB) — turquoise */
-  --color-gold-deep: #047366;   /* deep teal for titles / prices / active */
+  /* Mint Modern palette: white background with mint/teal accents. Legacy
+   * class names (cream/beige/gold) are preserved; only the values changed. */
+  --color-cream: #ffffff;       /* page background — white */
+  --color-beige: #c7e9e3;       /* row divider / soft chip bg — light mint */
+  --color-beige-deep: #98d8c8;  /* mint wash */
+  --color-gold: #65a79d;        /* primary accent (CTA, FAB) — deep teal */
+  --color-gold-deep: #3f7b72;   /* darker teal for titles / prices / active */
   --color-pink: #ffd6e0;        /* tag: gacha */
-  --color-mint: #d8f0bf;        /* tag: category — lime so it stays distinct */
+  --color-mint: #f1ddb7;        /* tag: category — warm sand so it stays distinct from theme green */
   --color-sky: #c7e9fb;         /* tag: custom */
   --color-lavender: #e0d6ff;    /* tag: period */
-  --color-text: #053f38;        /* main text — dark teal-forest */
-  --color-muted: #5a8a82;       /* muted — sage-teal */
+  --color-text: #404040;        /* main text — dark gray */
+  --color-muted: #7c8c89;       /* muted — sage-grey */
 
   --background: var(--color-cream);
   --foreground: var(--color-text);
@@ -52,8 +53,8 @@ body {
 .paper {
   background-color: var(--color-cream);
   background-image:
-    radial-gradient(rgba(4, 115, 102, 0.05) 1px, transparent 1px),
-    radial-gradient(rgba(4, 115, 102, 0.03) 1px, transparent 1px);
+    radial-gradient(rgba(101, 167, 157, 0.06) 1px, transparent 1px),
+    radial-gradient(rgba(101, 167, 157, 0.04) 1px, transparent 1px);
   background-position: 0 0, 8px 8px;
   background-size: 16px 16px;
 }
