@@ -114,8 +114,10 @@ src/
     layout.tsx              ヘッダー + ドロワーシェル
     page.tsx                ホーム = 一覧 + 検索 + フィルタ + ソート
     register/page.tsx       新規登録（EXIF + プリセット検出 + 手動 OCR）
-    items/[id]/page.tsx     詳細
-    items/[id]/edit/page.tsx 編集
+    items/[id]/page.tsx     詳細 (priceEntries 一覧 + +価格を追加 CTA)
+    items/[id]/edit/page.tsx 編集 (画像 / 名前 / カテゴリ / タグ / minPrice)
+    items/[id]/prices/new/page.tsx          価格を追加 (画像Blobは保存しない)
+    items/[id]/prices/[entryId]/edit/page.tsx 価格を編集
     presets/page.tsx        プリセット一覧（"既定の2件に戻す" 含む）
     presets/new/page.tsx
     presets/[id]/page.tsx   編集 + 削除
@@ -126,9 +128,10 @@ src/
     AppHeader.tsx           左:戻るボタン (items/* のみ) + 右:ハンバーガー
     AppShell.tsx            ドロワー state
     DrawerNav.tsx           右からスライドイン。ver. ラベル下部
-    ItemCard.tsx            一覧の 1 行 (3〜4 段。バッジで回次表示)
-    ImageCropper.tsx        モーダル切抜き。中点ハンドル 4 つだけ
+    ItemCard.tsx            一覧の 1 行 (最新 priceEntry を表示)
+    ImageCropper.tsx        モーダル切抜き。中点ハンドル 4 つだけ。fillExtent prop で「初期枠=画像全体」モード
     PresetForm.tsx          プリセット新規/編集の共通フォーム
+    PriceEntryForm.tsx      価格エントリの共通フォーム (画像プレビュー + OCR ボタン)
     SearchBar.tsx, TagChip.tsx, Fab.tsx
   lib/
     db.ts                   Dexie + 各 CRUD ヘルパ
@@ -173,10 +176,15 @@ docs/
 - 切抜き枠線は濃いティール（白背景上での視認性のため）
 
 ### 機能
-- メイン画像なしでも登録できる（priceSource フィールド）
+- メイン画像なしでも登録できる（priceSource を `PriceEntry` 側で持つ）
 - ショップ回次・フェーズは EXIF 撮影日時から自動推定 + 手動上書き可
 - OCR は **手動ボタンで実行**（v0.5.0 から）。誤って違うスクショを選んだとき API 浪費しないため
+- 価格追加フローでは OCR は **参考価格のみ** 抽出（minPrice/name/category は無視）
 - プリセット色判定は HSV 許容誤差（v0.5.0 から）
+- 編集画面の操作は **保存ボタンを押すまで DB 反映なし**（クロップ確定・メイン画像削除いずれも component state 上にステージング → 保存で 1 transaction で put）
+- 価格エントリ追加・編集時のスクショは **保存しない**（EXIF 抽出 + 任意で OCR にだけ使う）
+- 一覧と詳細ヘッダの参考価格・期間バッジは `latestPriceEntry()` の値を表示
+- 一覧 / 詳細 の 情報元 はバッジ表示（選択肢は **なんおし / その他**）
 - スクショ報告は不要（ユーザーから「不要」と明言済）
 
 ### 避けるべきこと
