@@ -80,5 +80,10 @@
  *        instead of muted "#text". The edit screen also keys the
  *        field's visibility off the staged main-image state, so a
  *        pending delete reveals the field immediately.
+ * 0.5.6  Edit save now happens inside a single Dexie transaction with
+ *        one read + one put, so combining a staged main-image delete
+ *        with a metadata change no longer trips Safari / Chrome's
+ *        "Error preparing Blob/File data to be stored in object store"
+ *        error caused by re-putting sibling Blobs across transactions.
  */
-export const APP_VERSION = "0.5.5";
+export const APP_VERSION = "0.5.6";

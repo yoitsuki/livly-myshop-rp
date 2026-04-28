@@ -6,11 +6,8 @@ import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Crop, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import {
-  clearMainImage,
   createTag,
   db,
-  updateItemImage,
-  updateItemMeta,
   type Item,
   type ItemCropRecord,
   type ShopPeriodRecord,
@@ -196,25 +193,6 @@ export default function EditItemPage({
     setError(undefined);
     setBusy("save");
     try {
-      // Persist any staged crop results first so the meta-edit save sees the
-      // freshest state. Each slot is updated independently — leaving one
-      // untouched doesn't disturb the other on disk.
-      if (pendingIcon) {
-        await updateItemImage(i.id, {
-          iconBlob: pendingIcon.blob,
-          iconCrop: pendingIcon.crop,
-        });
-      }
-      // pendingClearMain wins over a stale pendingMain (kept mutually
-      // exclusive in the handlers, but we still defend against both being set).
-      if (pendingClearMain) {
-        await clearMainImage(i.id);
-      } else if (pendingMain) {
-        await updateItemImage(i.id, {
-          mainImageBlob: pendingMain.blob,
-          mainCrop: pendingMain.crop,
-        });
-      }
       const hasMainAfterSave = pendingClearMain
         ? false
         : !!(pendingMain?.blob ?? i.mainImageBlob);
@@ -225,17 +203,49 @@ export default function EditItemPage({
             auto: hasMainAfterSave && form.shopAuto,
           }
         : undefined;
-      await updateItemMeta(i.id, {
-        name: form.name.trim(),
-        category: form.category.trim(),
-        minPrice: Number(form.minPrice) || 0,
-        refPriceMin: Number(form.refPriceMin) || 0,
-        refPriceMax: Number(form.refPriceMax) || 0,
-        tagIds: form.tagIds,
-        checkedAt: fromLocalInput(form.checkedAt),
-        shopPeriod,
-        priceSource:
-          !hasMainAfterSave && form.priceSource ? form.priceSource.trim() : undefined,
+
+      // Apply every change in a single transaction with one read + one put.
+      // Splitting this into multiple transactions causes Safari/Chrome to
+      // throw "Error preparing Blob/File data..." when sibling Blobs survive
+      // a record across transaction boundaries.
+      await db().transaction("rw", db().items, async () => {
+        const current = await db().items.get(i.id);
+        if (!current) throw new Error("アイテムが見つかりませんでした");
+        const next: Item = { ...current };
+
+        if (pendingIcon) {
+          next.iconBlob = pendingIcon.blob;
+          next.iconCrop = pendingIcon.crop;
+        }
+        if (pendingClearMain) {
+          delete next.mainImageBlob;
+          delete next.mainCrop;
+          delete next.imageBlob;
+        } else if (pendingMain) {
+          next.mainImageBlob = pendingMain.blob;
+          next.mainCrop = pendingMain.crop;
+        }
+
+        next.name = form.name.trim();
+        next.category = form.category.trim();
+        next.minPrice = Number(form.minPrice) || 0;
+        next.refPriceMin = Number(form.refPriceMin) || 0;
+        next.refPriceMax = Number(form.refPriceMax) || 0;
+        next.tagIds = form.tagIds;
+        next.checkedAt = fromLocalInput(form.checkedAt);
+        if (shopPeriod) {
+          next.shopPeriod = shopPeriod;
+        } else {
+          delete next.shopPeriod;
+        }
+        if (!hasMainAfterSave && form.priceSource) {
+          next.priceSource = form.priceSource.trim();
+        } else {
+          delete next.priceSource;
+        }
+        next.updatedAt = Date.now();
+
+        await db().items.put(next);
       });
       router.push(`/items/${i.id}`);
     } catch (e) {
