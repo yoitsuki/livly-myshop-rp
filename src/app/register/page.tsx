@@ -255,7 +255,6 @@ export default function RegisterPage() {
         shopPeriod,
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
-        minPrice: Number(form.minPrice) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
         priceSource:
           !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
@@ -269,6 +268,7 @@ export default function RegisterPage() {
         name: form.name.trim(),
         category: form.category.trim(),
         tagIds: form.tagIds,
+        minPrice: Number(form.minPrice) || 0,
         priceEntries: [initialEntry],
       });
       router.push("/");

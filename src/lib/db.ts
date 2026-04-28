@@ -24,15 +24,16 @@ export interface ShopPeriodRecord {
 }
 
 /**
- * One observation of an item's price during a single shop round. Items
- * accumulate these over time — see Item.priceEntries.
+ * One observation of an item's reference price (参考価格) during a single
+ * shop round. Items accumulate these over time — see Item.priceEntries.
+ * Note: 最低販売価格 (minPrice) lives on Item, not here, since it does
+ * not vary across rounds.
  */
 export interface PriceEntry {
   id: string;
   shopPeriod?: ShopPeriodRecord;
   refPriceMin: number;
   refPriceMax: number;
-  minPrice: number;
   /** Epoch ms — typically the source screenshot's EXIF DateTimeOriginal,
    * or a manual timestamp when the user logged a price without an image. */
   checkedAt: number;
@@ -58,9 +59,11 @@ export interface Item {
   name: string;
   category: string;
   tagIds: string[];
-  /** All recorded price observations. The latest (sorted by shopPeriod) is
-   * shown on list rows and the detail header; the full list is on the
-   * detail page. Always at least one entry for a saved item. */
+  /** 最低販売価格 — invariant across shop rounds, captured at registration. */
+  minPrice: number;
+  /** All recorded reference-price observations. The latest (sorted by
+   * shopPeriod) is shown on list rows and the detail header; the full
+   * list is on the detail page. Always at least one entry for a saved item. */
   priceEntries: PriceEntry[];
   /** Record creation — never overwritten. */
   createdAt: number;
@@ -109,6 +112,17 @@ export class AppDB extends Dexie {
     // Pre-launch migration is a wipe — there is no production data to
     // preserve, and the field shapes are incompatible.
     this.version(3)
+      .stores({
+        items: "id, name, category, createdAt, updatedAt, *tagIds",
+        tags: "id, name, type, createdAt",
+        settings: "id",
+      })
+      .upgrade(async (tx) => {
+        await tx.table("items").clear();
+      });
+    // v4: minPrice moves from PriceEntry to Item (it doesn't vary by
+    // shop round). Pre-launch — wipe existing items rather than migrate.
+    this.version(4)
       .stores({
         items: "id, name, category, createdAt, updatedAt, *tagIds",
         tags: "id, name, type, createdAt",

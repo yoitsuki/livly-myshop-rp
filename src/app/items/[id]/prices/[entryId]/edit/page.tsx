@@ -39,7 +39,6 @@ export default function EditPriceEntryPage({
       ...EMPTY_PRICE_ENTRY_FORM,
       refPriceMin: String(entry.refPriceMin ?? ""),
       refPriceMax: String(entry.refPriceMax ?? ""),
-      minPrice: String(entry.minPrice ?? ""),
       shopYearMonth: entry.shopPeriod?.yearMonth ?? "",
       shopPhase: entry.shopPeriod?.phase ?? "ongoing",
       shopAuto: entry.shopPeriod?.auto ?? false,
@@ -94,7 +93,6 @@ export default function EditPriceEntryPage({
         shopPeriod,
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
-        minPrice: Number(form.minPrice) || 0,
         checkedAt: form.checkedAt
           ? fromLocalInput(form.checkedAt)
           : Date.now(),

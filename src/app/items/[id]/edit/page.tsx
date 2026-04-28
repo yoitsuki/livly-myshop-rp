@@ -20,6 +20,7 @@ interface FormState {
   name: string;
   category: string;
   tagIds: string[];
+  minPrice: string;
 }
 
 type CropTarget = "icon" | "main" | null;
@@ -67,6 +68,7 @@ export default function EditItemPage({
       name: item.name,
       category: item.category,
       tagIds: item.tagIds,
+      minPrice: String(item.minPrice ?? ""),
     });
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -174,6 +176,7 @@ export default function EditItemPage({
         next.name = form.name.trim();
         next.category = form.category.trim();
         next.tagIds = form.tagIds;
+        next.minPrice = Number(form.minPrice) || 0;
         next.updatedAt = Date.now();
 
         await db().items.put(next);
@@ -269,6 +272,17 @@ export default function EditItemPage({
           list="cat-suggestions-edit"
         />
         <CategorySuggestions />
+      </Field>
+
+      <Field label="最低販売価格 (GP)">
+        <input
+          inputMode="numeric"
+          value={form.minPrice}
+          onChange={(e) =>
+            setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
+          }
+          className="w-full bg-transparent outline-none text-[14px] text-text tabular-nums"
+        />
       </Field>
 
       <TagPicker

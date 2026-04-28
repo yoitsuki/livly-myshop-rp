@@ -150,6 +150,13 @@ export default function ItemDetailPage({
         </div>
       )}
 
+      <div className="rounded-xl bg-cream border border-beige px-3 py-2 text-[13px]">
+        <span className="text-muted text-[12px]">最低販売価格 </span>
+        <span className="text-text font-bold tabular-nums">
+          {formatPrice(i.minPrice)} GP
+        </span>
+      </div>
+
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[13px] font-bold text-text/85">
@@ -257,10 +264,6 @@ function PriceEntryCard({
         <span className="font-bold text-gold-deep">
           {formatPrice(entry.refPriceMin)}〜{formatPrice(entry.refPriceMax)} GP
         </span>
-      </div>
-      <div className="text-[12px] tabular-nums">
-        <span className="text-muted text-[11.5px]">最低販売価格 </span>
-        <span className="text-text/85">{formatPrice(entry.minPrice)} GP</span>
       </div>
       {entry.priceSource && (
         <div className="text-[11px] text-muted flex items-center gap-1">

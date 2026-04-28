@@ -93,9 +93,7 @@ export default function ItemCard({
         </div>
         <div className="text-[11px] tabular-nums whitespace-nowrap">
           <span className="text-muted">最低販売価格 </span>
-          <span className="text-text/70">
-            {latest ? `${formatPrice(latest.minPrice)} GP` : "—"}
-          </span>
+          <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
         </div>
         {(itemTags.length > 0 || latest?.priceSource) && (
           <div className="flex items-center flex-wrap gap-0.5 mt-px">

@@ -1,8 +1,14 @@
 "use client";
 
-import { useRef } from "react";
-import { ImagePlus, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { ImagePlus, Loader2, ScanText, Sparkles } from "lucide-react";
+import { db, getSettings } from "@/lib/db";
+import { compressImage } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
+import { recognizeJapanese } from "@/lib/ocr/tesseract";
+import { recognizeWithClaude } from "@/lib/ocr/claude";
+import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import {
   formatShopPeriod,
   resolveShopPeriod,
@@ -14,7 +20,6 @@ import { toLocalInput } from "@/lib/utils/date";
 export interface PriceEntryFormValue {
   refPriceMin: string;
   refPriceMax: string;
-  minPrice: string;
   shopYearMonth: string;
   shopPhase: ShopPhase;
   shopAuto: boolean;
@@ -26,7 +31,6 @@ export interface PriceEntryFormValue {
 export const EMPTY_PRICE_ENTRY_FORM: PriceEntryFormValue = {
   refPriceMin: "",
   refPriceMax: "",
-  minPrice: "",
   shopYearMonth: "",
   shopPhase: "ongoing",
   shopAuto: false,
@@ -43,7 +47,8 @@ export const PRICE_SOURCE_PRESETS: Array<{ value: string; label: string }> = [
 interface Props {
   value: PriceEntryFormValue;
   onChange: (v: PriceEntryFormValue) => void;
-  /** Show the screenshot picker that auto-fills checkedAt + period. */
+  /** Show the screenshot picker that auto-fills checkedAt + period and
+   * exposes an OCR button for the reference-price fields. */
   allowSourcePicker?: boolean;
   /** Whether to show the priceSource dropdown — set when item has no main image. */
   showPriceSource: boolean;
@@ -56,18 +61,83 @@ export default function PriceEntryForm({
   showPriceSource,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const [pickedFile, setPickedFile] = useState<File | undefined>();
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>();
+  const [busy, setBusy] = useState<"idle" | "load" | "ocr">("idle");
+  const [ocrDone, setOcrDone] = useState(false);
+  const [ocrError, setOcrError] = useState<string | undefined>();
+  const settings = useLiveQuery(() => db().settings.get("singleton"), []);
+
+  useEffect(() => {
+    if (!pickedFile) return setPreviewUrl(undefined);
+    const url = URL.createObjectURL(pickedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pickedFile]);
 
   const handleFile = async (file: File) => {
-    const checkedAt = await getCheckedAt(file);
-    const resolved = resolveShopPeriod(checkedAt);
-    onChange({
-      ...value,
-      checkedAt: toLocalInput(checkedAt),
-      shopYearMonth: resolved ? resolved.round.yearMonth : value.shopYearMonth,
-      shopPhase: resolved ? resolved.phase : value.shopPhase,
-      shopAuto: !!resolved,
-    });
+    setPickedFile(file);
+    setOcrDone(false);
+    setOcrError(undefined);
+    setBusy("load");
+    try {
+      const checkedAt = await getCheckedAt(file);
+      const resolved = resolveShopPeriod(checkedAt);
+      onChange({
+        ...value,
+        checkedAt: toLocalInput(checkedAt),
+        shopYearMonth: resolved ? resolved.round.yearMonth : value.shopYearMonth,
+        shopPhase: resolved ? resolved.phase : value.shopPhase,
+        shopAuto: !!resolved,
+      });
+    } finally {
+      setBusy("idle");
+    }
   };
+
+  const runOcr = async () => {
+    if (!pickedFile) return;
+    setOcrError(undefined);
+    setBusy("ocr");
+    try {
+      const s = await getSettings();
+      const downscaled = await compressImage(pickedFile, {
+        maxWidth: 1600,
+        quality: 0.8,
+      });
+      let extracted: ExtractedFields = {};
+      if (s.ocrProvider === "claude" && s.claudeApiKey) {
+        extracted = await recognizeWithClaude(
+          downscaled,
+          s.claudeApiKey,
+          s.claudeModel
+        );
+      } else {
+        const text = await recognizeJapanese(downscaled);
+        extracted = parseShopText(text);
+      }
+      // Only the reference-price fields belong on a price entry now —
+      // minPrice lives on Item, and name/category belong to the item too.
+      const next: PriceEntryFormValue = { ...value };
+      if (extracted.refPriceMin != null && !next.refPriceMin) {
+        next.refPriceMin = String(extracted.refPriceMin);
+      }
+      if (extracted.refPriceMax != null && !next.refPriceMax) {
+        next.refPriceMax = String(extracted.refPriceMax);
+      }
+      onChange(next);
+      setOcrDone(true);
+    } catch (e) {
+      setOcrError(e instanceof Error ? e.message : "OCR に失敗しました");
+    } finally {
+      setBusy("idle");
+    }
+  };
+
+  const ocrLabel =
+    settings?.ocrProvider === "claude" && settings?.claudeApiKey
+      ? `Claude API・${settings.claudeModel ?? "claude-sonnet-4-6"}`
+      : "Tesseract (端末内)";
 
   return (
     <div className="space-y-4">
@@ -83,17 +153,75 @@ export default function PriceEntryForm({
         }}
       />
       {allowSourcePicker && (
-        <button
-          type="button"
-          onClick={() => fileInput.current?.click()}
-          className="w-full py-3 rounded-2xl border-2 border-dashed border-beige bg-cream/60 flex items-center justify-center gap-2 text-text/85 active:bg-beige/40"
-        >
-          <ImagePlus size={20} strokeWidth={1.6} />
-          <div className="text-left">
-            <div className="text-[14px] font-bold">スクショから日時・期間を取得</div>
-            <div className="text-[10.5px] text-muted">画像は保存されません</div>
-          </div>
-        </button>
+        <div className="space-y-2">
+          {!previewUrl ? (
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="w-full py-3 rounded-2xl border-2 border-dashed border-beige bg-cream/60 flex items-center justify-center gap-2 text-text/85 active:bg-beige/40"
+            >
+              <ImagePlus size={20} strokeWidth={1.6} />
+              <div className="text-left">
+                <div className="text-[14px] font-bold">スクショから自動入力</div>
+                <div className="text-[10.5px] text-muted">画像は保存されません</div>
+              </div>
+            </button>
+          ) : (
+            <>
+              <div className="rounded-2xl border border-beige bg-white flex items-center gap-2 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewUrl}
+                  alt="読み込み中の画像"
+                  className="w-16 h-16 object-cover rounded-md shrink-0"
+                />
+                <div className="min-w-0 flex-1 text-[12px] text-text/85">
+                  <div className="truncate font-bold">
+                    {pickedFile?.name ?? "選択した画像"}
+                  </div>
+                  <div className="text-muted text-[11px] inline-flex items-center gap-1">
+                    {busy === "load" ? (
+                      <>
+                        <Loader2 size={11} className="animate-spin" />
+                        読み込み中…
+                      </>
+                    ) : (
+                      "読み込み済 (画像は保存されません)"
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  className="text-[11px] text-text/70 hover:text-text px-2 py-1 rounded-md bg-beige/50 shrink-0"
+                >
+                  変更
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={runOcr}
+                disabled={busy !== "idle"}
+                className="w-full py-2.5 rounded-full border border-mint bg-mint/30 text-text font-bold text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-50 active:bg-mint/50"
+              >
+                {busy === "ocr" ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <ScanText size={16} />
+                )}
+                {ocrDone ? "OCR を再実行" : "OCR で自動入力"}
+                <span className="text-[11px] text-muted font-normal">
+                  ({ocrLabel})
+                </span>
+              </button>
+              {ocrError && (
+                <div className="text-[12px] text-text/85 bg-pink/40 border border-pink rounded-md px-2 py-1.5">
+                  {ocrError}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       <Field label="参考販売価格 (GP)">
@@ -121,27 +249,14 @@ export default function PriceEntryForm({
         </div>
       </Field>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="最低販売価格 (GP)">
-          <input
-            inputMode="numeric"
-            value={value.minPrice}
-            onChange={(e) =>
-              onChange({ ...value, minPrice: e.target.value.replace(/[^\d]/g, "") })
-            }
-            className="w-full bg-transparent outline-none text-[14px] text-text tabular-nums"
-            placeholder="1800"
-          />
-        </Field>
-        <Field label="確認日時">
-          <input
-            type="datetime-local"
-            value={value.checkedAt}
-            onChange={(e) => onChange({ ...value, checkedAt: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px] text-text"
-          />
-        </Field>
-      </div>
+      <Field label="確認日時">
+        <input
+          type="datetime-local"
+          value={value.checkedAt}
+          onChange={(e) => onChange({ ...value, checkedAt: e.target.value })}
+          className="w-full bg-transparent outline-none text-[13px] text-text"
+        />
+      </Field>
 
       <div>
         <div className="flex items-center gap-1.5 mb-1 px-1">

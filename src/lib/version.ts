@@ -98,5 +98,14 @@
  *        stored. The item-edit screen drops all price fields (it now
  *        handles only name / category / tags / images). Dexie schema
  *        bumps to v3; pre-launch upgrade clears existing items.
+ * 0.6.1  最低販売価格 (minPrice) moves up to Item — it does not vary
+ *        by shop round, so it lives once per item and is captured at
+ *        registration (editable from the item-edit screen). Price
+ *        entries hold only the reference price, period, checkedAt,
+ *        and priceSource. The price-entry form now shows a small
+ *        preview of the picked screenshot ("which image is loaded")
+ *        and exposes an OCR button that fills only the reference-
+ *        price fields. Dexie schema bumps to v4; pre-launch upgrade
+ *        clears existing items per user request.
  */
-export const APP_VERSION = "0.6.0";
+export const APP_VERSION = "0.6.1";
