@@ -74,5 +74,11 @@
  *        cleanly discards the pending delete. Picking a new main file
  *        or confirming a new main crop also overrides the staged
  *        delete, restoring the slot.
+ * 0.5.5  情報元 (price source) is reduced to two presets — なんおし
+ *        and その他 — with the freeform input dropped. The list and
+ *        detail screens render the value as a sky-colored badge
+ *        instead of muted "#text". The edit screen also keys the
+ *        field's visibility off the staged main-image state, so a
+ *        pending delete reveals the field immediately.
  */
-export const APP_VERSION = "0.5.4";
+export const APP_VERSION = "0.5.5";

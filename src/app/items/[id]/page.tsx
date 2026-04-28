@@ -124,8 +124,11 @@ export default function ItemDetailPage({
           </span>
         </div>
         {i.priceSource && (
-          <div className="text-[11px] text-muted">
-            情報元: <span className="text-text/80">{i.priceSource}</span>
+          <div className="text-[11px] text-muted flex items-center gap-1">
+            情報元
+            <span className="px-1.5 py-px rounded-full text-[10.5px] leading-[15px] font-medium text-text/85 bg-sky whitespace-nowrap">
+              {i.priceSource}
+            </span>
           </div>
         )}
       </div>

@@ -99,8 +99,8 @@ export default function ItemCard({
               <TagChip key={t.id} tag={t} />
             ))}
             {item.priceSource && (
-              <span className="text-[10px] text-muted truncate max-w-[180px]">
-                #{item.priceSource}
+              <span className="px-1.5 py-px rounded-full text-[10.5px] leading-[15px] font-medium text-text/85 bg-sky whitespace-nowrap">
+                {item.priceSource}
               </span>
             )}
           </div>
