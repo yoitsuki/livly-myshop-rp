@@ -13,7 +13,6 @@
 
 - 主用途: スマホで使う（mobile-first）
 - 使うのは作者本人ひとり
-- デプロイ先: Vercel（main ブランチから自動デプロイ）
 
 ---
 
@@ -166,7 +165,6 @@ docs/
 - スクショ報告は不要（ユーザーから「不要」と明言済）
 
 ### 避けるべきこと
-- main ブランチへの push
 - description フィールド（過去にあったが削除済。検索対象にも入っていない）
 - emoji を UI に直接書く（lucide アイコンを使う）
 - 切抜き座標を詳細ページに表示すること（v0.3.0 で削除済）
@@ -181,7 +179,6 @@ docs/
 | 画像差替え後に sibling Blob が消える | partial update | `db().transaction("rw", ..., async () => { get → put })` パターンを使う |
 | useLiveQuery の中で書き込みエラー | read 内で書いている | useLiveQuery は読みだけ。seed 等の書き込みは別 useEffect に |
 | `(0 || tags?.length) && ...` で "0" が描画される | falsy が 0 で短絡 | `> 0` を明示する |
-| Vercel で 404 NOT_FOUND | main にコードが無い | 今は main に main 用ブランチをマージする運用ではなく、Vercel 側を feature ブランチ追従にする方式（実際の設定はユーザー管理） |
 | Eruda のコンソール警告 | ユーザーのモバイル devtools | アプリ側のエラーではない |
 | top-left ピクセル色が機種で微妙にズレる | スクショ圧縮の影響 | v0.5.0 で HSV 許容誤差導入済 |
 
