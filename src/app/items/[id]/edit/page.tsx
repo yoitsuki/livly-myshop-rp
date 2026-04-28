@@ -15,7 +15,7 @@ import {
 } from "@/lib/db";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
-import { Button, Field, fieldInputClass } from "@/components/ui";
+import { Button, Field, inputClass } from "@/components/ui";
 
 interface FormState {
   name: string;
@@ -254,7 +254,7 @@ export default function EditItemPage({
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={`${fieldInputClass} font-bold text-[15px]`}
+          className={`${inputClass()} font-bold text-[15px]`}
         />
       </Field>
 
@@ -262,7 +262,7 @@ export default function EditItemPage({
         <input
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value })}
-          className={fieldInputClass}
+          className={inputClass()}
           list="cat-suggestions-edit"
         />
         <CategorySuggestions />
@@ -275,7 +275,7 @@ export default function EditItemPage({
           onChange={(e) =>
             setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
           }
-          className={`${fieldInputClass} tabular-nums`}
+          className={`${inputClass()} tabular-nums`}
         />
       </Field>
 
@@ -478,7 +478,7 @@ function TagPicker({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="タグ名"
-              className={`${fieldInputClass} flex-1 h-9`}
+              className={`${inputClass({ fullWidth: false })} flex-1 min-w-0 h-9`}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -489,7 +489,7 @@ function TagPicker({
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as TagType)}
-              className={`${fieldInputClass} w-24 h-9 text-[12px]`}
+              className={`${inputClass({ fullWidth: false })} w-24 shrink-0 h-9 text-[12px]`}
             >
               <option value="period">期間</option>
               <option value="gacha">ガチャ</option>

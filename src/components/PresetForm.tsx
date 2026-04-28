@@ -12,7 +12,7 @@ import {
   type ColorCondition,
   type CropPreset,
 } from "@/lib/preset";
-import { Button, Field, fieldInputClass } from "@/components/ui";
+import { Button, Field, inputClass } from "@/components/ui";
 
 const COLOR_MODES: Array<{ value: ColorCondition; label: string }> = [
   { value: "none", label: "なし" },
@@ -105,7 +105,7 @@ export default function PresetForm({
           value={draft.name}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           placeholder="例: 通常レイアウト"
-          className={`${fieldInputClass} font-bold text-[15px]`}
+          className={`${inputClass()} font-bold text-[15px]`}
         />
       </Field>
 
@@ -156,7 +156,7 @@ export default function PresetForm({
                     })
                   }
                   placeholder="#77663e"
-                  className={`${fieldInputClass} font-mono tabular-nums flex-1`}
+                  className={`${inputClass({ fullWidth: false })} font-mono tabular-nums flex-1 min-w-0`}
                 />
                 <span
                   className="w-10 h-11 rounded-md border border-[var(--color-line)] shrink-0"
@@ -182,7 +182,7 @@ export default function PresetForm({
                       colorTolerance: Math.max(0, Math.min(180, Math.round(n))),
                     });
                   }}
-                  className={`${fieldInputClass} w-20 text-center tabular-nums`}
+                  className={`${inputClass({ fullWidth: false })} w-20 shrink-0 text-center tabular-nums`}
                 />
                 <span className="text-[10.5px] text-muted leading-tight">
                   H/S/V 各成分の差がこの値以内なら一致 (既定 25)
@@ -274,7 +274,7 @@ function NumberField({
           const n = Number(e.target.value);
           if (Number.isFinite(n)) onChange(Math.max(0, Math.round(n)));
         }}
-        className={`${fieldInputClass} tabular-nums`}
+        className={`${inputClass()} tabular-nums`}
       />
     </Field>
   );
@@ -307,7 +307,7 @@ function RectFieldset({
                 if (Number.isFinite(n))
                   onChange({ [k]: Math.max(0, Math.round(n)) });
               }}
-              className={`${fieldInputClass} h-9 px-2 tabular-nums text-[12px]`}
+              className={`${inputClass()} h-9 px-2 tabular-nums text-[12px]`}
             />
           </label>
         ))}

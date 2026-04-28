@@ -71,18 +71,25 @@ export interface InputClassOpts {
   highlighted?: boolean;
   error?: boolean;
   multiline?: boolean;
+  /**
+   * When false, the returned className omits `w-full` so the caller can size
+   * the control via flex / explicit width utilities (default true).
+   */
+  fullWidth?: boolean;
 }
 
 export function inputClass(opts?: InputClassOpts): string {
-  const { highlighted, error, multiline } = opts ?? {};
+  const { highlighted, error, multiline, fullWidth = true } = opts ?? {};
   const borderColor = error
     ? "border-[var(--color-danger)]"
     : highlighted
       ? "border-gold"
       : "border-[var(--color-line)]";
   const sizing = multiline ? "py-2" : "h-11";
+  const width = fullWidth ? "w-full" : "";
   return [
-    "w-full bg-white border",
+    width,
+    "bg-white border",
     borderColor,
     "rounded-md px-3",
     sizing,
@@ -90,7 +97,9 @@ export function inputClass(opts?: InputClassOpts): string {
     "transition-all duration-150 ease-out",
     "focus:border-gold focus:shadow-[var(--shadow-focus)]",
     "disabled:bg-[var(--color-line-soft)] disabled:text-muted",
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Default-state input className (no highlighted / error tone). */

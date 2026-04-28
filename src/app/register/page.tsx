@@ -783,7 +783,7 @@ function TagPicker({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="タグ名"
-              className={`${inputClass()} flex-1 h-9`}
+              className={`${inputClass({ fullWidth: false })} flex-1 min-w-0 h-9`}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -794,7 +794,7 @@ function TagPicker({
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as TagType)}
-              className={`${inputClass()} w-24 h-9 text-[12px]`}
+              className={`${inputClass({ fullWidth: false })} w-24 shrink-0 h-9 text-[12px]`}
             >
               <option value="period">期間</option>
               <option value="gacha">ガチャ</option>

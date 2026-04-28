@@ -11,7 +11,7 @@ import {
   type Tag,
   type TagType,
 } from "@/lib/db";
-import { Button, Field, fieldInputClass } from "@/components/ui";
+import { Button, Field, inputClass } from "@/components/ui";
 
 const TYPE_LABEL: Record<TagType, string> = {
   period: "期間",
@@ -89,12 +89,12 @@ export default function TagsPage() {
               }
             }}
             placeholder="タグ名"
-            className={`${fieldInputClass} flex-1`}
+            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0`}
           />
           <select
             value={type}
             onChange={(e) => setType(e.target.value as TagType)}
-            className={`${fieldInputClass} w-24`}
+            className={`${inputClass({ fullWidth: false })} w-24 shrink-0`}
           >
             {TYPE_ORDER.map((t) => (
               <option key={t} value={t}>

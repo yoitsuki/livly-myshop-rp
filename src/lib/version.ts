@@ -157,5 +157,12 @@
  *        rings. ImageCropper overlay shifts to a deep teal tint and
  *        handles become white with gold-deep stroke for cohesion.
  *        Footer "ホームに戻る" links use the secondary Button.
+ * 0.8.1  Fix the inline tag-add form (and similar flex layouts in
+ *        /tags, PresetForm, and the price-entry shop-period select)
+ *        where `inputClass()`'s default w-full collided with `flex-1`
+ *        and squashed the leftmost input. inputClass now accepts a
+ *        `fullWidth` option (default true); callers that size the
+ *        control inside a flex parent pass `fullWidth: false` plus
+ *        their own width / flex utilities.
  */
-export const APP_VERSION = "0.8.0";
+export const APP_VERSION = "0.8.1";

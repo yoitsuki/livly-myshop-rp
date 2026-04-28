@@ -16,7 +16,7 @@ import {
   type ShopPhase,
 } from "@/lib/shopPeriods";
 import { toLocalInput } from "@/lib/utils/date";
-import { Button, Field, fieldInputClass } from "@/components/ui";
+import { Button, Field, fieldInputClass, inputClass } from "@/components/ui";
 
 export interface PriceEntryFormValue {
   refPriceMin: string;
@@ -286,7 +286,7 @@ export default function PriceEntryForm({
             onChange={(e) =>
               onChange({ ...value, shopYearMonth: e.target.value, shopAuto: false })
             }
-            className={`${fieldInputClass} flex-1 min-w-[10rem]`}
+            className={`${inputClass({ fullWidth: false })} flex-1 min-w-[10rem]`}
           >
             <option value="">未指定</option>
             {SHOP_ROUNDS.map((r) => (
