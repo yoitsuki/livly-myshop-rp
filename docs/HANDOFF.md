@@ -57,7 +57,7 @@
 
 ## 4. データモデル（要点だけ）
 
-`src/lib/db.ts` を読むのが正確。Item の主なフィールド:
+`src/lib/db.ts` を読むのが正本。Dexie バージョンは **v4**。
 
 ```ts
 interface Item {
@@ -66,26 +66,40 @@ interface Item {
   mainImageBlob?: Blob;      // 詳細ページの大きな画像
   iconCrop?: ItemCropRecord; // 切抜矩形 + ソース解像度
   mainCrop?: ItemCropRecord;
-  imageBlob?: Blob;          // 旧 v2 互換 (読みだけ)
-  thumbBlob?: Blob;          // 旧 v2 互換
   name: string;
   category: string;
-  minPrice: number;
+  tagIds: string[];
+  minPrice: number;          // 時期に依らず一定。登録時に入れる
+  priceEntries: PriceEntry[]; // マイショップ毎の参考価格履歴 (常に1件以上)
+  createdAt: number;         // 不変
+  updatedAt: number;         // メタ + 価格変更で更新
+}
+
+interface PriceEntry {
+  id: string;
+  shopPeriod?: ShopPeriodRecord; // { yearMonth: "YYYYMM", phase, auto }
   refPriceMin: number;
   refPriceMax: number;
-  tagIds: string[];
-  shopPeriod?: ShopPeriodRecord; // { yearMonth: "YYYYMM", phase, auto }
-  priceSource?: string;      // メイン画像なし時の出典 (例: ガイドサイト URL)
-  checkedAt: number;         // EXIF DateTimeOriginal の epoch ms
-  createdAt: number;         // 不変
-  updatedAt: number;         // メタ編集のみ更新
+  checkedAt: number;             // EXIF or 手動
+  priceSource?: string;          // "なんおし" / "その他" (mainImage 無いとき)
+  createdAt: number;
 }
 ```
 
+**ヘルパ:**
+- `latestPriceEntry(item)` — `shopPeriod` 降順で先頭
+- `sortedPriceEntries(item)` — 同上ソート済 array
+- `addPriceEntry(itemId, input)` / `updatePriceEntry(itemId, entryId, patch)` / `deletePriceEntry(itemId, entryId)` — それぞれ単一トランザクションで get + put
+
 **保存ルール（重要）:**
 - `createdAt` は新規作成時のみ書く。**絶対に上書きしない**
-- `updatedAt` はメタ編集時のみ更新。画像差替え単独では更新しない
-- 画像差し替えは `updateItemImage()` を使う（**get + put をトランザクション内で実行する** パターン。partial update だと一部ブラウザで sibling Blob が消える事例があった）
+- `updatedAt` はメタ + 画像 + 価格エントリの**いずれの変更でも**更新（v0.6 以降。価格変更も "ユーザーから見た更新" のため）
+- アイテム保存は **1トランザクション + 1 put** を厳守（`items/[id]/edit/page.tsx` の onSave 参照）。複数 transaction にまたがる get→put で sibling Blob が "Error preparing Blob/File data..." を出す
+- 画像差し替え単独で済むケースは `updateItemImage()` 等のヘルパを再導入する手もあるが、現状は edit 画面が一括 put しているので不要
+
+**マイグレーション方針:**
+- ローンチ前。スキーマ変更時は **items を wipe** で済ませる（ユーザー合意済）。Dexie の `.upgrade()` 内で `tx.table("items").clear()`
+- ストア再構築のため、古いデータ構造（`imageBlob` / `thumbBlob` / `Item.checkedAt` / `Item.shopPeriod` / `Item.priceSource` / `Item.refPrice*` 等）はもう存在しない
 
 `AppSettings.cropPresets` は `getSettings()` 取得時に空/未設定なら `SEED_PRESETS` で初期化。
 **既存ユーザーデータは触らない**（ユーザーの編集を温存するため）。「既定の2件に戻す」は `/presets` ページにあるボタンで手動。
