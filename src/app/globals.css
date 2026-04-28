@@ -17,10 +17,13 @@
   --color-text: #404040;        /* main text — dark gray */
   --color-muted: #7c8c89;       /* muted — sage-grey */
 
-  /* Step-1 design tokens. */
-  --color-line: #eef5f3;        /* hairline divider / default field border */
-  --color-line-strong: #c7e9e3; /* one step stronger — same as beige */
-  --color-line-soft: #f5fbfa;   /* hover wash for cards / rows */
+  /* Step-1 design tokens. Hairlines and hover washes are intentionally
+   * neutral grey: green is reserved for true accents (primary CTA, focus
+   * ring, active drawer item, period badges) so a screenful of borders
+   * doesn't read as a wash of mint. */
+  --color-line: #ebebeb;        /* hairline divider / default field border */
+  --color-line-strong: #d6d6d6; /* one step stronger neutral */
+  --color-line-soft: #f6f6f6;   /* hover wash for cards / rows */
   --color-danger: #c46070;      /* error border / danger text */
   --color-danger-soft: #fdf3f5; /* danger button bg */
 
@@ -96,8 +99,8 @@ body {
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 10px 0 16px;
+  height: 20px;
+  padding: 0 9px 0 15px;
   font-size: 11px;
   font-weight: 500;
   line-height: 1;
@@ -109,10 +112,10 @@ body {
 .tag-chip::before {
   content: "";
   position: absolute;
-  left: 5px;
+  left: 4.5px;
   top: 50%;
-  width: 4px;
-  height: 4px;
+  width: 3.5px;
+  height: 3.5px;
   border-radius: 9999px;
   background: var(--color-cream);
   transform: translateY(-50%);

@@ -157,7 +157,7 @@ export default function PriceEntryForm({
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
-              className="w-full py-3 rounded-2xl border border-dashed border-[var(--color-line-strong)] bg-white
+              className="w-full py-3 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-white
                 flex items-center justify-center gap-2 text-text/85 hover:bg-[var(--color-line-soft)]
                 transition-colors duration-150 ease-out"
             >
@@ -169,7 +169,7 @@ export default function PriceEntryForm({
             </button>
           ) : (
             <>
-              <div className="rounded-2xl border border-[var(--color-line)] bg-white flex items-center gap-2 p-2">
+              <div className="rounded-lg border border-[var(--color-line)] bg-white flex items-center gap-2 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
@@ -219,7 +219,7 @@ export default function PriceEntryForm({
                 </span>
               </Button>
               {ocrError && (
-                <div className="text-[12px] text-text/85 bg-[var(--color-danger-soft)] border border-[#e9b9c0] rounded-xl px-2.5 py-1.5">
+                <div className="text-[12px] text-text/85 bg-[var(--color-danger-soft)] border border-[#e9b9c0] rounded-md px-2.5 py-1.5">
                   {ocrError}
                 </div>
               )}
@@ -295,7 +295,7 @@ export default function PriceEntryForm({
               </option>
             ))}
           </select>
-          <div className="inline-flex bg-white border border-[var(--color-line)] rounded-xl p-0.5">
+          <div className="inline-flex bg-white border border-[var(--color-line)] rounded-md p-0.5">
             {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => {
               const active = value.shopPhase === p;
               return (
@@ -303,7 +303,7 @@ export default function PriceEntryForm({
                   key={p}
                   type="button"
                   onClick={() => onChange({ ...value, shopPhase: p, shopAuto: false })}
-                  className={`px-3 h-9 rounded-lg text-[12px] transition-colors ${
+                  className={`px-3 h-9 rounded text-[12px] transition-colors ${
                     active
                       ? "bg-gold text-white font-bold"
                       : "text-text/70 hover:text-text"

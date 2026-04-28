@@ -13,7 +13,7 @@ export default function SearchBar({
 }) {
   return (
     <label
-      className="flex items-center gap-2 px-3 h-11 rounded-xl bg-white border border-[var(--color-line)]
+      className="flex items-center gap-2 px-3 h-11 rounded-md bg-white border border-[var(--color-line)]
         focus-within:border-gold focus-within:shadow-[var(--shadow-focus)]
         transition-all duration-150 ease-out"
     >

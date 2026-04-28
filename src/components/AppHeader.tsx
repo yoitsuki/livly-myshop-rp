@@ -32,7 +32,7 @@ export default function AppHeader({ onMenuClick, back }: Props) {
           <button
             aria-label="戻る"
             onClick={() => router.back()}
-            className="p-2 -ml-1 rounded-xl hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors text-text"
+            className="p-2 -ml-1 rounded-md hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors text-text"
           >
             <ArrowLeft size={22} strokeWidth={2.2} />
           </button>
@@ -50,7 +50,7 @@ export default function AppHeader({ onMenuClick, back }: Props) {
         <button
           aria-label="メニューを開く"
           onClick={onMenuClick}
-          className="p-2 -mr-1 rounded-xl hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors text-text"
+          className="p-2 -mr-1 rounded-md hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors text-text"
         >
           <Menu size={22} strokeWidth={2.2} />
         </button>

@@ -27,7 +27,7 @@ export default function Card({
   return (
     <div
       className={[
-        "bg-white rounded-2xl",
+        "bg-white rounded-lg",
         border ? "border border-[var(--color-line)]" : "",
         shadow ? "shadow-[var(--shadow-card)]" : "",
         PADDING[padding],

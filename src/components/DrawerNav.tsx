@@ -64,7 +64,7 @@ export default function DrawerNav({
           <button
             aria-label="メニューを閉じる"
             onClick={onClose}
-            className="p-2 rounded-xl hover:bg-[var(--color-line-soft)] text-text"
+            className="p-2 rounded-md hover:bg-[var(--color-line-soft)] text-text"
           >
             <X size={20} />
           </button>

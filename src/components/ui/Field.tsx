@@ -55,7 +55,7 @@ export default function Field({
  * corners that make a control look "tappable".
  */
 export const fieldInputClass =
-  "w-full bg-white border border-[var(--color-line)] rounded-xl px-3 h-11 " +
+  "w-full bg-white border border-[var(--color-line)] rounded-md px-3 h-11 " +
   "text-[14px] text-text placeholder:text-muted/80 outline-none " +
   "transition-all duration-150 ease-out " +
   "focus:border-gold focus:shadow-[var(--shadow-focus)] " +
@@ -63,7 +63,7 @@ export const fieldInputClass =
 
 /** Same as fieldInputClass but auto-sizing for textareas. */
 export const fieldTextareaClass =
-  "w-full bg-white border border-[var(--color-line)] rounded-xl px-3 py-2 " +
+  "w-full bg-white border border-[var(--color-line)] rounded-md px-3 py-2 " +
   "text-[14px] text-text placeholder:text-muted/80 outline-none " +
   "transition-all duration-150 ease-out " +
   "focus:border-gold focus:shadow-[var(--shadow-focus)]";

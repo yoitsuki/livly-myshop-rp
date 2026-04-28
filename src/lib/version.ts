@@ -136,5 +136,14 @@
  *        item detail, price add / edit; remaining pages
  *        (register, item edit, presets, tags, settings) keep
  *        the legacy look until Step 2.
+ * 0.7.1  Tone down 0.7.0: hairline tokens (--color-line / -strong /
+ *        -soft) drop their mint tint and become neutral greys so a
+ *        screenful of borders no longer reads as a wash of green —
+ *        mint is reserved for actual accents (primary CTA, FAB,
+ *        focus ring, active drawer item, period badges). Border
+ *        radius scale halves: rounded-2xl → rounded-lg (cards,
+ *        buttons md/lg), rounded-xl → rounded-md (inputs, search
+ *        bar, header buttons, sm buttons). Pills stay only on true
+ *        round elements (FAB, period badges, category tabs).
  */
-export const APP_VERSION = "0.7.0";
+export const APP_VERSION = "0.7.1";

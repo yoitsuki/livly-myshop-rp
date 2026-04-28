@@ -96,7 +96,7 @@ export default function Home() {
                     on ? prev.filter((x) => x !== t.id) : [...prev, t.id]
                   )
                 }
-                className={`px-2.5 h-7 rounded-lg text-[12px] border transition-colors ${
+                className={`px-2.5 h-7 rounded-md text-[12px] border transition-colors ${
                   on
                     ? "bg-gold text-white border-gold font-bold"
                     : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"

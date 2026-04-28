@@ -54,7 +54,7 @@ export default function ItemCard({
       href={`/items/${item.id}`}
       className="flex gap-3 px-2 py-2.5 hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors"
     >
-      <div className="shrink-0 w-[60px] h-[60px] rounded-xl bg-white border border-[var(--color-line)] overflow-hidden flex items-center justify-center text-muted">
+      <div className="shrink-0 w-[60px] h-[60px] rounded-md bg-white border border-[var(--color-line)] overflow-hidden flex items-center justify-center text-muted">
         {thumbUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

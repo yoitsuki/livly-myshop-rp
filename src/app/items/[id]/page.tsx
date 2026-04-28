@@ -107,7 +107,7 @@ export default function ItemDetailPage({
   return (
     <div className="pt-3 pb-6 space-y-4">
       <div className="flex items-start gap-3">
-        <div className="shrink-0 w-20 h-20 rounded-2xl border border-[var(--color-line)] bg-white overflow-hidden flex items-center justify-center">
+        <div className="shrink-0 w-20 h-20 rounded-lg border border-[var(--color-line)] bg-white overflow-hidden flex items-center justify-center">
           {iconUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={iconUrl} alt="アイコン" className="w-full h-full object-cover" />
@@ -252,7 +252,7 @@ function PriceEntryCard({
             type="button"
             onClick={onEdit}
             aria-label="価格を編集"
-            className="p-1.5 rounded-lg text-text/70 hover:bg-[var(--color-line-soft)] transition-colors"
+            className="p-1.5 rounded-md text-text/70 hover:bg-[var(--color-line-soft)] transition-colors"
           >
             <Pencil size={14} />
           </button>
@@ -261,7 +261,7 @@ function PriceEntryCard({
             onClick={onDelete}
             disabled={!deletable}
             aria-label="価格を削除"
-            className="p-1.5 rounded-lg text-text/70 hover:bg-[var(--color-line-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md text-text/70 hover:bg-[var(--color-line-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Trash2 size={14} />
           </button>

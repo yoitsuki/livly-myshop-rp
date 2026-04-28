@@ -114,7 +114,7 @@ export default function EditPriceEntryPage({
       </h2>
 
       {error && (
-        <div className="rounded-xl bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
+        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
