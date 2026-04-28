@@ -53,5 +53,59 @@
  *        longer fires on file pick — register screen now has a
  *        manual "OCR で自動入力" button so the wrong-screenshot
  *        case doesn't burn a Claude API call.
+ * 0.5.1  Period badge palette becomes a smoother teal gradient anchored
+ *        on the primary button color (#15a496) and stepping lighter for
+ *        older rounds, with white text across all tiers.
+ * 0.5.2  Edit screen: icon and main image are cropped fully independently
+ *        — each slot owns its own file input and source, so editing the
+ *        icon never reaches into the main image (and vice-versa). Crops
+ *        are staged in component state and only persisted on 保存; cancel
+ *        / back discards them. Edit-mode crops ignore presets and start
+ *        with the full extent of the existing blob, matching the "fine
+ *        adjust the current crop" intent. Fixes the broken initial frame
+ *        and resulting blank output when the icon was re-cropped on an
+ *        item without a main image.
+ * 0.5.3  Period badge gradient widens its visible spread by lowering
+ *        saturation for older rounds (instead of getting brighter):
+ *        vivid teal → muted → faded → near-grey. Tiers stay readable
+ *        with white text and stay dark enough not to wash out.
+ * 0.5.4  Edit screen: "メイン画像を削除" is now staged like crops —
+ *        nothing hits IndexedDB until 保存, and キャンセル / back
+ *        cleanly discards the pending delete. Picking a new main file
+ *        or confirming a new main crop also overrides the staged
+ *        delete, restoring the slot.
+ * 0.5.5  情報元 (price source) is reduced to two presets — なんおし
+ *        and その他 — with the freeform input dropped. The list and
+ *        detail screens render the value as a sky-colored badge
+ *        instead of muted "#text". The edit screen also keys the
+ *        field's visibility off the staged main-image state, so a
+ *        pending delete reveals the field immediately.
+ * 0.5.6  Edit save now happens inside a single Dexie transaction with
+ *        one read + one put, so combining a staged main-image delete
+ *        with a metadata change no longer trips Safari / Chrome's
+ *        "Error preparing Blob/File data to be stored in object store"
+ *        error caused by re-putting sibling Blobs across transactions.
+ * 0.6.0  Items now keep an array of price entries (priceEntries) instead
+ *        of single-shot price fields. Each entry pins its own shop
+ *        period, ref/min prices, checkedAt, and optional priceSource.
+ *        The list and detail header surface the latest entry; the
+ *        detail page lists every entry with per-entry edit / delete
+ *        buttons and a "+価格を追加" CTA. New flows live at
+ *        /items/[id]/prices/new and /items/[id]/prices/[entryId]/edit.
+ *        Price entries can be added without re-cropping the main image
+ *        — picking a screenshot in the form auto-fills checkedAt and
+ *        shopPeriod from EXIF, but the picked image itself is not
+ *        stored. The item-edit screen drops all price fields (it now
+ *        handles only name / category / tags / images). Dexie schema
+ *        bumps to v3; pre-launch upgrade clears existing items.
+ * 0.6.1  最低販売価格 (minPrice) moves up to Item — it does not vary
+ *        by shop round, so it lives once per item and is captured at
+ *        registration (editable from the item-edit screen). Price
+ *        entries hold only the reference price, period, checkedAt,
+ *        and priceSource. The price-entry form now shows a small
+ *        preview of the picked screenshot ("which image is loaded")
+ *        and exposes an OCR button that fills only the reference-
+ *        price fields. Dexie schema bumps to v4; pre-launch upgrade
+ *        clears existing items per user request.
  */
-export const APP_VERSION = "0.5.0";
+export const APP_VERSION = "0.6.1";

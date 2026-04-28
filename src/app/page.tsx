@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type Item } from "@/lib/db";
+import { db, latestPriceEntry, type Item } from "@/lib/db";
 import SearchBar from "@/components/SearchBar";
 import ItemCard from "@/components/ItemCard";
 import Fab from "@/components/Fab";
@@ -40,9 +40,23 @@ export default function Home() {
       list = list.filter((i) => activeTagIds.every((t) => i.tagIds.includes(t)));
     }
     const sorted = [...list];
-    if (sort === "checkedAt") sorted.sort((a, b) => b.checkedAt - a.checkedAt);
-    else if (sort === "createdAt") sorted.sort((a, b) => b.createdAt - a.createdAt);
-    else sorted.sort((a, b) => a.refPriceMin - b.refPriceMin);
+    // Sort by the latest price entry's checkedAt / refPriceMin so the home
+    // list always reflects the freshest observation per item.
+    if (sort === "checkedAt") {
+      sorted.sort(
+        (a, b) =>
+          (latestPriceEntry(b)?.checkedAt ?? 0) -
+          (latestPriceEntry(a)?.checkedAt ?? 0)
+      );
+    } else if (sort === "createdAt") {
+      sorted.sort((a, b) => b.createdAt - a.createdAt);
+    } else {
+      sorted.sort(
+        (a, b) =>
+          (latestPriceEntry(a)?.refPriceMin ?? Number.POSITIVE_INFINITY) -
+          (latestPriceEntry(b)?.refPriceMin ?? Number.POSITIVE_INFINITY)
+      );
+    }
     return sorted;
   }, [items, q, activeCategory, activeTagIds, sort]);
 

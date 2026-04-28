@@ -3,24 +3,29 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ImageIcon } from "lucide-react";
-import type { Item, Tag } from "@/lib/db";
+import { latestPriceEntry, type Item, type Tag } from "@/lib/db";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 
 /**
- * Period badge color tier:
- *   index 0 (newest)         → vivid deep teal
- *   index 1 (one before)     → mid teal
- *   index 2 and older        → muted sage
- *   unknown                  → neutral beige
+ * Period badge color tier — anchored on the primary button teal for the
+ * newest round, then stepping toward less saturated, near-grey teals for
+ * older rounds. Lightness stays constant so older tiers look more muted
+ * (not brighter), and white text keeps comfortable contrast on every tier.
+ *   index 0 (newest)     → vivid primary teal
+ *   index 1 (one before) → muted teal
+ *   index 2              → faded teal
+ *   index 3 and older    → near-grey teal
+ *   unknown              → near-grey teal (same as oldest tier)
  */
 function periodBadgeClass(yearMonth: string): string {
   const idx = roundAgeIndex(yearMonth);
-  if (idx === 0) return "bg-gold-deep text-cream";
-  if (idx === 1) return "bg-gold text-cream";
-  if (idx >= 2) return "bg-beige-deep text-text/85";
-  return "bg-beige text-text/70";
+  if (idx === 0) return "bg-[#15a496] text-white";
+  if (idx === 1) return "bg-[#2e8a81] text-white";
+  if (idx === 2) return "bg-[#427772] text-white";
+  if (idx >= 3) return "bg-[#4e6a67] text-white";
+  return "bg-[#4e6a67] text-white";
 }
 
 export default function ItemCard({
@@ -31,8 +36,7 @@ export default function ItemCard({
   tags: Tag[];
 }) {
   const itemTags = tags.filter((t) => item.tagIds.includes(t.id));
-  const thumbSource =
-    item.iconBlob ?? item.thumbBlob ?? item.mainImageBlob ?? item.imageBlob;
+  const thumbSource = item.iconBlob ?? item.mainImageBlob;
   const [thumbUrl, setThumbUrl] = useState<string | undefined>(
     item.driveThumbnailUrl
   );
@@ -44,8 +48,9 @@ export default function ItemCard({
     return () => URL.revokeObjectURL(url);
   }, [thumbSource]);
 
-  const periodLabel = item.shopPeriod
-    ? formatShopPeriod(item.shopPeriod.yearMonth, item.shopPeriod.phase)
+  const latest = latestPriceEntry(item);
+  const periodLabel = latest?.shopPeriod
+    ? formatShopPeriod(latest.shopPeriod.yearMonth, latest.shopPeriod.phase)
     : null;
 
   return (
@@ -73,12 +78,14 @@ export default function ItemCard({
           <div>
             <span className="text-muted">参考価格 </span>
             <span className="text-gold-deep">
-              {formatPrice(item.refPriceMin)}〜{formatPrice(item.refPriceMax)} GP
+              {latest
+                ? `${formatPrice(latest.refPriceMin)}〜${formatPrice(latest.refPriceMax)} GP`
+                : "—"}
             </span>
           </div>
-          {periodLabel && item.shopPeriod && (
+          {periodLabel && latest?.shopPeriod && (
             <span
-              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] ${periodBadgeClass(item.shopPeriod.yearMonth)}`}
+              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] ${periodBadgeClass(latest.shopPeriod.yearMonth)}`}
             >
               {periodLabel}
             </span>
@@ -88,14 +95,14 @@ export default function ItemCard({
           <span className="text-muted">最低販売価格 </span>
           <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
         </div>
-        {(itemTags.length > 0 || item.priceSource) && (
+        {(itemTags.length > 0 || latest?.priceSource) && (
           <div className="flex items-center flex-wrap gap-0.5 mt-px">
             {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}
-            {item.priceSource && (
-              <span className="text-[10px] text-muted truncate max-w-[180px]">
-                #{item.priceSource}
+            {latest?.priceSource && (
+              <span className="px-1.5 py-px rounded-full text-[10.5px] leading-[15px] font-medium text-text/85 bg-sky whitespace-nowrap">
+                {latest.priceSource}
               </span>
             )}
           </div>

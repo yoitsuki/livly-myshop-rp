@@ -14,13 +14,33 @@ export interface ItemCropRecord {
   croppedAt: number;
 }
 
-/** Shop round metadata captured per item. */
+/** Shop round metadata captured per price entry. */
 export interface ShopPeriodRecord {
   /** YYYYMM in JST. */
   yearMonth: string;
   phase: ShopPhase;
-  /** Whether the value was auto-derived from the main image checkedAt. */
+  /** Whether the value was auto-derived from the source screenshot's EXIF. */
   auto: boolean;
+}
+
+/**
+ * One observation of an item's reference price (参考価格) during a single
+ * shop round. Items accumulate these over time — see Item.priceEntries.
+ * Note: 最低販売価格 (minPrice) lives on Item, not here, since it does
+ * not vary across rounds.
+ */
+export interface PriceEntry {
+  id: string;
+  shopPeriod?: ShopPeriodRecord;
+  refPriceMin: number;
+  refPriceMax: number;
+  /** Epoch ms — typically the source screenshot's EXIF DateTimeOriginal,
+   * or a manual timestamp when the user logged a price without an image. */
+  checkedAt: number;
+  /** Free-text price source for entries logged without a main image
+   * (e.g. "なんおし", "その他"). Per-entry, not item-level. */
+  priceSource?: string;
+  createdAt: number;
 }
 
 export interface Item {
@@ -29,33 +49,25 @@ export interface Item {
   iconBlob?: Blob;
   /** Cropped main image — shown large on the detail page. */
   mainImageBlob?: Blob;
-  /** Crop coordinates that produced iconBlob (pixel coords on the source). */
+  /** Crop coordinates that produced iconBlob. */
   iconCrop?: ItemCropRecord;
   /** Crop coordinates that produced mainImageBlob. */
   mainCrop?: ItemCropRecord;
-  /** Legacy v2 field; preserved on read for older records. */
-  imageBlob?: Blob;
-  /** Legacy v2 thumbnail; preserved for older records. */
-  thumbBlob?: Blob;
   /** Reserved for a future Drive backup. Optional and unused for now. */
   driveFileId?: string;
   driveThumbnailUrl?: string;
   name: string;
   category: string;
-  minPrice: number;
-  refPriceMin: number;
-  refPriceMax: number;
   tagIds: string[];
-  /** Shop round + phase. Populated automatically from checkedAt when a main
-   * image is present, or chosen by the user when not. */
-  shopPeriod?: ShopPeriodRecord;
-  /** Free-text price source when no main image exists (e.g. site name + URL). */
-  priceSource?: string;
-  /** EXIF DateTimeOriginal — epoch ms */
-  checkedAt: number;
-  /** Record creation — never overwritten */
+  /** 最低販売価格 — invariant across shop rounds, captured at registration. */
+  minPrice: number;
+  /** All recorded reference-price observations. The latest (sorted by
+   * shopPeriod) is shown on list rows and the detail header; the full
+   * list is on the detail page. Always at least one entry for a saved item. */
+  priceEntries: PriceEntry[];
+  /** Record creation — never overwritten. */
   createdAt: number;
-  /** Updated only on metadata edits */
+  /** Bumped on any meta or price-entry change. */
   updatedAt: number;
 }
 
@@ -90,12 +102,35 @@ export class AppDB extends Dexie {
       tags: "id, name, type, createdAt",
       settings: "id",
     });
-    // v2: imageBlob added (no index changes — same store keys are reused).
     this.version(2).stores({
       items: "id, name, category, checkedAt, createdAt, updatedAt, *tagIds",
       tags: "id, name, type, createdAt",
       settings: "id",
     });
+    // v3: schema overhaul. Item now stores a priceEntries array instead of
+    // single-price fields, and the legacy v2 imageBlob/thumbBlob fall away.
+    // Pre-launch migration is a wipe — there is no production data to
+    // preserve, and the field shapes are incompatible.
+    this.version(3)
+      .stores({
+        items: "id, name, category, createdAt, updatedAt, *tagIds",
+        tags: "id, name, type, createdAt",
+        settings: "id",
+      })
+      .upgrade(async (tx) => {
+        await tx.table("items").clear();
+      });
+    // v4: minPrice moves from PriceEntry to Item (it doesn't vary by
+    // shop round). Pre-launch — wipe existing items rather than migrate.
+    this.version(4)
+      .stores({
+        items: "id, name, category, createdAt, updatedAt, *tagIds",
+        tags: "id, name, type, createdAt",
+        settings: "id",
+      })
+      .upgrade(async (tx) => {
+        await tx.table("items").clear();
+      });
   }
 }
 
@@ -128,67 +163,6 @@ export async function createItem(
     updatedAt: now,
   });
   return id;
-}
-
-export type ItemMetaPatch = Partial<
-  Pick<
-    Item,
-    | "name"
-    | "category"
-    | "minPrice"
-    | "refPriceMin"
-    | "refPriceMax"
-    | "tagIds"
-    | "checkedAt"
-    | "shopPeriod"
-    | "priceSource"
-  >
->;
-
-/** Update metadata fields. Bumps updatedAt; never touches createdAt. */
-export async function updateItemMeta(
-  id: string,
-  patch: ItemMetaPatch
-): Promise<void> {
-  await db().transaction("rw", db().items, async () => {
-    const current = await db().items.get(id);
-    if (!current) return;
-    await db().items.put({ ...current, ...patch, updatedAt: Date.now() });
-  });
-}
-
-/** Remove the main image (and its crop record) from an item. */
-export async function clearMainImage(id: string): Promise<void> {
-  await db().transaction("rw", db().items, async () => {
-    const current = await db().items.get(id);
-    if (!current) return;
-    const next: Item = { ...current };
-    delete next.mainImageBlob;
-    delete next.mainCrop;
-    delete next.imageBlob;
-    await db().items.put(next);
-  });
-}
-
-/** Replace icon and/or main image without bumping updatedAt. */
-export async function updateItemImage(
-  id: string,
-  patch: {
-    iconBlob?: Blob;
-    mainImageBlob?: Blob;
-    iconCrop?: ItemCropRecord;
-    mainCrop?: ItemCropRecord;
-  }
-): Promise<void> {
-  // Use an explicit get + put inside a transaction so other Blob fields on
-  // the record (iconBlob / mainImageBlob etc.) survive the round-trip. Some
-  // browsers' IndexedDB implementations can lose sibling Blobs on a partial
-  // update of a record that already contains Blobs.
-  await db().transaction("rw", db().items, async () => {
-    const current = await db().items.get(id);
-    if (!current) return;
-    await db().items.put({ ...current, ...patch });
-  });
 }
 
 export async function deleteItem(id: string): Promise<void> {
@@ -233,4 +207,93 @@ export async function patchSettings(patch: Partial<AppSettings>): Promise<void> 
     cropPresets: SEED_PRESETS,
   };
   await db().settings.put({ ...current, ...patch, id: "singleton" });
+}
+
+// ---- Price entry helpers ---------------------------------------------------
+
+/**
+ * Newest-first ordering: shop round descending by yearMonth, then "lastDay"
+ * before "ongoing" within the same round, and finally checkedAt for entries
+ * without a shop period.
+ */
+function comparePriceEntriesDesc(a: PriceEntry, b: PriceEntry): number {
+  const ay = a.shopPeriod?.yearMonth ?? "";
+  const by = b.shopPeriod?.yearMonth ?? "";
+  if (ay !== by) return ay > by ? -1 : 1;
+  const ap = a.shopPeriod?.phase === "lastDay" ? 1 : 0;
+  const bp = b.shopPeriod?.phase === "lastDay" ? 1 : 0;
+  if (ap !== bp) return bp - ap;
+  return b.checkedAt - a.checkedAt;
+}
+
+export function sortedPriceEntries(
+  item: Pick<Item, "priceEntries">
+): PriceEntry[] {
+  return [...(item.priceEntries ?? [])].sort(comparePriceEntriesDesc);
+}
+
+export function latestPriceEntry(
+  item: Pick<Item, "priceEntries">
+): PriceEntry | undefined {
+  if (!item.priceEntries || item.priceEntries.length === 0) return undefined;
+  return sortedPriceEntries(item)[0];
+}
+
+export type PriceEntryInput = Omit<PriceEntry, "id" | "createdAt">;
+
+export async function addPriceEntry(
+  itemId: string,
+  entry: PriceEntryInput
+): Promise<string> {
+  const id = uid();
+  const now = Date.now();
+  const newEntry: PriceEntry = { ...entry, id, createdAt: now };
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(itemId);
+    if (!current) throw new Error("アイテムが見つかりませんでした");
+    await db().items.put({
+      ...current,
+      priceEntries: [...current.priceEntries, newEntry],
+      updatedAt: now,
+    });
+  });
+  return id;
+}
+
+export async function updatePriceEntry(
+  itemId: string,
+  entryId: string,
+  patch: Partial<PriceEntryInput>
+): Promise<void> {
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(itemId);
+    if (!current) throw new Error("アイテムが見つかりませんでした");
+    const next: Item = {
+      ...current,
+      priceEntries: current.priceEntries.map((e) =>
+        e.id === entryId ? { ...e, ...patch } : e
+      ),
+      updatedAt: Date.now(),
+    };
+    await db().items.put(next);
+  });
+}
+
+export async function deletePriceEntry(
+  itemId: string,
+  entryId: string
+): Promise<void> {
+  await db().transaction("rw", db().items, async () => {
+    const current = await db().items.get(itemId);
+    if (!current) throw new Error("アイテムが見つかりませんでした");
+    if (current.priceEntries.length <= 1) {
+      throw new Error("最後の価格は削除できません");
+    }
+    const next: Item = {
+      ...current,
+      priceEntries: current.priceEntries.filter((e) => e.id !== entryId),
+      updatedAt: Date.now(),
+    };
+    await db().items.put(next);
+  });
 }

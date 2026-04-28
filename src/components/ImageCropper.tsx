@@ -20,6 +20,12 @@ interface Props {
   aspect?: number;
   /** Initial crop rectangle. If omitted, defaults to a centered region. */
   initialRect?: CropRect;
+  /**
+   * When true (and no initialRect is provided), the default rectangle covers
+   * the entire source image instead of a centered, margin-padded box. Useful
+   * for "fine-adjust an already-cropped image" flows.
+   */
+  fillExtent?: boolean;
   onCancel: () => void;
   onConfirm: (result: CropperResult) => void;
 }
@@ -45,6 +51,7 @@ export default function ImageCropper({
   maxOutputWidth,
   aspect,
   initialRect,
+  fillExtent,
   onCancel,
   onConfirm,
 }: Props) {
@@ -78,11 +85,13 @@ export default function ImageCropper({
       setImgSize(size);
       const init = initialRect
         ? clampRect(initialRect, size)
-        : defaultRect(size, aspect);
+        : fillExtent
+          ? { x: 0, y: 0, w: size.width, h: size.height }
+          : defaultRect(size, aspect);
       setRect(init);
     });
     return () => URL.revokeObjectURL(url);
-  }, [source, aspect, initialRect]);
+  }, [source, aspect, initialRect, fillExtent]);
 
   // Drag handlers
   useEffect(() => {

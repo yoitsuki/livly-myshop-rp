@@ -9,7 +9,9 @@ import {
   createTag,
   db,
   getSettings,
+  uid,
   type ItemCropRecord,
+  type PriceEntry,
   type ShopPeriodRecord,
   type Tag,
   type TagType,
@@ -47,10 +49,8 @@ interface FormState {
 
 const SOURCE_PRESETS: Array<{ value: string; label: string }> = [
   { value: "", label: "選択しない" },
-  { value: "ライブリーガイド (https://livly-guide.com/)", label: "ライブリーガイド" },
-  { value: "公式 X / 旧 Twitter", label: "公式 X / 旧 Twitter" },
-  { value: "個人ブログ", label: "個人ブログ" },
-  { value: "他プレイヤーのお店", label: "他プレイヤーのお店" },
+  { value: "なんおし", label: "なんおし" },
+  { value: "その他", label: "その他" },
 ];
 
 const EMPTY_FORM: FormState = {
@@ -249,6 +249,17 @@ export default function RegisterPage() {
             auto: !!mainBlob && form.shopAuto,
           }
         : undefined;
+      const now = Date.now();
+      const initialEntry: PriceEntry = {
+        id: uid(),
+        shopPeriod,
+        refPriceMin: Number(form.refPriceMin) || 0,
+        refPriceMax: Number(form.refPriceMax) || 0,
+        checkedAt: fromLocalInput(form.checkedAt),
+        priceSource:
+          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        createdAt: now,
+      };
       await createItem({
         iconBlob,
         mainImageBlob: mainBlob,
@@ -256,13 +267,9 @@ export default function RegisterPage() {
         mainCrop,
         name: form.name.trim(),
         category: form.category.trim(),
-        minPrice: Number(form.minPrice) || 0,
-        refPriceMin: Number(form.refPriceMin) || 0,
-        refPriceMax: Number(form.refPriceMax) || 0,
         tagIds: form.tagIds,
-        checkedAt: fromLocalInput(form.checkedAt),
-        shopPeriod,
-        priceSource: !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        minPrice: Number(form.minPrice) || 0,
+        priceEntries: [initialEntry],
       });
       router.push("/");
     } catch (e) {
@@ -437,13 +444,9 @@ export default function RegisterPage() {
       {!mainBlob && (
         <Field label="情報元 (メイン画像が無いとき)">
           <select
-            value={
-              SOURCE_PRESETS.some((p) => p.value === form.priceSource)
-                ? form.priceSource
-                : ""
-            }
+            value={form.priceSource}
             onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px] text-text mb-1"
+            className="w-full bg-transparent outline-none text-[13px] text-text"
           >
             {SOURCE_PRESETS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -451,12 +454,6 @@ export default function RegisterPage() {
               </option>
             ))}
           </select>
-          <input
-            value={form.priceSource}
-            onChange={(e) => setForm({ ...form, priceSource: e.target.value })}
-            placeholder="自由入力 (URL や説明)"
-            className="w-full bg-transparent outline-none text-[13px] text-text border-t border-beige/60 pt-1.5"
-          />
         </Field>
       )}
 
