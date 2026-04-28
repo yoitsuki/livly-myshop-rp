@@ -30,12 +30,12 @@ export const SEED_PRESETS: CropPreset[] = [
   },
   {
     id: "default-brown-header",
-    name: "茶ヘッダレイアウト (要調整)",
+    name: "茶ヘッダレイアウト",
     width: 1179,
     height: 2556,
     colorMode: "match",
     topLeftHex: "#77663e",
-    icon: { x: 388, y: 835, w: 402, h: 405 },
+    icon: { x: 47, y: 821, w: 172, h: 174 },
     main: { x: 0, y: 742, w: 1179, h: 1814 },
   },
 ];

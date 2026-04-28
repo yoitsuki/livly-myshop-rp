@@ -42,5 +42,9 @@
  *        list / new / edit pages; the settings page only shows a
  *        summary with a link to the manager. Drawer gains a
  *        "プリセット管理" entry above 設定.
+ * 0.4.1  Brown-header preset gets a real icon rect
+ *        (47,821 / 172×174) and drops the "要調整" suffix from its
+ *        name. Existing user data is left untouched on upgrade —
+ *        only fresh installs (or "既定の2件に戻す") see the new value.
  */
-export const APP_VERSION = "0.4.0";
+export const APP_VERSION = "0.4.1";
