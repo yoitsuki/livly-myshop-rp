@@ -24,15 +24,13 @@ import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, IconButton } from "@/components/ui";
 
 function periodBadgeClass(yearMonth: string): string {
   const idx = roundAgeIndex(yearMonth);
   if (idx === 0) return "bg-[#65a79d] text-white";
-  if (idx === 1) return "bg-[#6f938c] text-white";
-  if (idx === 2) return "bg-[#7a8a86] text-white";
-  if (idx >= 3) return "bg-[#838786] text-white";
-  return "bg-[#838786] text-white";
+  if (idx === 1) return "bg-[#c7e9e3] text-[#5b6e6a]";
+  return "bg-[#eef5f1] text-[#9eaeaa]";
 }
 
 export default function ItemDetailPage({
@@ -153,8 +151,8 @@ export default function ItemDetailPage({
 
       <Card padding="sm">
         <div className="flex items-baseline justify-between">
-          <span className="text-[10px] text-muted uppercase tracking-[0.12em] font-medium">
-            最低販売価格
+          <span className="text-[12px] text-muted font-medium">
+            最低価格
           </span>
           <span className="text-[18px] font-bold text-text tabular-nums">
             {formatPrice(i.minPrice)}{" "}
@@ -247,30 +245,22 @@ function PriceEntryCard({
         ) : (
           <span className="text-[11px] text-muted">時期未指定</span>
         )}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label="価格を編集"
-            className="p-1.5 rounded-md text-text/70 hover:bg-[var(--color-line-soft)] transition-colors"
-          >
+        <div className="flex items-center gap-0.5">
+          <IconButton size="sm" onClick={onEdit} aria-label="価格を編集">
             <Pencil size={14} />
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <IconButton
+            size="sm"
             onClick={onDelete}
             disabled={!deletable}
             aria-label="価格を削除"
-            className="p-1.5 rounded-md text-text/70 hover:bg-[var(--color-line-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <Trash2 size={14} />
-          </button>
+          </IconButton>
         </div>
       </div>
       <div className="text-[13px] tabular-nums mt-1">
-        <span className="text-muted text-[10px] uppercase tracking-wider mr-1.5">
-          ref
-        </span>
+        <span className="text-muted text-[11px] mr-1.5">参考価格</span>
         <span className="font-bold text-gold-deep text-[15px]">
           {formatPrice(entry.refPriceMin)}〜{formatPrice(entry.refPriceMax)}
         </span>

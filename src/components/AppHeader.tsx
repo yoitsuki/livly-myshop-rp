@@ -23,8 +23,8 @@ export default function AppHeader({ onMenuClick, back }: Props) {
 
   return (
     <header
-      className={`sticky top-0 z-30 bg-white/95 backdrop-blur transition-shadow ${
-        scrolled ? "shadow-[0_1px_0_var(--color-line)]" : ""
+      className={`sticky top-0 z-30 bg-white/95 backdrop-blur transition-shadow duration-150 ease-out ${
+        scrolled ? "shadow-[var(--shadow-header)]" : ""
       }`}
     >
       <div className="max-w-screen-sm mx-auto px-3 h-12 flex items-center gap-2">

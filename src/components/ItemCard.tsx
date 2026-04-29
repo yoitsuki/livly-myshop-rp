@@ -9,19 +9,16 @@ import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 
 /**
- * Period badge color tier — anchored on the primary mint teal for the
- * newest round, then stepping toward less saturated, near-grey teals for
- * older rounds. Lightness stays roughly constant so older tiers look more
- * muted (not brighter), and white text keeps comfortable contrast on every
- * tier.
+ * Period badge color tier — three steps from a saturated mint (newest)
+ * down to a pale near-white that fades into the background for older
+ * rounds. Older tiers intentionally use a low-contrast gray label so
+ * they recede; freshest stays high-contrast white-on-mint.
  */
 function periodBadgeClass(yearMonth: string): string {
   const idx = roundAgeIndex(yearMonth);
   if (idx === 0) return "bg-[#65a79d] text-white";
-  if (idx === 1) return "bg-[#6f938c] text-white";
-  if (idx === 2) return "bg-[#7a8a86] text-white";
-  if (idx >= 3) return "bg-[#838786] text-white";
-  return "bg-[#838786] text-white";
+  if (idx === 1) return "bg-[#c7e9e3] text-[#5b6e6a]";
+  return "bg-[#eef5f1] text-[#9eaeaa]";
 }
 
 export default function ItemCard({
@@ -80,9 +77,7 @@ export default function ItemCard({
           )}
         </div>
         <div className="mt-1 flex items-baseline gap-1.5 tabular-nums whitespace-nowrap">
-          <span className="text-[10px] text-muted uppercase tracking-wider">
-            ref
-          </span>
+          <span className="text-[11px] text-muted">参考価格</span>
           <span className="text-[15px] font-bold text-gold-deep">
             {latest
               ? `${formatPrice(latest.refPriceMin)}〜${formatPrice(latest.refPriceMax)}`
@@ -91,7 +86,7 @@ export default function ItemCard({
           <span className="text-[10px] text-muted">GP</span>
         </div>
         <div className="text-[11px] tabular-nums whitespace-nowrap">
-          <span className="text-muted">最低 </span>
+          <span className="text-muted">最低価格 </span>
           <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
         </div>
         {(itemTags.length > 0 || latest?.priceSource) && (

@@ -164,5 +164,21 @@
  *        `fullWidth` option (default true); callers that size the
  *        control inside a flex parent pass `fullWidth: false` plus
  *        their own width / flex utilities.
+ * 0.9.0  Primary accent green swaps from MINT MODERN #65a79d to
+ *        DEEP TEAL #006a71 (gold-deep follows to #004a4f). Focus ring,
+ *        FAB shadow, and PWA theme color follow the deeper teal. New
+ *        scroll-driven header shadow (--shadow-header) replaces the
+ *        bare hairline. Period badges collapse from four tiers (steady
+ *        white text on graduated greys) to three (saturated mint +
+ *        white → light mint + soft gray → pale near-white + faint
+ *        gray) so the freshest round visibly leads the older ones.
+ *        Home list relabels REF → 参考価格 and 最低 → 最低価格 for
+ *        clarity. Adds Badge / IconButton / Toast primitives under
+ *        src/components/ui/; wires Toast into /settings save feedback
+ *        and IconButton into the per-row delete buttons in detail /
+ *        tags / presets. PWA manifest (src/app/manifest.ts) ships with
+ *        short_name / theme_color / standalone display, plus an
+ *        apple-mobile-web-app meta and a /public/icon.svg for the home
+ *        screen.
  */
-export const APP_VERSION = "0.8.1";
+export const APP_VERSION = "0.9.0";

@@ -9,3 +9,9 @@ export {
   inputClass,
 } from "./Field";
 export type { FieldProps, InputClassOpts } from "./Field";
+export { default as Badge } from "./Badge";
+export type { BadgeProps } from "./Badge";
+export { default as IconButton } from "./IconButton";
+export type { IconButtonProps } from "./IconButton";
+export { default as Toast } from "./Toast";
+export type { ToastProps } from "./Toast";

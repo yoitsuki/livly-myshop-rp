@@ -6,7 +6,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Eye, EyeOff, Home } from "lucide-react";
 import { db, getSettings, patchSettings, type AppSettings } from "@/lib/db";
 import { describePreset, type CropPreset } from "@/lib/preset";
-import { Button, Field, fieldInputClass } from "@/components/ui";
+import { Button, Field, fieldInputClass, Toast } from "@/components/ui";
 
 const DEFAULT_SETTINGS: AppSettings = {
   id: "singleton",
@@ -199,11 +199,8 @@ export default function SettingsPage() {
         </Button>
       </Link>
 
-      {saved && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-text text-cream text-[12px] shadow-lg">
-          保存しました
-        </div>
-      )}
+      <Toast open={saved} message="保存しました" />
+
     </div>
   );
 }

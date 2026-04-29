@@ -11,7 +11,7 @@ import {
   type Tag,
   type TagType,
 } from "@/lib/db";
-import { Button, Field, inputClass } from "@/components/ui";
+import { Button, Field, inputClass, IconButton } from "@/components/ui";
 
 const TYPE_LABEL: Record<TagType, string> = {
   period: "期間",
@@ -131,13 +131,13 @@ export default function TagsPage() {
                       <span className="text-[11px] text-muted shrink-0 tabular-nums">
                         {count} 件
                       </span>
-                      <button
+                      <IconButton
+                        size="sm"
                         onClick={() => onDelete(tag)}
-                        className="p-1.5 rounded-md text-muted hover:bg-[var(--color-line-soft)] hover:text-text transition-colors"
                         aria-label="削除"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </IconButton>
                     </li>
                   );
                 })}

@@ -9,7 +9,7 @@ import {
   SEED_PRESETS,
   type CropPreset,
 } from "@/lib/preset";
-import { Button } from "@/components/ui";
+import { Button, IconButton } from "@/components/ui";
 
 export default function PresetsPage() {
   const stored = useLiveQuery(() => db().settings.get("singleton"), []);
@@ -81,13 +81,14 @@ export default function PresetsPage() {
               >
                 編集
               </Link>
-              <button
+              <IconButton
+                size="sm"
                 onClick={() => onDelete(p.id)}
-                className="p-1.5 rounded-md text-muted hover:bg-[var(--color-line-soft)] hover:text-text shrink-0 transition-colors"
                 aria-label="削除"
+                className="shrink-0"
               >
                 <Trash2 size={14} />
-              </button>
+              </IconButton>
             </li>
           ))}
         </ul>

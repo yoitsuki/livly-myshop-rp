@@ -21,6 +21,15 @@ export const metadata: Metadata = {
   title: "リヴリー マイショップ 参考価格めも",
   description:
     "リヴリーアイランドのマイショップに並ぶアイテムの参考価格を、画像から取り込んで蓄積するメモアプリ",
+  applicationName: "参考価格めも",
+  appleWebApp: {
+    capable: true,
+    title: "参考価格めも",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {
@@ -28,6 +37,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -8,8 +8,8 @@
   --color-cream: #ffffff;       /* page background — white */
   --color-beige: #c7e9e3;       /* strong divider / accent border — light mint */
   --color-beige-deep: #98d8c8;  /* mint wash */
-  --color-gold: #65a79d;        /* primary accent (CTA, FAB) — deep teal */
-  --color-gold-deep: #3f7b72;   /* darker teal for titles / prices / active */
+  --color-gold: #006a71;        /* primary accent (CTA, FAB) — DEEP TEAL */
+  --color-gold-deep: #004a4f;   /* darker teal for titles / prices / active */
   --color-pink: #ffd6e0;        /* tag: gacha */
   --color-mint: #f1ddb7;        /* tag: category — warm sand so it stays distinct from theme green */
   --color-sky: #c7e9fb;         /* tag: custom */
@@ -29,8 +29,9 @@
 
   --shadow-sm: 0 1px 2px rgba(64, 64, 64, 0.04);
   --shadow-card: 0 1px 3px rgba(64, 64, 64, 0.05);
-  --shadow-focus: 0 0 0 3px rgba(101, 167, 157, 0.15);
-  --shadow-fab: 0 6px 16px -6px rgba(63, 123, 114, 0.4);
+  --shadow-focus: 0 0 0 3px rgba(0, 106, 113, 0.18);
+  --shadow-fab: 0 6px 16px -6px rgba(0, 74, 79, 0.4);
+  --shadow-header: 0 2px 6px -3px rgba(0, 74, 79, 0.12), 0 1px 0 var(--color-line);
 
   --background: var(--color-cream);
   --foreground: var(--color-text);
