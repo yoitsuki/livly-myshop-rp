@@ -6,6 +6,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { Eye, EyeOff, Home } from "lucide-react";
 import { db, getSettings, patchSettings, type AppSettings } from "@/lib/db";
 import { describePreset, type CropPreset } from "@/lib/preset";
+import { Button, Field, fieldInputClass, Toast } from "@/components/ui";
 
 const DEFAULT_SETTINGS: AppSettings = {
   id: "singleton",
@@ -23,8 +24,7 @@ export default function SettingsPage() {
   const stored = useLiveQuery(() => db().settings.get("singleton"), []);
   const settings: AppSettings | undefined = stored ?? DEFAULT_SETTINGS;
   useEffect(() => {
-    // Lazily seed the singleton row so subsequent updates have a target.
-    if (stored === undefined) return; // still loading
+    if (stored === undefined) return;
     if (stored === null) {
       getSettings().catch(() => undefined);
     }
@@ -67,7 +67,7 @@ export default function SettingsPage() {
   const apiKeyValue = keyDraft ?? settings.claudeApiKey ?? "";
 
   return (
-    <div className="pt-3 pb-6 space-y-4">
+    <div className="pt-3 pb-8 space-y-8">
       <Section title="OCR エンジン" hint="画像から文字を抽出する方法を選びます。">
         <div className="grid grid-cols-2 gap-2">
           <RadioCard
@@ -86,8 +86,10 @@ export default function SettingsPage() {
       </Section>
 
       <Section title="Claude API" hint="Claude Vision を使う場合に設定します。">
-        <Field label="API キー (sk-ant-...)">
-          <div className="flex items-center gap-1">
+        <Field label="API キー (sk-ant-…)">
+          <div
+            className={`${fieldInputClass} flex items-center gap-1 px-2 focus-within:border-gold focus-within:shadow-[var(--shadow-focus)]`}
+          >
             <input
               type={showKey ? "text" : "password"}
               value={apiKeyValue}
@@ -98,14 +100,14 @@ export default function SettingsPage() {
                   setKeyDraft(undefined);
                 }
               }}
-              placeholder="sk-ant-..."
-              className="flex-1 min-w-0 bg-transparent outline-none text-[13px] tabular-nums"
+              placeholder="sk-ant-…"
+              className="flex-1 min-w-0 bg-transparent outline-none text-[13px] tabular-nums text-text"
               autoComplete="off"
               spellCheck={false}
             />
             <button
               onClick={() => setShowKey((s) => !s)}
-              className="p-1.5 text-muted"
+              className="p-1.5 text-muted hover:text-text rounded transition-colors"
               aria-label={showKey ? "キーを隠す" : "キーを表示"}
             >
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -116,7 +118,7 @@ export default function SettingsPage() {
           <select
             value={settings.claudeModel ?? "claude-sonnet-4-6"}
             onChange={(e) => update({ claudeModel: e.target.value })}
-            className="w-full bg-transparent outline-none text-[13px]"
+            className={fieldInputClass}
           >
             {CLAUDE_MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -125,26 +127,42 @@ export default function SettingsPage() {
             ))}
           </select>
         </Field>
-        <p className="text-[11px] text-muted px-1">
-          キーは端末内 (IndexedDB) のみに保存されます。送信時は Next.js の Route Handler 経由で Anthropic API に転送します。
+        <p className="text-[11px] text-muted px-1 leading-relaxed">
+          キーは端末内 (IndexedDB) のみに保存されます。送信時は Next.js
+          の Route Handler 経由で Anthropic API に転送します。
         </p>
       </Section>
 
       <Section title="ストレージ">
-        <div className="space-y-1 text-[13px] text-text/85">
-          <div>
-            登録アイテム <span className="font-bold tabular-nums">{itemCount}</span> 件
-            ・タグ <span className="font-bold tabular-nums">{tagCount}</span> 件
+        <div className="space-y-2 text-[13px] text-text/85 px-1">
+          <div className="flex items-baseline gap-3 tabular-nums">
+            <span>
+              <span className="font-bold text-[15px] text-text">
+                {itemCount}
+              </span>
+              <span className="text-muted text-[11px] ml-0.5">items</span>
+            </span>
+            <span className="text-[var(--color-line-strong)]">/</span>
+            <span>
+              <span className="font-bold text-[15px] text-text">
+                {tagCount}
+              </span>
+              <span className="text-muted text-[11px] ml-0.5">tags</span>
+            </span>
           </div>
           {storage && (
-            <div className="text-[12px] text-muted">
-              使用容量{" "}
-              <span className="tabular-nums">{formatBytes(storage.usage)}</span>{" "}
-              / 利用可能{" "}
-              <span className="tabular-nums">{formatBytes(storage.quota)}</span>
-              <div className="mt-1 h-1.5 rounded-full bg-beige/60 overflow-hidden">
+            <div className="text-[12px] text-muted space-y-1">
+              <div className="flex items-baseline justify-between tabular-nums">
+                <span>
+                  使用 {formatBytes(storage.usage)} / {formatBytes(storage.quota)}
+                </span>
+                <span>
+                  {Math.round((storage.usage / storage.quota) * 100)}%
+                </span>
+              </div>
+              <div className="h-1 rounded-full bg-[var(--color-line)] overflow-hidden">
                 <div
-                  className="h-full bg-gold/70"
+                  className="h-full bg-gold"
                   style={{
                     width: `${Math.min(100, (storage.usage / storage.quota) * 100)}%`,
                   }}
@@ -162,34 +180,27 @@ export default function SettingsPage() {
         <CropPresetSummary presets={settings.cropPresets ?? []} />
         <Link
           href="/presets"
-          className="mt-2 inline-flex items-center gap-1 text-[12px] text-gold-deep font-bold underline"
+          className="inline-flex items-center gap-1 text-[12px] text-gold-deep font-bold hover:underline"
         >
-          プリセット管理を開く
+          プリセット管理を開く →
         </Link>
       </Section>
 
       <Section title="クラウド連携 (将来)" hint="Drive バックアップは未実装です。">
         <p className="text-[12px] text-muted px-1 leading-relaxed">
-          現時点では画像とメタデータをすべて端末内 (IndexedDB)
-          に保存しています。
-          <br />
-          後ほど Google Drive バックアップを追加予定です。
+          現時点では画像とメタデータをすべて端末内 (IndexedDB) に保存して
+          います。後ほど Google Drive バックアップを追加予定です。
         </p>
       </Section>
 
-      <Link
-        href="/"
-        className="mt-2 w-full py-3 rounded-full bg-beige/70 text-text/85 font-bold text-center inline-flex items-center justify-center gap-1.5"
-      >
-        <Home size={16} />
-        ホームに戻る
+      <Link href="/" className="block">
+        <Button variant="secondary" size="lg" fullWidth icon={<Home size={16} />}>
+          ホームに戻る
+        </Button>
       </Link>
 
-      {saved && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-text text-cream text-[12px] shadow-lg">
-          保存しました
-        </div>
-      )}
+      <Toast open={saved} message="保存しました" />
+
     </div>
   );
 }
@@ -204,30 +215,17 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-cream border border-beige p-3 space-y-2">
-      <div>
-        <h3 className="text-[14px] font-bold text-text">{title}</h3>
-        {hint && <p className="text-[11px] text-muted mt-0.5">{hint}</p>}
+    <section className="space-y-3">
+      <div className="px-1">
+        <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold-deep">
+          {title}
+        </h3>
+        {hint && (
+          <p className="text-[11px] text-muted mt-0.5 leading-relaxed">{hint}</p>
+        )}
       </div>
-      {children}
+      <div className="space-y-3">{children}</div>
     </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <div className="text-[11px] text-muted font-bold mb-0.5 px-1">{label}</div>
-      <div className="rounded-lg bg-beige/40 border border-beige px-3 py-2">
-        {children}
-      </div>
-    </label>
   );
 }
 
@@ -246,13 +244,15 @@ function RadioCard({
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-xl border p-2.5 transition-colors ${
+      className={`text-left rounded-lg border p-3 transition-all duration-150 ease-out ${
         active
-          ? "border-gold bg-gold/10"
-          : "border-beige bg-cream hover:bg-beige/40"
+          ? "border-gold bg-white shadow-[var(--shadow-focus)]"
+          : "border-[var(--color-line)] bg-white hover:border-[var(--color-line-strong)]"
       }`}
     >
-      <div className={`font-bold text-[13px] ${active ? "text-gold-deep" : "text-text"}`}>
+      <div
+        className={`font-bold text-[13px] ${active ? "text-gold-deep" : "text-text"}`}
+      >
         {label}
       </div>
       <div className="text-[10.5px] text-muted leading-tight mt-0.5">{sub}</div>
@@ -276,13 +276,10 @@ function CropPresetSummary({ presets }: { presets: CropPreset[] }) {
     );
   }
   return (
-    <ul className="space-y-1.5">
+    <ul className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
       {presets.map((p) => (
-        <li
-          key={p.id}
-          className="rounded-lg border border-beige bg-beige/30 px-2.5 py-1.5"
-        >
-          <div className="text-[12.5px] font-bold text-text/90">{p.name}</div>
+        <li key={p.id} className="px-1 py-2">
+          <div className="text-[13px] font-bold text-text">{p.name}</div>
           <div className="text-[10.5px] text-muted">{describePreset(p)}</div>
         </li>
       ))}

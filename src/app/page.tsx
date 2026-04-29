@@ -6,7 +6,9 @@ import { db, latestPriceEntry, type Item } from "@/lib/db";
 import SearchBar from "@/components/SearchBar";
 import ItemCard from "@/components/ItemCard";
 import Fab from "@/components/Fab";
-import { ImageOff, ListFilter } from "lucide-react";
+import { ListFilter, PackageOpen } from "lucide-react";
+import { Button } from "@/components/ui";
+import Link from "next/link";
 
 type SortKey = "checkedAt" | "createdAt" | "price";
 
@@ -40,8 +42,6 @@ export default function Home() {
       list = list.filter((i) => activeTagIds.every((t) => i.tagIds.includes(t)));
     }
     const sorted = [...list];
-    // Sort by the latest price entry's checkedAt / refPriceMin so the home
-    // list always reflects the freshest observation per item.
     if (sort === "checkedAt") {
       sorted.sort(
         (a, b) =>
@@ -96,10 +96,10 @@ export default function Home() {
                     on ? prev.filter((x) => x !== t.id) : [...prev, t.id]
                   )
                 }
-                className={`px-2.5 py-1 rounded-full text-[12px] border transition-colors ${
+                className={`px-2.5 h-7 rounded-md text-[12px] border transition-colors ${
                   on
-                    ? "bg-gold/20 border-gold/60 text-gold-deep font-bold"
-                    : "bg-cream border-beige text-text/80 hover:border-gold/40"
+                    ? "bg-gold text-white border-gold font-bold"
+                    : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
               >
                 #{t.name}
@@ -110,7 +110,9 @@ export default function Home() {
       )}
 
       <div className="flex items-center justify-between text-[12px] text-muted px-1 pt-1">
-        <span>{filtered.length} 件 / 全 {totalCount} 件</span>
+        <span className="tabular-nums">
+          {filtered.length} 件 / 全 {totalCount} 件
+        </span>
         <label className="flex items-center gap-1">
           <ListFilter size={14} />
           <select
@@ -128,7 +130,7 @@ export default function Home() {
       {filtered.length === 0 ? (
         <EmptyState hasItems={totalCount > 0} />
       ) : (
-        <ul className="divide-y divide-beige/70 -mx-2">
+        <ul className="divide-y divide-[var(--color-line)] -mx-2">
           {filtered.map((item) => (
             <li key={item.id}>
               <ItemCard item={item} tags={tags ?? []} />
@@ -154,10 +156,10 @@ function CategoryChip({
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 px-3.5 py-1.5 rounded-full text-[13px] border transition-colors ${
+      className={`shrink-0 px-3.5 h-8 rounded-full text-[13px] border transition-colors ${
         active
           ? "bg-gold text-white border-gold font-bold"
-          : "bg-cream text-text/80 border-beige hover:border-gold/50"
+          : "bg-white text-text/80 border-[var(--color-line)] hover:border-[var(--color-line-strong)]"
       }`}
     >
       {label}
@@ -167,18 +169,29 @@ function CategoryChip({
 
 function EmptyState({ hasItems }: { hasItems: boolean }) {
   return (
-    <div className="mt-8 mx-2 rounded-3xl border-2 border-dashed border-beige bg-cream/60 p-8 text-center">
-      <div className="mx-auto w-16 h-16 rounded-full bg-beige/80 text-muted flex items-center justify-center mb-3">
-        <ImageOff size={28} strokeWidth={1.6} />
-      </div>
+    <div className="mt-12 px-4 py-10 text-center">
+      <PackageOpen
+        size={36}
+        strokeWidth={1.4}
+        className="mx-auto text-muted mb-3"
+      />
       <div className="text-[15px] font-bold text-text">
         {hasItems ? "条件に合うアイテムはありません" : "まだアイテムがありません"}
       </div>
-      <div className="text-[13px] text-muted mt-1.5 leading-relaxed">
+      <div className="text-[12.5px] text-muted mt-1.5 leading-relaxed">
         {hasItems
           ? "検索ワードやフィルタを変更してみてください"
           : "右下の ＋ から、お店のスクショを取り込んで登録しましょう"}
       </div>
+      {!hasItems && (
+        <div className="mt-5 flex justify-center">
+          <Link href="/register" className="inline-block">
+            <Button variant="primary" size="md">
+              新規登録へ
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

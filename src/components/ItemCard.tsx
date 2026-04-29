@@ -9,23 +9,16 @@ import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 
 /**
- * Period badge color tier — anchored on the primary button teal for the
- * newest round, then stepping toward less saturated, near-grey teals for
- * older rounds. Lightness stays constant so older tiers look more muted
- * (not brighter), and white text keeps comfortable contrast on every tier.
- *   index 0 (newest)     → vivid primary teal
- *   index 1 (one before) → muted teal
- *   index 2              → faded teal
- *   index 3 and older    → near-grey teal
- *   unknown              → near-grey teal (same as oldest tier)
+ * Period badge color tier — three steps from a saturated mint (newest)
+ * down to a pale near-white that fades into the background for older
+ * rounds. Older tiers intentionally use a low-contrast gray label so
+ * they recede; freshest stays high-contrast white-on-mint.
  */
 function periodBadgeClass(yearMonth: string): string {
   const idx = roundAgeIndex(yearMonth);
-  if (idx === 0) return "bg-[#15a496] text-white";
-  if (idx === 1) return "bg-[#2e8a81] text-white";
-  if (idx === 2) return "bg-[#427772] text-white";
-  if (idx >= 3) return "bg-[#4e6a67] text-white";
-  return "bg-[#4e6a67] text-white";
+  if (idx === 0) return "bg-[#65a79d] text-white";
+  if (idx === 1) return "bg-[#c7e9e3] text-[#5b6e6a]";
+  return "bg-[#eef5f1] text-[#9eaeaa]";
 }
 
 export default function ItemCard({
@@ -56,9 +49,9 @@ export default function ItemCard({
   return (
     <Link
       href={`/items/${item.id}`}
-      className="flex gap-2.5 px-2 py-1 hover:bg-beige/40 active:bg-beige/60 transition-colors"
+      className="flex gap-3 px-2 py-2.5 hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors"
     >
-      <div className="shrink-0 w-14 h-14 rounded-lg bg-beige/60 border border-beige overflow-hidden flex items-center justify-center text-muted">
+      <div className="shrink-0 w-[60px] h-[60px] rounded-md bg-white border border-[var(--color-line)] overflow-hidden flex items-center justify-center text-muted">
         {thumbUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -71,39 +64,38 @@ export default function ItemCard({
         )}
       </div>
       <div className="min-w-0 flex-1 leading-tight">
-        <h3 className="font-bold text-[14px] text-text break-words">
-          {item.name || "(名称未設定)"}
-        </h3>
-        <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums whitespace-nowrap">
-          <div>
-            <span className="text-muted">参考価格 </span>
-            <span className="text-gold-deep">
-              {latest
-                ? `${formatPrice(latest.refPriceMin)}〜${formatPrice(latest.refPriceMax)} GP`
-                : "—"}
-            </span>
-          </div>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold text-[14px] text-text break-words">
+            {item.name || "(名称未設定)"}
+          </h3>
           {periodLabel && latest?.shopPeriod && (
             <span
-              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] ${periodBadgeClass(latest.shopPeriod.yearMonth)}`}
+              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] tracking-wide ${periodBadgeClass(latest.shopPeriod.yearMonth)}`}
             >
               {periodLabel}
             </span>
           )}
         </div>
+        <div className="mt-1 flex items-baseline gap-1.5 tabular-nums whitespace-nowrap">
+          <span className="text-[11px] text-muted">参考価格</span>
+          <span className="text-[15px] font-bold text-gold-deep">
+            {latest
+              ? `${formatPrice(latest.refPriceMin)}〜${formatPrice(latest.refPriceMax)}`
+              : "—"}
+          </span>
+          <span className="text-[10px] text-muted">GP</span>
+        </div>
         <div className="text-[11px] tabular-nums whitespace-nowrap">
-          <span className="text-muted">最低販売価格 </span>
+          <span className="text-muted">最低価格 </span>
           <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
         </div>
         {(itemTags.length > 0 || latest?.priceSource) && (
-          <div className="flex items-center flex-wrap gap-0.5 mt-px">
+          <div className="flex items-center flex-wrap gap-1 mt-1">
             {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}
             {latest?.priceSource && (
-              <span className="px-1.5 py-px rounded-full text-[10.5px] leading-[15px] font-medium text-text/85 bg-sky whitespace-nowrap">
-                {latest.priceSource}
-              </span>
+              <span className="tag-chip bg-sky">{latest.priceSource}</span>
             )}
           </div>
         )}

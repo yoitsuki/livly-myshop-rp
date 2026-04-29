@@ -1,18 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  /* Turquoise-leaning emerald pastel palette. Class names kept (cream/beige/gold). */
-  --color-cream: #ebf6f4;       /* page background — pale turquoise mist */
-  --color-beige: #c4e6df;       /* row divider / soft chip bg */
-  --color-beige-deep: #8fd0c4;  /* deeper teal wash */
-  --color-gold: #15a496;        /* primary accent (CTA, FAB) — turquoise */
-  --color-gold-deep: #047366;   /* deep teal for titles / prices / active */
+  /* Mint Modern palette: white background with mint/teal accents. Legacy
+   * class names (cream/beige/gold) are preserved for back-compat; only the
+   * values changed. New code should prefer the line / shadow / text tokens
+   * below for hairlines, focus rings, and typography. */
+  --color-cream: #ffffff;       /* page background — white */
+  --color-beige: #c7e9e3;       /* strong divider / accent border — light mint */
+  --color-beige-deep: #98d8c8;  /* mint wash */
+  --color-gold: #006a71;        /* primary accent (CTA, FAB) — DEEP TEAL */
+  --color-gold-deep: #004a4f;   /* darker teal for titles / prices / active */
   --color-pink: #ffd6e0;        /* tag: gacha */
-  --color-mint: #d8f0bf;        /* tag: category — lime so it stays distinct */
+  --color-mint: #f1ddb7;        /* tag: category — warm sand so it stays distinct from theme green */
   --color-sky: #c7e9fb;         /* tag: custom */
   --color-lavender: #e0d6ff;    /* tag: period */
-  --color-text: #053f38;        /* main text — dark teal-forest */
-  --color-muted: #5a8a82;       /* muted — sage-teal */
+  --color-text: #404040;        /* main text — dark gray */
+  --color-muted: #7c8c89;       /* muted — sage-grey */
+
+  /* Step-1 design tokens. Hairlines and hover washes are intentionally
+   * neutral grey: green is reserved for true accents (primary CTA, focus
+   * ring, active drawer item, period badges) so a screenful of borders
+   * doesn't read as a wash of mint. */
+  --color-line: #ebebeb;        /* hairline divider / default field border */
+  --color-line-strong: #d6d6d6; /* one step stronger neutral */
+  --color-line-soft: #f6f6f6;   /* hover wash for cards / rows */
+  --color-danger: #c46070;      /* error border / danger text */
+  --color-danger-soft: #fdf3f5; /* danger button bg */
+
+  --shadow-sm: 0 1px 2px rgba(64, 64, 64, 0.04);
+  --shadow-card: 0 1px 3px rgba(64, 64, 64, 0.05);
+  --shadow-focus: 0 0 0 3px rgba(0, 106, 113, 0.18);
+  --shadow-fab: 0 6px 16px -6px rgba(0, 74, 79, 0.4);
+  --shadow-header: 0 2px 6px -3px rgba(0, 74, 79, 0.12), 0 1px 0 var(--color-line);
 
   --background: var(--color-cream);
   --foreground: var(--color-text);
@@ -32,9 +51,13 @@
   --color-lavender: var(--color-lavender);
   --color-text: var(--color-text);
   --color-muted: var(--color-muted);
-  --font-sans: var(--font-rounded), "Hiragino Maru Gothic ProN",
-    "ヒラギノ丸ゴ ProN", "Meiryo", system-ui, sans-serif;
-  --font-display: var(--font-rounded), serif;
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+  --color-line-soft: var(--color-line-soft);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --font-sans: var(--font-inter), var(--font-noto-jp), system-ui, sans-serif;
+  --font-display: var(--font-inter), var(--font-noto-jp), system-ui, sans-serif;
 }
 
 html,
@@ -44,16 +67,17 @@ body {
 }
 
 body {
-  font-family: var(--font-rounded), "Hiragino Maru Gothic ProN",
-    "ヒラギノ丸ゴ ProN", "Meiryo", system-ui, sans-serif;
+  font-family: var(--font-inter), var(--font-noto-jp), system-ui,
+    "Hiragino Sans", "Meiryo", sans-serif;
+  font-feature-settings: "palt";
 }
 
-/* Subtle paper texture for cards */
+/* Subtle paper texture for cards (kept for back-compat; unused in Step 1). */
 .paper {
   background-color: var(--color-cream);
   background-image:
-    radial-gradient(rgba(4, 115, 102, 0.05) 1px, transparent 1px),
-    radial-gradient(rgba(4, 115, 102, 0.03) 1px, transparent 1px);
+    radial-gradient(rgba(101, 167, 157, 0.06) 1px, transparent 1px),
+    radial-gradient(rgba(101, 167, 157, 0.04) 1px, transparent 1px);
   background-position: 0 0, 8px 8px;
   background-size: 16px 16px;
 }
@@ -65,4 +89,35 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Travel-tag chip: pentagonal silhouette with a notch on the left and a
+ * round eyelet "hole" near the tip. Page background is white, so the
+ * eyelet uses --color-cream to read as transparency at minimal cost.
+ * ──────────────────────────────────────────────────────────────────────── */
+.tag-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 9px 0 15px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--color-text);
+  /* point on the left, 9px deep so the eyelet has room. */
+  clip-path: polygon(9px 0, 100% 0, 100% 100%, 9px 100%, 0 50%);
+}
+.tag-chip::before {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 50%;
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 9999px;
+  background: var(--color-cream);
+  transform: translateY(-50%);
 }

@@ -4,7 +4,7 @@ import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Crop, Loader2, RefreshCw, X } from "lucide-react";
+import { Crop, RefreshCw, X } from "lucide-react";
 import {
   createTag,
   db,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/db";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
+import { Button, Field, inputClass } from "@/components/ui";
 
 interface FormState {
   name: string;
@@ -40,9 +41,6 @@ export default function EditItemPage({
   const [busy, setBusy] = useState<"idle" | "save">("idle");
   const [error, setError] = useState<string | undefined>();
 
-  // Per-slot pending source (a fresh file picked this session) and pending
-  // crop result (output of the cropper). Nothing here is written to IndexedDB
-  // until the user presses 保存; cancel/back simply discards it all.
   const [iconSource, setIconSource] = useState<Blob | undefined>();
   const [mainSource, setMainSource] = useState<Blob | undefined>();
   const [pendingIcon, setPendingIcon] = useState<
@@ -152,10 +150,6 @@ export default function EditItemPage({
     setError(undefined);
     setBusy("save");
     try {
-      // Apply every change in a single transaction with one read + one put.
-      // Splitting into multiple transactions causes Safari/Chrome to throw
-      // "Error preparing Blob/File data..." when sibling Blobs survive a
-      // record across transaction boundaries.
       await db().transaction("rw", db().items, async () => {
         const current = await db().items.get(i.id);
         if (!current) throw new Error("アイテムが見つかりませんでした");
@@ -201,7 +195,7 @@ export default function EditItemPage({
   };
 
   return (
-    <div className="pt-3 pb-6 space-y-4">
+    <div className="pt-3 pb-8 space-y-5">
       <input
         ref={iconFileInput}
         type="file"
@@ -244,14 +238,14 @@ export default function EditItemPage({
           }
         />
       </div>
-      <p className="text-[11px] text-muted px-1 -mt-2">
-        「ファイル」で画像を選び直すか、「切り抜き」で現在の画像を
-        微調整できます。保存ボタンを押すまでは反映されません。
+      <p className="text-[11px] text-muted px-1 -mt-2 leading-relaxed">
+        「ファイル」で画像を選び直すか、「切り抜き」で現在の画像を微調整できます。
+        保存ボタンを押すまでは反映されません。
         マイショップごとの参考価格は詳細画面から追加・編集します。
       </p>
 
       {error && (
-        <div className="rounded-xl bg-pink/40 border border-pink px-3 py-2 text-[13px]">
+        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
@@ -260,7 +254,7 @@ export default function EditItemPage({
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="w-full bg-transparent outline-none text-[15px] font-bold text-text"
+          className={`${inputClass()} font-bold text-[15px]`}
         />
       </Field>
 
@@ -268,7 +262,7 @@ export default function EditItemPage({
         <input
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value })}
-          className="w-full bg-transparent outline-none text-[14px] text-text"
+          className={inputClass()}
           list="cat-suggestions-edit"
         />
         <CategorySuggestions />
@@ -281,7 +275,7 @@ export default function EditItemPage({
           onChange={(e) =>
             setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
           }
-          className="w-full bg-transparent outline-none text-[14px] text-text tabular-nums"
+          className={`${inputClass()} tabular-nums`}
         />
       </Field>
 
@@ -292,26 +286,22 @@ export default function EditItemPage({
       />
 
       <div className="flex gap-2 pt-2">
-        <Link
-          href={`/items/${i.id}`}
-          className="flex-1 py-3 rounded-full bg-beige/70 text-text/80 font-bold text-center"
-        >
-          キャンセル
+        <Link href={`/items/${i.id}`} className="flex-1">
+          <Button variant="secondary" size="lg" fullWidth>
+            キャンセル
+          </Button>
         </Link>
-        <button
-          onClick={onSave}
-          disabled={busy === "save"}
-          className="flex-[2] py-3 rounded-full bg-gold text-white font-bold disabled:opacity-50 active:bg-gold-deep"
-        >
-          {busy === "save" ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Loader2 size={14} className="animate-spin" />
-              保存中…
-            </span>
-          ) : (
-            "保存"
-          )}
-        </button>
+        <div className="flex-[2]">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={onSave}
+            loading={busy === "save"}
+          >
+            {busy === "save" ? "保存中…" : "保存"}
+          </Button>
+        </div>
       </div>
 
       <ImageCropper
@@ -359,8 +349,8 @@ function SlotPreview({
   onClear?: () => void;
 }) {
   return (
-    <div className="relative rounded-xl border border-beige bg-cream overflow-hidden">
-      <div className="aspect-square bg-beige/40 flex items-center justify-center text-muted">
+    <div className="relative rounded-lg border border-[var(--color-line)] bg-white overflow-hidden">
+      <div className="aspect-square bg-[var(--color-line-soft)] flex items-center justify-center text-muted">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
@@ -368,14 +358,14 @@ function SlotPreview({
           <Crop size={28} strokeWidth={1.6} />
         )}
       </div>
-      <div className="px-2 py-1 text-[12px] font-bold text-text/80 text-center">
+      <div className="px-2 pt-1.5 text-[11px] font-medium text-text/80 text-center tracking-wide">
         {label}
       </div>
-      <div className="border-t border-beige flex divide-x divide-beige">
+      <div className="border-t border-[var(--color-line)] mt-1 flex divide-x divide-[var(--color-line)]">
         <button
           type="button"
           onClick={onPick}
-          className="flex-1 py-1.5 text-[11px] text-text/70 inline-flex items-center justify-center gap-1"
+          className="flex-1 py-1.5 text-[11px] text-text/70 hover:text-text hover:bg-[var(--color-line-soft)] inline-flex items-center justify-center gap-1 transition-colors"
         >
           <RefreshCw size={11} />
           ファイル
@@ -383,7 +373,7 @@ function SlotPreview({
         <button
           type="button"
           onClick={onClickCrop}
-          className="flex-1 py-1.5 text-[11px] text-text/70 inline-flex items-center justify-center gap-1"
+          className="flex-1 py-1.5 text-[11px] text-text/70 hover:text-text hover:bg-[var(--color-line-soft)] inline-flex items-center justify-center gap-1 transition-colors"
         >
           <Crop size={11} />
           切り抜き
@@ -397,34 +387,12 @@ function SlotPreview({
             onClear();
           }}
           aria-label={`${label}を削除`}
-          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-cream flex items-center justify-center hover:bg-text"
+          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-white flex items-center justify-center hover:bg-text transition-colors"
         >
           <X size={14} strokeWidth={2.6} />
         </button>
       )}
     </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">{label}</span>
-        {required && <span className="text-[11px] text-gold-deep">*</span>}
-      </div>
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2">
-        {children}
-      </div>
-    </label>
   );
 }
 
@@ -473,11 +441,8 @@ function TagPicker({
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="text-[12px] text-muted font-bold">タグ</span>
-      </div>
-      <div className="rounded-xl bg-cream border border-beige px-3 py-2 space-y-2">
+    <Field label="タグ">
+      <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {tags.map((t) => {
             const on = selected.includes(t.id);
@@ -486,10 +451,10 @@ function TagPicker({
                 key={t.id}
                 type="button"
                 onClick={() => toggle(t.id)}
-                className={`px-2 py-px rounded-full text-[11px] border transition-colors ${
+                className={`px-2.5 h-7 rounded-md text-[12px] border transition-colors ${
                   on
-                    ? "bg-gold/15 border-gold text-gold-deep font-bold"
-                    : "bg-cream border-beige text-text/70"
+                    ? "bg-gold text-white border-gold font-bold"
+                    : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
               >
                 #{t.name}
@@ -500,7 +465,7 @@ function TagPicker({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="px-2 py-px rounded-full text-[11px] border border-dashed border-beige-deep text-muted"
+              className="px-2.5 h-7 rounded-md text-[12px] border border-dashed border-[var(--color-line-strong)] text-muted hover:text-text hover:border-gold/60 transition-colors"
             >
               ＋ 新規タグ
             </button>
@@ -513,7 +478,7 @@ function TagPicker({
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="タグ名"
-              className="flex-1 min-w-0 px-2 py-1 rounded-md bg-beige/40 outline-none text-[13px]"
+              className={`${inputClass({ fullWidth: false })} flex-1 min-w-0 h-9`}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -524,24 +489,20 @@ function TagPicker({
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value as TagType)}
-              className="px-2 py-1 rounded-md bg-beige/40 text-[12px] outline-none"
+              className={`${inputClass({ fullWidth: false })} w-24 shrink-0 h-9 text-[12px]`}
             >
               <option value="period">期間</option>
               <option value="gacha">ガチャ</option>
               <option value="category">分類</option>
               <option value="custom">カスタム</option>
             </select>
-            <button
-              type="button"
-              onClick={add}
-              className="px-3 py-1 rounded-md bg-gold text-white text-[12px] font-bold"
-            >
+            <Button onClick={add} size="sm">
               追加
-            </button>
+            </Button>
           </div>
         )}
         {selected.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1 border-t border-beige/50">
+          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[var(--color-line)]">
             {tags
               .filter((t) => selected.includes(t.id))
               .map((t) => (
@@ -550,6 +511,6 @@ function TagPicker({
           </div>
         )}
       </div>
-    </div>
+    </Field>
   );
 }

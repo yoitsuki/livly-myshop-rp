@@ -11,6 +11,7 @@ import {
   type Tag,
   type TagType,
 } from "@/lib/db";
+import { Button, Field, inputClass, IconButton } from "@/components/ui";
 
 const TYPE_LABEL: Record<TagType, string> = {
   period: "期間",
@@ -75,9 +76,8 @@ export default function TagsPage() {
   };
 
   return (
-    <div className="pt-3 pb-6 space-y-4">
-      <div className="rounded-2xl bg-cream border border-beige p-3 space-y-2">
-        <div className="text-[12px] text-muted font-bold px-1">新しいタグ</div>
+    <div className="pt-3 pb-8 space-y-6">
+      <Field label="新しいタグ">
         <div className="flex items-center gap-1.5">
           <input
             value={name}
@@ -89,12 +89,12 @@ export default function TagsPage() {
               }
             }}
             placeholder="タグ名"
-            className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-beige/40 outline-none text-[14px]"
+            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0`}
           />
           <select
             value={type}
             onChange={(e) => setType(e.target.value as TagType)}
-            className="px-2 py-2 rounded-lg bg-beige/40 text-[12px] outline-none"
+            className={`${inputClass({ fullWidth: false })} w-24 shrink-0`}
           >
             {TYPE_ORDER.map((t) => (
               <option key={t} value={t}>
@@ -102,45 +102,42 @@ export default function TagsPage() {
               </option>
             ))}
           </select>
-          <button
-            onClick={onAdd}
-            className="px-4 py-2 rounded-lg bg-gold text-white text-[13px] font-bold"
-          >
+          <Button onClick={onAdd} size="md" variant="primary">
             追加
-          </button>
+          </Button>
         </div>
-      </div>
+      </Field>
 
-      <div className="space-y-3">
+      <div className="space-y-5">
         {TYPE_ORDER.map((t) => {
           const list = grouped.get(t) ?? [];
           if (list.length === 0) return null;
           return (
-            <section key={t}>
-              <h3 className="text-[12px] text-muted font-bold px-1 mb-1">
+            <section key={t} className="space-y-1">
+              <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold-deep px-1">
                 {TYPE_LABEL[t]}
               </h3>
-              <ul className="rounded-2xl bg-cream border border-beige divide-y divide-beige/70 overflow-hidden">
+              <ul className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
                 {list.map((tag) => {
                   const count = usageCount.get(tag.id) ?? 0;
                   return (
                     <li
                       key={tag.id}
-                      className="flex items-center gap-2 px-3 py-2"
+                      className="flex items-center gap-2 px-2 py-2.5"
                     >
                       <span className="flex-1 min-w-0 truncate text-[14px] text-text">
                         #{tag.name}
                       </span>
-                      <span className="text-[11px] text-muted shrink-0">
-                        {count}件
+                      <span className="text-[11px] text-muted shrink-0 tabular-nums">
+                        {count} 件
                       </span>
-                      <button
+                      <IconButton
+                        size="sm"
                         onClick={() => onDelete(tag)}
-                        className="p-1.5 rounded-md text-muted hover:bg-beige/50"
                         aria-label="削除"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </IconButton>
                     </li>
                   );
                 })}
@@ -157,12 +154,10 @@ export default function TagsPage() {
         )}
       </div>
 
-      <Link
-        href="/"
-        className="mt-4 w-full py-3 rounded-full bg-beige/70 text-text/85 font-bold text-center inline-flex items-center justify-center gap-1.5"
-      >
-        <Home size={16} />
-        ホームに戻る
+      <Link href="/" className="block">
+        <Button variant="secondary" size="lg" fullWidth icon={<Home size={16} />}>
+          ホームに戻る
+        </Button>
       </Link>
     </div>
   );

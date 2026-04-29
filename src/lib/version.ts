@@ -107,5 +107,78 @@
  *        and exposes an OCR button that fills only the reference-
  *        price fields. Dexie schema bumps to v4; pre-launch upgrade
  *        clears existing items per user request.
+ * 0.6.2  Color scheme switches to a "Mint Modern" palette: page
+ *        background is now plain white, with mint/teal accents
+ *        (#65a79d primary, #98d8c8 wash, #c7e9e3 chip / divider) and
+ *        a neutral dark-gray text (#404040). Period badges, FAB
+ *        shadow, cropper stroke, and the PWA theme color all switch
+ *        to teals derived from the new primary. Tag-type pastels
+ *        keep their distinct hues (the category swatch shifts to a
+ *        warm sand so it no longer collides with the new green
+ *        accents). CSS variable names (cream / beige / gold) are
+ *        unchanged — only the values move.
+ * 0.7.0  Visual-language refresh — Step 1: typeface swaps from
+ *        M PLUS Rounded 1c to Inter + Noto Sans JP for a smarter,
+ *        more modern feel. New design tokens (--color-line,
+ *        --color-line-soft, --shadow-focus, --shadow-fab) replace
+ *        the cream-on-cream container look with white surfaces and
+ *        1px hairline dividers. Adds Button / Field / Card UI
+ *        primitives under src/components/ui/; CTAs move from
+ *        rounded-full to rounded-2xl, while pill / circle shapes
+ *        stay only on true round elements (FAB, period badges,
+ *        category tabs). Inputs gain visible borders + focus rings.
+ *        TagChip becomes a luggage-tag silhouette with a notched
+ *        left edge and a circular eyelet hole. Header drops the
+ *        cream wash + double title for a tighter single-line
+ *        version with a scroll-driven hairline; the drawer drops
+ *        the "R" avatar in favor of the wordmark and uses a
+ *        left-bar active indicator. Migrated surfaces: home,
+ *        item detail, price add / edit; remaining pages
+ *        (register, item edit, presets, tags, settings) keep
+ *        the legacy look until Step 2.
+ * 0.7.1  Tone down 0.7.0: hairline tokens (--color-line / -strong /
+ *        -soft) drop their mint tint and become neutral greys so a
+ *        screenful of borders no longer reads as a wash of green —
+ *        mint is reserved for actual accents (primary CTA, FAB,
+ *        focus ring, active drawer item, period badges). Border
+ *        radius scale halves: rounded-2xl → rounded-lg (cards,
+ *        buttons md/lg), rounded-xl → rounded-md (inputs, search
+ *        bar, header buttons, sm buttons). Pills stay only on true
+ *        round elements (FAB, period badges, category tabs).
+ * 0.8.0  Visual-language refresh — Step 2: migrates the remaining
+ *        screens (/register, /items/[id]/edit, /tags, /settings,
+ *        /presets list + form) and ImageCropper to the new
+ *        primitives. The legacy "yellow fill = auto-filled" indicator
+ *        is replaced with a mint border (border-gold) on the input
+ *        itself plus a small Sparkles label adornment, so the green
+ *        accent meaningfully marks fields the user should verify.
+ *        Field shells drop the cream-on-cream containerization in
+ *        favor of white inputs with neutral hairlines and mint focus
+ *        rings. ImageCropper overlay shifts to a deep teal tint and
+ *        handles become white with gold-deep stroke for cohesion.
+ *        Footer "ホームに戻る" links use the secondary Button.
+ * 0.8.1  Fix the inline tag-add form (and similar flex layouts in
+ *        /tags, PresetForm, and the price-entry shop-period select)
+ *        where `inputClass()`'s default w-full collided with `flex-1`
+ *        and squashed the leftmost input. inputClass now accepts a
+ *        `fullWidth` option (default true); callers that size the
+ *        control inside a flex parent pass `fullWidth: false` plus
+ *        their own width / flex utilities.
+ * 0.9.0  Primary accent green swaps from MINT MODERN #65a79d to
+ *        DEEP TEAL #006a71 (gold-deep follows to #004a4f). Focus ring,
+ *        FAB shadow, and PWA theme color follow the deeper teal. New
+ *        scroll-driven header shadow (--shadow-header) replaces the
+ *        bare hairline. Period badges collapse from four tiers (steady
+ *        white text on graduated greys) to three (saturated mint +
+ *        white → light mint + soft gray → pale near-white + faint
+ *        gray) so the freshest round visibly leads the older ones.
+ *        Home list relabels REF → 参考価格 and 最低 → 最低価格 for
+ *        clarity. Adds Badge / IconButton / Toast primitives under
+ *        src/components/ui/; wires Toast into /settings save feedback
+ *        and IconButton into the per-row delete buttons in detail /
+ *        tags / presets. PWA manifest (src/app/manifest.ts) ships with
+ *        short_name / theme_color / standalone display, plus an
+ *        apple-mobile-web-app meta and a /public/icon.svg for the home
+ *        screen.
  */
-export const APP_VERSION = "0.6.1";
+export const APP_VERSION = "0.9.0";

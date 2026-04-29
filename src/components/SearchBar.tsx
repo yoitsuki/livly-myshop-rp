@@ -12,14 +12,18 @@ export default function SearchBar({
   placeholder?: string;
 }) {
   return (
-    <label className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-beige/70 border border-beige focus-within:border-gold/60 transition-colors">
+    <label
+      className="flex items-center gap-2 px-3 h-11 rounded-md bg-white border border-[var(--color-line)]
+        focus-within:border-gold focus-within:shadow-[var(--shadow-focus)]
+        transition-all duration-150 ease-out"
+    >
       <Search size={18} className="text-muted shrink-0" strokeWidth={2.2} />
       <input
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted text-[15px] text-text"
+        className="flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted/80 text-[14px] text-text"
       />
     </label>
   );
