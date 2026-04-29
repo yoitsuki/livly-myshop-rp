@@ -20,9 +20,9 @@ const ICON: Record<Tone, typeof CheckCircle2> = {
 };
 
 const TONE_CLASS: Record<Tone, string> = {
-  success: "bg-text text-white",
-  info: "bg-text text-white",
-  warn: "bg-[#7a3a44] text-white",
+  success: "bg-[var(--color-text)] text-white border border-[var(--color-text)]",
+  info: "bg-[var(--color-text)] text-white border border-[var(--color-text)]",
+  warn: "bg-[var(--color-danger)] text-white border border-[var(--color-danger)]",
 };
 
 /**
@@ -44,13 +44,14 @@ export default function Toast({ open, message, tone = "success" }: ToastProps) {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed left-1/2 -translate-x-1/2 z-[60] inline-flex items-center gap-2 px-4 h-10 rounded-md shadow-lg text-[13px] font-medium tabular-nums transition-all duration-200 ease-out ${TONE_CLASS[tone]} ${
+      className={`fixed left-1/2 -translate-x-1/2 z-[60] inline-flex items-center gap-2 px-4 h-10 font-[var(--font-label)] text-[12px] tracking-[0.08em] font-medium tabular-nums transition-all duration-200 ease-out ${TONE_CLASS[tone]} ${
         open
           ? "bottom-6 opacity-100"
           : "bottom-2 opacity-0 pointer-events-none"
       }`}
+      style={{ borderRadius: 0 }}
     >
-      <Icon size={16} strokeWidth={2.2} aria-hidden />
+      <Icon size={16} strokeWidth={1.8} aria-hidden />
       <span>{message}</span>
     </div>
   );

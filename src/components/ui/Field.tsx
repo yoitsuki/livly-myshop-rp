@@ -32,11 +32,11 @@ export default function Field({
           {label && (
             <label
               htmlFor={htmlFor}
-              className="text-[11px] font-medium tracking-[0.06em] uppercase text-muted"
+              className="font-[var(--font-label)] text-[10px] tracking-[0.18em] uppercase text-[var(--color-muted)]"
             >
               {label}
               {required && (
-                <span className="text-gold-deep ml-1" aria-label="必須">
+                <span className="text-[var(--color-gold-deep)] ml-1" aria-label="必須">
                   *
                 </span>
               )}
@@ -47,11 +47,13 @@ export default function Field({
       )}
       {children}
       {error ? (
-        <div className="px-1 text-[11px] text-[var(--color-danger)]">
+        <div className="px-1 font-[var(--font-label)] text-[10.5px] tracking-[0.04em] text-[var(--color-danger)]">
           {error}
         </div>
       ) : hint ? (
-        <div className="px-1 text-[11px] text-muted">{hint}</div>
+        <div className="px-1 font-[var(--font-label)] text-[10.5px] tracking-[0.04em] text-[var(--color-muted)]">
+          {hint}
+        </div>
       ) : null}
     </div>
   );
@@ -89,9 +91,9 @@ export function inputClass(opts?: InputClassOpts): string {
   const width = fullWidth ? "w-full" : "";
   return [
     width,
-    "bg-white border",
+    "bg-white border rounded-none",
     borderColor,
-    "rounded-md px-3",
+    "px-3",
     sizing,
     "text-[14px] text-text placeholder:text-muted/80 outline-none",
     "transition-all duration-150 ease-out",
