@@ -301,7 +301,7 @@ export default function RegisterPage() {
       {!previewUrl ? (
         <button
           onClick={onPick}
-          className="w-full h-32 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-white flex items-center justify-center gap-3 text-text/85 hover:bg-[var(--color-line-soft)] transition-colors duration-150 ease-out"
+          className="w-full h-32 border border-dashed border-[var(--color-line-strong)] bg-white flex items-center justify-center gap-3 text-text/85 hover:bg-[var(--color-line-soft)] transition-colors duration-150 ease-out"
         >
           <ImagePlus size={26} strokeWidth={1.6} className="text-gold-deep" />
           <div className="text-left">
@@ -316,11 +316,11 @@ export default function RegisterPage() {
             <img
               src={previewUrl}
               alt="プレビュー"
-              className="w-full max-h-72 object-contain rounded-lg border border-[var(--color-line)] bg-white"
+              className="w-full max-h-72 object-contain border border-[var(--color-line)] bg-white"
             />
             <button
               onClick={onPick}
-              className="absolute bottom-2 right-2 px-3 h-8 rounded-md bg-white/95 border border-[var(--color-line)] text-[12px] text-text/80 shadow-[var(--shadow-sm)]"
+              className="absolute bottom-2 right-2 px-3 h-8 bg-white/95 border border-[var(--color-line)] text-[12px] text-text/80"
             >
               画像を変更
             </button>
@@ -380,7 +380,7 @@ export default function RegisterPage() {
       )}
 
       {busy !== "idle" && busy !== "save" && (
-        <div className="rounded-md bg-[var(--color-line-soft)] border border-[var(--color-line)] px-3 py-2 flex items-center gap-2 text-[13px] text-text/80">
+        <div className="bg-[var(--color-line-soft)] border border-[var(--color-line)] px-3 py-2 flex items-center gap-2 text-[13px] text-text/80">
           <Loader2 size={16} className="animate-spin shrink-0 text-gold-deep" />
           <span>
             {busy === "load" && "画像を読み込み中…"}
@@ -391,7 +391,7 @@ export default function RegisterPage() {
       )}
 
       {error && (
-        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger)] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
@@ -594,7 +594,7 @@ function CropSlot({
   onClear?: () => void;
 }) {
   return (
-    <div className="relative rounded-lg border border-[var(--color-line)] bg-white overflow-hidden">
+    <div className="relative border border-[var(--color-line)] bg-white overflow-hidden">
       <button type="button" onClick={onClick} className="block w-full">
         <div className="aspect-square bg-[var(--color-line-soft)] flex items-center justify-center text-muted">
           {imageUrl ? (
@@ -621,9 +621,9 @@ function CropSlot({
             onClear();
           }}
           aria-label={`${label}を削除`}
-          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-white flex items-center justify-center hover:bg-text transition-colors"
+          className="absolute top-1 right-1 w-6 h-6 bg-text/85 text-white flex items-center justify-center hover:bg-text transition-colors"
         >
-          <X size={14} strokeWidth={2.6} />
+          <X size={14} strokeWidth={1.8} />
         </button>
       )}
     </div>
@@ -677,7 +677,7 @@ function ShopPeriodField({
             </option>
           ))}
         </select>
-        <div className="inline-flex bg-white border border-[var(--color-line)] rounded-md p-0.5">
+        <div className="inline-flex bg-white border border-[var(--color-line)] p-0.5">
           {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => {
             const active = phase === p;
             return (
@@ -685,7 +685,7 @@ function ShopPeriodField({
                 key={p}
                 type="button"
                 onClick={() => onChange(yearMonth, p)}
-                className={`px-3 h-9 rounded text-[12px] transition-colors ${
+                className={`px-3 h-9 text-[12px] transition-colors ${
                   active
                     ? "bg-gold text-white font-bold"
                     : "text-text/70 hover:text-text"
@@ -756,7 +756,7 @@ function TagPicker({
                 key={t.id}
                 type="button"
                 onClick={() => toggle(t.id)}
-                className={`px-2.5 h-7 rounded-md text-[12px] border transition-colors ${
+                className={`px-2.5 h-7 text-[12px] border transition-colors ${
                   on
                     ? "bg-gold text-white border-gold font-bold"
                     : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
@@ -770,7 +770,7 @@ function TagPicker({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="px-2.5 h-7 rounded-md text-[12px] border border-dashed border-[var(--color-line-strong)] text-muted hover:text-text hover:border-gold/60 transition-colors"
+              className="px-2.5 h-7 text-[12px] border border-dashed border-[var(--color-line-strong)] text-muted hover:text-text hover:border-gold/60 transition-colors"
             >
               ＋ 新規タグ
             </button>

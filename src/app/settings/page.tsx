@@ -107,7 +107,7 @@ export default function SettingsPage() {
             />
             <button
               onClick={() => setShowKey((s) => !s)}
-              className="p-1.5 text-muted hover:text-text rounded transition-colors"
+              className="p-1.5 text-muted hover:text-text transition-colors"
               aria-label={showKey ? "キーを隠す" : "キーを表示"}
             >
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -160,7 +160,7 @@ export default function SettingsPage() {
                   {Math.round((storage.usage / storage.quota) * 100)}%
                 </span>
               </div>
-              <div className="h-1 rounded-full bg-[var(--color-line)] overflow-hidden">
+              <div className="h-1 bg-[var(--color-line)] overflow-hidden">
                 <div
                   className="h-full bg-gold"
                   style={{
@@ -244,9 +244,9 @@ function RadioCard({
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-lg border p-3 transition-all duration-150 ease-out ${
+      className={`text-left border p-3 transition-all duration-150 ease-out ${
         active
-          ? "border-gold bg-white shadow-[var(--shadow-focus)]"
+          ? "border-gold-deep bg-white shadow-[var(--shadow-focus)]"
           : "border-[var(--color-line)] bg-white hover:border-[var(--color-line-strong)]"
       }`}
     >

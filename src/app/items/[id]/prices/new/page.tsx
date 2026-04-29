@@ -89,7 +89,7 @@ export default function NewPriceEntryPage({
       </h2>
 
       {error && (
-        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger)] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}

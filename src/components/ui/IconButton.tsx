@@ -17,7 +17,7 @@ const VARIANT: Record<Variant, string> = {
   subtle:
     "text-text bg-[var(--color-line-soft)] hover:bg-[var(--color-line)]",
   danger:
-    "text-[#a04050] hover:bg-[var(--color-danger-soft)]",
+    "text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]",
 };
 
 const SIZE: Record<Size, string> = {
