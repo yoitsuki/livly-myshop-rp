@@ -5,10 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
-  CalendarDays,
+  Calendar,
   Pencil,
   Plus,
-  Tag as TagIcon,
   Trash2,
 } from "lucide-react";
 import {
@@ -24,13 +23,62 @@ import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
-import { Button, Card, IconButton } from "@/components/ui";
 
-function periodBadgeClass(yearMonth: string): string {
+/** Atelier period badge */
+function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
   const idx = roundAgeIndex(yearMonth);
-  if (idx === 0) return "bg-[#65a79d] text-white";
-  if (idx === 1) return "bg-[#c7e9e3] text-[#5b6e6a]";
-  return "bg-[#eef5f1] text-[#9eaeaa]";
+  const tier = idx <= 0 ? 0 : idx === 1 ? 1 : 2;
+  const label = formatShopPeriod(yearMonth, phase as "ongoing" | "lastDay");
+
+  const tierStyle: React.CSSProperties[] = [
+    { background: "var(--color-gold)", color: "#fff", border: "1px solid var(--color-gold)" },
+    { background: "transparent", color: "var(--color-gold-deep)", border: "1px solid var(--color-gold-deep)" },
+    { background: "transparent", color: "var(--color-muted)", border: "1px solid var(--color-muted)" },
+  ];
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "2px 8px",
+        fontFamily: "var(--font-label)",
+        fontSize: 9.5,
+        fontWeight: 500,
+        letterSpacing: "0.16em",
+        borderRadius: 0,
+        ...tierStyle[tier],
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** Atelier hero image: full-width square with corner ticks */
+function AtelierHero({ src, alt }: { src?: string; alt: string }) {
+  return (
+    <div
+      className="atelier-thumb w-full"
+      style={{ aspectRatio: "1 / 1", padding: 6 }}
+    >
+      <div
+        className="atelier-thumb-inner w-full h-full flex items-center justify-center text-[var(--color-muted)] bg-[var(--color-line-soft)]"
+        style={{ fontSize: 12 }}
+      >
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={alt} className="w-full h-full object-contain bg-white" />
+        ) : (
+          <span>画像が登録されていません</span>
+        )}
+      </div>
+      <span className="atelier-tick atelier-tick--tl" aria-hidden />
+      <span className="atelier-tick atelier-tick--tr" aria-hidden />
+      <span className="atelier-tick atelier-tick--bl" aria-hidden />
+      <span className="atelier-tick atelier-tick--br" aria-hidden />
+    </div>
+  );
 }
 
 export default function ItemDetailPage({
@@ -43,18 +91,8 @@ export default function ItemDetailPage({
   const item = useLiveQuery(() => db().items.get(id), [id]);
   const allTags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
 
-  const iconSrc = item?.iconBlob;
   const mainSrc = item?.mainImageBlob;
-
-  const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (!iconSrc) return setIconUrl(undefined);
-    const url = URL.createObjectURL(iconSrc);
-    setIconUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [iconSrc]);
 
   useEffect(() => {
     if (!mainSrc) return setMainUrl(undefined);
@@ -64,14 +102,21 @@ export default function ItemDetailPage({
   }, [mainSrc]);
 
   if (item === undefined) {
-    return <div className="pt-6 text-center text-muted">読み込み中…</div>;
+    return (
+      <div
+        className="pt-6 text-center text-[var(--color-muted)]"
+        style={{ fontFamily: "var(--font-label)", fontSize: 12, letterSpacing: "0.12em" }}
+      >
+        読み込み中…
+      </div>
+    );
   }
   if (item === null) {
     return (
-      <div className="pt-6 text-center text-muted">
+      <div className="pt-6 text-center text-[var(--color-muted)]">
         アイテムが見つかりませんでした。
         <div className="mt-3">
-          <Link href="/" className="text-gold-deep underline">
+          <Link href="/" className="text-[var(--color-gold-deep)] underline">
             ホームへ戻る
           </Link>
         </div>
@@ -82,6 +127,7 @@ export default function ItemDetailPage({
   const i = item as Item;
   const tags = allTags.filter((t) => i.tagIds.includes(t.id));
   const entries = sortedPriceEntries(i);
+  const serial = String(i.createdAt % 1000).padStart(3, "0");
 
   const onDelete = async () => {
     if (!confirm(`「${i.name}」を削除しますか？`)) return;
@@ -103,83 +149,111 @@ export default function ItemDetailPage({
   };
 
   return (
-    <div className="pt-3 pb-6 space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 w-20 h-20 rounded-lg border border-[var(--color-line)] bg-white overflow-hidden flex items-center justify-center">
-          {iconUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={iconUrl} alt="アイコン" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-[10px] text-muted">no icon</span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[18px] font-bold text-text leading-snug break-words">
-            {i.name}
-          </h2>
+    <div className="pb-8">
+
+      {/* ── Title block ──────────────────────────────────────────── */}
+      <div className="pt-4 pb-3 border-b border-[var(--color-line)]">
+        {/* serial · hairline · category */}
+        <div className="flex items-center gap-2 mb-2">
+          <span
+            className="text-[var(--color-muted)] uppercase"
+            style={{ fontFamily: "var(--font-label)", fontSize: 9, letterSpacing: "0.30em" }}
+          >
+            NO.{serial}
+          </span>
+          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
           {i.category && (
-            <div className="text-[12px] text-muted flex items-center gap-1.5 mt-1">
-              <TagIcon size={12} strokeWidth={2.2} />
+            <span
+              className="text-[var(--color-muted)] shrink-0"
+              style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+            >
               {i.category}
-            </div>
+            </span>
           )}
         </div>
+        {/* item name */}
+        <h2
+          className="text-[var(--color-text)] leading-snug break-words"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 28,
+            fontWeight: 400,
+            letterSpacing: "0.02em",
+            margin: 0,
+          }}
+        >
+          {i.name}
+        </h2>
       </div>
 
-      <Card padding="none" className="overflow-hidden">
-        {mainUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={mainUrl}
-            alt={i.name}
-            className="w-full max-h-[60vh] object-contain bg-white"
-          />
-        ) : (
-          <div className="aspect-[4/3] flex items-center justify-center text-muted text-[12px]">
-            メイン画像が登録されていません
-          </div>
-        )}
-      </Card>
+      {/* ── Hero image ───────────────────────────────────────────── */}
+      <div className="mt-4">
+        <AtelierHero src={mainUrl} alt={i.name} />
+      </div>
 
+      {/* ── Tags ─────────────────────────────────────────────────── */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-[5px] mt-4">
           {tags.map((t) => (
             <TagChip key={t.id} tag={t} />
           ))}
         </div>
       )}
 
-      <Card padding="sm">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[12px] text-muted font-medium">
-            最低価格
-          </span>
-          <span className="text-[18px] font-bold text-text tabular-nums">
-            {formatPrice(i.minPrice)}{" "}
-            <span className="text-[11px] text-muted font-medium">GP</span>
-          </span>
-        </div>
-      </Card>
+      {/* ── MIN PRICE bar ────────────────────────────────────────── */}
+      <div className="flex items-center mt-4 border-t border-b border-[var(--color-line)] py-3">
+        <span
+          className="text-[var(--color-muted)] flex-1 uppercase"
+          style={{ fontFamily: "var(--font-label)", fontSize: 9, letterSpacing: "0.28em" }}
+        >
+          MIN PRICE
+        </span>
+        <span
+          className="w-px h-3 bg-[var(--color-line)] mx-4 shrink-0"
+          aria-hidden
+        />
+        <span
+          className="text-[var(--color-gold-deep)] tabular-nums"
+          style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500 }}
+        >
+          {formatPrice(i.minPrice)}
+        </span>
+        <span
+          className="text-[var(--color-muted)] ml-1.5"
+          style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+        >
+          GP
+        </span>
+      </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-[13px] font-bold text-text/85">
-            マイショップ参考価格 ({entries.length})
-          </h3>
-          <Link href={`/items/${i.id}/prices/new`}>
-            <Button variant="primary" size="sm" icon={<Plus size={14} />}>
-              価格を追加
-            </Button>
+      {/* ── MARKET REFERENCE section ──────────────────────────────── */}
+      <div className="mt-6">
+        {/* section header */}
+        <div className="flex items-center gap-2 mb-0">
+          <span
+            className="text-[var(--color-muted)] uppercase"
+            style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+          >
+            MARKET REFERENCE ({entries.length})
+          </span>
+          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
+          <Link
+            href={`/items/${i.id}/prices/new`}
+            className="shrink-0 flex items-center gap-1 text-[var(--color-gold-deep)] hover:bg-[var(--color-line-soft)] transition-colors px-2 py-1"
+            style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.24em" }}
+          >
+            <Plus size={11} strokeWidth={2} />
+            ADD
           </Link>
         </div>
-        <ul className="space-y-2">
+
+        {/* price entries */}
+        <ul>
           {entries.map((entry) => (
-            <li key={entry.id}>
-              <PriceEntryCard
+            <li key={entry.id} className="border-t border-[var(--color-line)] py-3">
+              <PriceEntryRow
                 entry={entry}
-                onEdit={() =>
-                  router.push(`/items/${i.id}/prices/${entry.id}/edit`)
-                }
+                onEdit={() => router.push(`/items/${i.id}/prices/${entry.id}/edit`)}
                 onDelete={() => onDeleteEntry(entry.id)}
                 deletable={entries.length > 1}
               />
@@ -188,38 +262,51 @@ export default function ItemDetailPage({
         </ul>
       </div>
 
-      <div className="text-[11px] text-muted pt-2 border-t border-[var(--color-line)] tabular-nums">
+      {/* ── Metadata ─────────────────────────────────────────────── */}
+      <div
+        className="mt-4 pt-3 border-t border-[var(--color-line)] text-[var(--color-muted)] tabular-nums"
+        style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
+      >
         登録 {formatDateTime(i.createdAt)}
         {i.updatedAt !== i.createdAt && (
           <> / 更新 {formatDateTime(i.updatedAt)}</>
         )}
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <Button
-          variant="danger"
-          size="lg"
+      {/* ── Action buttons ───────────────────────────────────────── */}
+      <div className="flex gap-2 mt-4">
+        <button
           onClick={onDelete}
-          icon={<Trash2 size={15} />}
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors"
+          style={{
+            fontFamily: "var(--font-label)",
+            fontSize: 10,
+            letterSpacing: "0.24em",
+            borderRadius: 0,
+          }}
         >
-          削除
-        </Button>
-        <Link href={`/items/${i.id}/edit`} className="flex-1">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            icon={<Pencil size={15} />}
-          >
-            編集
-          </Button>
+          <Trash2 size={13} strokeWidth={1.8} />
+          DELETE
+        </button>
+        <Link
+          href={`/items/${i.id}/edit`}
+          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[var(--color-gold-deep)] text-white hover:bg-gold transition-colors"
+          style={{
+            fontFamily: "var(--font-label)",
+            fontSize: 10,
+            letterSpacing: "0.24em",
+            borderRadius: 0,
+          }}
+        >
+          <Pencil size={13} strokeWidth={1.8} />
+          EDIT
         </Link>
       </div>
     </div>
   );
 }
 
-function PriceEntryCard({
+function PriceEntryRow({
   entry,
   onEdit,
   onDelete,
@@ -230,52 +317,80 @@ function PriceEntryCard({
   onDelete: () => void;
   deletable: boolean;
 }) {
-  const periodLabel = entry.shopPeriod
-    ? formatShopPeriod(entry.shopPeriod.yearMonth, entry.shopPeriod.phase)
-    : null;
+  const hasPeriod = !!entry.shopPeriod;
+
   return (
-    <Card padding="sm">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        {periodLabel && entry.shopPeriod ? (
-          <span
-            className={`shrink-0 px-1.5 py-px rounded-full text-[11px] font-bold leading-[16px] ${periodBadgeClass(entry.shopPeriod.yearMonth)}`}
-          >
-            {periodLabel}
-          </span>
+    <div>
+      {/* top row: period badge + actions */}
+      <div className="flex items-center justify-between gap-2">
+        {hasPeriod ? (
+          <PeriodBadge
+            yearMonth={entry.shopPeriod!.yearMonth}
+            phase={entry.shopPeriod!.phase}
+          />
         ) : (
-          <span className="text-[11px] text-muted">時期未指定</span>
+          <span
+            className="text-[var(--color-muted)]"
+            style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
+          >
+            時期未指定
+          </span>
         )}
         <div className="flex items-center gap-0.5">
-          <IconButton size="sm" onClick={onEdit} aria-label="価格を編集">
-            <Pencil size={14} />
-          </IconButton>
-          <IconButton
-            size="sm"
+          <button
+            onClick={onEdit}
+            aria-label="価格を編集"
+            className="w-[26px] h-[26px] flex items-center justify-center text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <Pencil size={13} strokeWidth={1.8} />
+          </button>
+          <button
             onClick={onDelete}
             disabled={!deletable}
             aria-label="価格を削除"
+            className="w-[26px] h-[26px] flex items-center justify-center text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-text)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Trash2 size={14} />
-          </IconButton>
+            <Trash2 size={13} strokeWidth={1.8} />
+          </button>
         </div>
       </div>
-      <div className="text-[13px] tabular-nums mt-1">
-        <span className="text-muted text-[11px] mr-1.5">参考価格</span>
-        <span className="font-bold text-gold-deep text-[15px]">
-          {formatPrice(entry.refPriceMin)}〜{formatPrice(entry.refPriceMax)}
+
+      {/* reference price */}
+      <div className="flex items-baseline gap-1.5 mt-2">
+        <span
+          className="text-[var(--color-muted)] uppercase"
+          style={{ fontFamily: "var(--font-label)", fontSize: 8.5, letterSpacing: "0.28em" }}
+        >
+          REF
         </span>
-        <span className="text-[10px] text-muted ml-1">GP</span>
+        <span
+          className="text-[var(--color-gold-deep)] tabular-nums"
+          style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500 }}
+        >
+          {formatPrice(entry.refPriceMin)}–{formatPrice(entry.refPriceMax)}
+        </span>
+        <span
+          className="text-[var(--color-muted)]"
+          style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+        >
+          GP
+        </span>
       </div>
-      {entry.priceSource && (
-        <div className="text-[11px] text-muted flex items-center gap-1.5 mt-1">
-          情報元
-          <span className="tag-chip bg-sky">{entry.priceSource}</span>
-        </div>
-      )}
-      <div className="text-[10.5px] text-muted flex items-center gap-1 pt-1">
-        <CalendarDays size={11} strokeWidth={2.2} />
-        確認 {formatDateTime(entry.checkedAt)}
+
+      {/* meta: date + source */}
+      <div
+        className="flex items-center gap-1.5 mt-1 text-[var(--color-muted)]"
+        style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
+      >
+        <Calendar size={11} strokeWidth={1.8} />
+        {formatDateTime(entry.checkedAt)}
+        {entry.priceSource && (
+          <>
+            <span className="mx-1 opacity-40">|</span>
+            {entry.priceSource}
+          </>
+        )}
       </div>
-    </Card>
+    </div>
   );
 }

@@ -1,12 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Noto_Sans_JP } from "next/font/google";
+import { Cormorant_Garamond, Inter, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  display: "swap",
+});
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -48,7 +55,7 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${inter.variable} ${notoJp.variable} h-full antialiased`}
+      className={`${cormorant.variable} ${inter.variable} ${notoJp.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-cream text-text">
         <AppShell>{children}</AppShell>

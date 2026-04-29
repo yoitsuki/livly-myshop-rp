@@ -96,11 +96,12 @@ export default function Home() {
                     on ? prev.filter((x) => x !== t.id) : [...prev, t.id]
                   )
                 }
-                className={`px-2.5 h-7 rounded-md text-[12px] border transition-colors ${
+                className={`px-2.5 h-7 text-[12px] border transition-colors ${
                   on
                     ? "bg-gold text-white border-gold font-bold"
                     : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
+                style={{ borderRadius: 0 }}
               >
                 #{t.name}
               </button>
@@ -109,7 +110,10 @@ export default function Home() {
         </div>
       )}
 
-      <div className="flex items-center justify-between text-[12px] text-muted px-1 pt-1">
+      <div
+        className="flex items-center justify-between px-1 pt-1 text-[var(--color-muted)]"
+        style={{ fontFamily: "var(--font-label)", fontSize: 11.5 }}
+      >
         <span className="tabular-nums">
           {filtered.length} 件 / 全 {totalCount} 件
         </span>
@@ -118,7 +122,7 @@ export default function Home() {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="bg-transparent outline-none border-none text-text/80"
+            className="bg-transparent outline-none border-none text-[var(--color-text)]/80"
           >
             <option value="checkedAt">確認日時順</option>
             <option value="createdAt">登録日順</option>
@@ -130,7 +134,7 @@ export default function Home() {
       {filtered.length === 0 ? (
         <EmptyState hasItems={totalCount > 0} />
       ) : (
-        <ul className="divide-y divide-[var(--color-line)] -mx-2">
+        <ul className="-mx-2">
           {filtered.map((item) => (
             <li key={item.id}>
               <ItemCard item={item} tags={tags ?? []} />
@@ -156,11 +160,12 @@ function CategoryChip({
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 px-3.5 h-8 rounded-full text-[13px] border transition-colors ${
+      className={`shrink-0 px-3.5 text-[12.5px] border transition-colors ${
         active
           ? "bg-gold text-white border-gold font-bold"
           : "bg-white text-text/80 border-[var(--color-line)] hover:border-[var(--color-line-strong)]"
       }`}
+      style={{ height: 30, borderRadius: 0, fontFamily: "var(--font-body)" }}
     >
       {label}
     </button>

@@ -8,17 +8,77 @@ import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 
-/**
- * Period badge color tier — three steps from a saturated mint (newest)
- * down to a pale near-white that fades into the background for older
- * rounds. Older tiers intentionally use a low-contrast gray label so
- * they recede; freshest stays high-contrast white-on-mint.
- */
-function periodBadgeClass(yearMonth: string): string {
+/** Atelier period badge — 3 tiers based on round age. */
+function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
   const idx = roundAgeIndex(yearMonth);
-  if (idx === 0) return "bg-[#65a79d] text-white";
-  if (idx === 1) return "bg-[#c7e9e3] text-[#5b6e6a]";
-  return "bg-[#eef5f1] text-[#9eaeaa]";
+  const tier = idx <= 0 ? 0 : idx === 1 ? 1 : 2;
+  const label = formatShopPeriod(yearMonth, phase as "ongoing" | "lastDay");
+
+  const styles: Record<number, React.CSSProperties> = {
+    0: {
+      background: "var(--color-gold)",
+      color: "#ffffff",
+      border: "1px solid var(--color-gold)",
+    },
+    1: {
+      background: "transparent",
+      color: "var(--color-gold-deep)",
+      border: "1px solid var(--color-gold-deep)",
+    },
+    2: {
+      background: "transparent",
+      color: "var(--color-muted)",
+      border: "1px solid var(--color-muted)",
+    },
+  };
+
+  return (
+    <span
+      className="shrink-0 inline-flex items-center px-2 leading-none whitespace-nowrap"
+      style={{
+        fontFamily: "var(--font-label)",
+        fontSize: 9.5,
+        fontWeight: 500,
+        letterSpacing: "0.16em",
+        padding: "2px 8px",
+        borderRadius: 0,
+        ...styles[tier],
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** Thumb with Atelier corner-tick frame */
+function AtelierThumb({
+  src,
+  alt,
+  size,
+}: {
+  src?: string;
+  alt: string;
+  size: number;
+}) {
+  return (
+    <div
+      className="atelier-thumb shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <div className="atelier-thumb-inner w-full h-full flex items-center justify-center text-[var(--color-muted)]">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={alt} className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon size={size > 60 ? 22 : 18} strokeWidth={1.4} />
+        )}
+      </div>
+      <span className="atelier-tick atelier-tick--tl" aria-hidden />
+      <span className="atelier-tick atelier-tick--tr" aria-hidden />
+      <span className="atelier-tick atelier-tick--bl" aria-hidden />
+      <span className="atelier-tick atelier-tick--br" aria-hidden />
+    </div>
+  );
 }
 
 export default function ItemCard({
@@ -42,61 +102,131 @@ export default function ItemCard({
   }, [thumbSource]);
 
   const latest = latestPriceEntry(item);
-  const periodLabel = latest?.shopPeriod
-    ? formatShopPeriod(latest.shopPeriod.yearMonth, latest.shopPeriod.phase)
-    : null;
+
+  /* Short decorative serial derived from creation timestamp */
+  const serial = String(item.createdAt % 1000).padStart(3, "0");
 
   return (
     <Link
       href={`/items/${item.id}`}
-      className="flex gap-3 px-2 py-2.5 hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors"
+      className="atelier-row flex gap-3.5 px-3.5 pt-4 pb-4 border-t border-[var(--color-line)] bg-white"
     >
-      <div className="shrink-0 w-[60px] h-[60px] rounded-md bg-white border border-[var(--color-line)] overflow-hidden flex items-center justify-center text-muted">
-        {thumbUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbUrl}
-            alt={item.name}
-            className="w-full h-full object-cover"
+      <AtelierThumb src={thumbUrl} alt={item.name} size={64} />
+
+      <div className="min-w-0 flex-1" style={{ paddingTop: 1 }}>
+        {/* meta row: serial · hairline · period badge */}
+        <div className="flex items-center gap-2 mb-[5px]">
+          <span
+            className="text-[var(--color-muted)] uppercase"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 9,
+              letterSpacing: "0.30em",
+            }}
+          >
+            NO.{serial}
+          </span>
+          <span
+            className="h-px flex-1 bg-[var(--color-line)] min-w-[8px]"
+            aria-hidden
           />
-        ) : (
-          <ImageIcon size={20} strokeWidth={1.6} />
-        )}
-      </div>
-      <div className="min-w-0 flex-1 leading-tight">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-[14px] text-text break-words">
-            {item.name || "(名称未設定)"}
-          </h3>
-          {periodLabel && latest?.shopPeriod && (
-            <span
-              className={`shrink-0 px-1.5 py-px rounded-full text-[10px] font-bold leading-[14px] tracking-wide ${periodBadgeClass(latest.shopPeriod.yearMonth)}`}
-            >
-              {periodLabel}
-            </span>
+          {latest?.shopPeriod && (
+            <PeriodBadge
+              yearMonth={latest.shopPeriod.yearMonth}
+              phase={latest.shopPeriod.phase}
+            />
           )}
         </div>
-        <div className="mt-1 flex items-baseline gap-1.5 tabular-nums whitespace-nowrap">
-          <span className="text-[11px] text-muted">参考価格</span>
-          <span className="text-[15px] font-bold text-gold-deep">
+
+        {/* item name — Cormorant serif */}
+        <h3
+          className="text-[var(--color-text)] leading-snug break-words"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 17,
+            fontWeight: 400,
+            letterSpacing: "0.02em",
+            margin: 0,
+          }}
+        >
+          {item.name || "(名称未設定)"}
+        </h3>
+
+        {/* category — wide tracked label */}
+        {item.category && (
+          <div
+            className="text-[var(--color-muted)] mt-0.5"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 9.5,
+              letterSpacing: "0.18em",
+            }}
+          >
+            {item.category}
+          </div>
+        )}
+
+        {/* REF price */}
+        <div className="flex items-baseline gap-1.5 mt-[7px]">
+          <span
+            className="text-[var(--color-muted)] uppercase"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 8.5,
+              letterSpacing: "0.28em",
+            }}
+          >
+            REF
+          </span>
+          <span
+            className="text-[var(--color-gold-deep)] tabular-nums"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 18,
+              fontWeight: 500,
+              letterSpacing: "0.01em",
+            }}
+          >
             {latest
-              ? `${formatPrice(latest.refPriceMin)}〜${formatPrice(latest.refPriceMax)}`
+              ? `${formatPrice(latest.refPriceMin)}–${formatPrice(latest.refPriceMax)}`
               : "—"}
           </span>
-          <span className="text-[10px] text-muted">GP</span>
+          <span
+            className="text-[var(--color-muted)]"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 9,
+              letterSpacing: "0.18em",
+            }}
+          >
+            GP
+          </span>
         </div>
-        <div className="text-[11px] tabular-nums whitespace-nowrap">
-          <span className="text-muted">最低価格 </span>
-          <span className="text-text/70">{formatPrice(item.minPrice)} GP</span>
+
+        {/* MIN price */}
+        <div
+          className="text-[var(--color-muted)] mt-px tabular-nums"
+          style={{
+            fontFamily: "var(--font-label)",
+            fontSize: 10,
+            letterSpacing: "0.06em",
+          }}
+        >
+          <span
+            style={{ letterSpacing: "0.20em", fontSize: 8.5 }}
+            className="uppercase"
+          >
+            MIN
+          </span>{" "}
+          {formatPrice(item.minPrice)} GP
         </div>
-        {(itemTags.length > 0 || latest?.priceSource) && (
-          <div className="flex items-center flex-wrap gap-1 mt-1">
+
+        {/* tags */}
+        {itemTags.length > 0 && (
+          <div className="flex items-center flex-wrap gap-[5px] mt-[7px]">
             {itemTags.map((t) => (
               <TagChip key={t.id} tag={t} />
             ))}
-            {latest?.priceSource && (
-              <span className="tag-chip bg-sky">{latest.priceSource}</span>
-            )}
           </div>
         )}
       </div>

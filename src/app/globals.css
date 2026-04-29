@@ -1,37 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  /* Mint Modern palette: white background with mint/teal accents. Legacy
-   * class names (cream/beige/gold) are preserved for back-compat; only the
-   * values changed. New code should prefer the line / shadow / text tokens
-   * below for hairlines, focus rings, and typography. */
-  --color-cream: #ffffff;       /* page background — white */
-  --color-beige: #c7e9e3;       /* strong divider / accent border — light mint */
-  --color-beige-deep: #98d8c8;  /* mint wash */
-  --color-gold: #006a71;        /* primary accent (CTA, FAB) — DEEP TEAL */
-  --color-gold-deep: #004a4f;   /* darker teal for titles / prices / active */
-  --color-pink: #ffd6e0;        /* tag: gacha */
-  --color-mint: #f1ddb7;        /* tag: category — warm sand so it stays distinct from theme green */
-  --color-sky: #c7e9fb;         /* tag: custom */
-  --color-lavender: #e0d6ff;    /* tag: period */
-  --color-text: #404040;        /* main text — dark gray */
-  --color-muted: #7c8c89;       /* muted — sage-grey */
+  /* ── Atelier palette ──────────────────────────────────────────────────── */
+  /* Legacy class names preserved for back-compat; values updated to Atelier. */
+  --color-cream: #ffffff;        /* page bg — pure white */
+  --color-beige: #f5f2ee;        /* subtle warm hover wash */
+  --color-beige-deep: #e7dfd5;   /* stronger warm divider */
+  --color-gold: #006a71;         /* primary — DEEP TEAL (unchanged) */
+  --color-gold-deep: #00494e;    /* deeper teal: headings, prices, active CTA */
+  --color-pink: #f5ede2;         /* tag: gacha */
+  --color-mint: #f1eadd;         /* tag: category */
+  --color-sky: #e4eeed;          /* tag: custom */
+  --color-lavender: #f2ebe2;     /* tag: period */
+  --color-text: #1f1c1a;         /* near-black warm ink */
+  --color-muted: #857769;        /* taupe muted */
 
-  /* Step-1 design tokens. Hairlines and hover washes are intentionally
-   * neutral grey: green is reserved for true accents (primary CTA, focus
-   * ring, active drawer item, period badges) so a screenful of borders
-   * doesn't read as a wash of mint. */
-  --color-line: #ebebeb;        /* hairline divider / default field border */
-  --color-line-strong: #d6d6d6; /* one step stronger neutral */
-  --color-line-soft: #f6f6f6;   /* hover wash for cards / rows */
-  --color-danger: #c46070;      /* error border / danger text */
-  --color-danger-soft: #fdf3f5; /* danger button bg */
+  --color-line: #e7dfd5;         /* warm hairline — Atelier */
+  --color-line-strong: #d0c7b8;  /* stronger warm hairline */
+  --color-line-soft: #f5f2ee;    /* hover wash */
+  --color-danger: #c46070;
+  --color-danger-soft: #fdf3f5;
 
-  --shadow-sm: 0 1px 2px rgba(64, 64, 64, 0.04);
-  --shadow-card: 0 1px 3px rgba(64, 64, 64, 0.05);
-  --shadow-focus: 0 0 0 3px rgba(0, 106, 113, 0.18);
-  --shadow-fab: 0 6px 16px -6px rgba(0, 74, 79, 0.4);
-  --shadow-header: 0 2px 6px -3px rgba(0, 74, 79, 0.12), 0 1px 0 var(--color-line);
+  --color-accent: #b09c90;       /* soft taupe accent */
+  --color-accent-soft: #f2ebe2;
+
+  /* Atelier: no shadows */
+  --shadow-sm: none;
+  --shadow-card: none;
+  --shadow-focus: 0 0 0 2px rgba(0, 106, 113, 0.22);
+  --shadow-fab: none;
+  --shadow-header: 0 1px 0 var(--color-line);
+
+  /* Font semantic aliases — used in component styles */
+  --font-display: var(--font-cormorant), "Noto Serif JP", serif;
+  --font-body: var(--font-noto-jp), "Noto Sans JP", system-ui, sans-serif;
+  --font-label: var(--font-inter), system-ui, sans-serif;
 
   --background: var(--color-cream);
   --foreground: var(--color-text);
@@ -56,8 +59,9 @@
   --color-line-soft: var(--color-line-soft);
   --color-danger: var(--color-danger);
   --color-danger-soft: var(--color-danger-soft);
-  --font-sans: var(--font-inter), var(--font-noto-jp), system-ui, sans-serif;
-  --font-display: var(--font-inter), var(--font-noto-jp), system-ui, sans-serif;
+  --color-accent: var(--color-accent);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 html,
@@ -67,19 +71,8 @@ body {
 }
 
 body {
-  font-family: var(--font-inter), var(--font-noto-jp), system-ui,
-    "Hiragino Sans", "Meiryo", sans-serif;
+  font-family: var(--font-body), "Hiragino Sans", "Meiryo", sans-serif;
   font-feature-settings: "palt";
-}
-
-/* Subtle paper texture for cards (kept for back-compat; unused in Step 1). */
-.paper {
-  background-color: var(--color-cream);
-  background-image:
-    radial-gradient(rgba(101, 167, 157, 0.06) 1px, transparent 1px),
-    radial-gradient(rgba(101, 167, 157, 0.04) 1px, transparent 1px);
-  background-position: 0 0, 8px 8px;
-  background-size: 16px 16px;
 }
 
 /* Hide scrollbar for horizontal chip rows */
@@ -91,33 +84,38 @@ body {
   scrollbar-width: none;
 }
 
-/* ────────────────────────────────────────────────────────────────────────
- * Travel-tag chip: pentagonal silhouette with a notch on the left and a
- * round eyelet "hole" near the tip. Page background is white, so the
- * eyelet uses --color-cream to read as transparency at minimal cost.
- * ──────────────────────────────────────────────────────────────────────── */
-.tag-chip {
+/* ── Atelier: corner-tick thumbnail frame ──────────────────────────────── */
+.atelier-thumb {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 9px 0 15px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--color-text);
-  /* point on the left, 9px deep so the eyelet has room. */
-  clip-path: polygon(9px 0, 100% 0, 100% 100%, 9px 100%, 0 50%);
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid var(--color-line);
+  border-radius: 0;
+  flex-shrink: 0;
+  overflow: visible;
 }
-.tag-chip::before {
-  content: "";
+.atelier-thumb > .atelier-thumb-inner {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 0.5px solid var(--color-line);
+}
+/* Four corner-tick spans rendered by the component */
+.atelier-tick {
   position: absolute;
-  left: 4.5px;
-  top: 50%;
-  width: 3.5px;
-  height: 3.5px;
-  border-radius: 9999px;
-  background: var(--color-cream);
-  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  pointer-events: none;
+}
+.atelier-tick--tl { top: -1px; left: -1px; border-top: 1px solid var(--color-gold-deep); border-left: 1px solid var(--color-gold-deep); }
+.atelier-tick--tr { top: -1px; right: -1px; border-top: 1px solid var(--color-gold-deep); border-right: 1px solid var(--color-gold-deep); }
+.atelier-tick--bl { bottom: -1px; left: -1px; border-bottom: 1px solid var(--color-gold-deep); border-left: 1px solid var(--color-gold-deep); }
+.atelier-tick--br { bottom: -1px; right: -1px; border-bottom: 1px solid var(--color-gold-deep); border-right: 1px solid var(--color-gold-deep); }
+
+/* ── Atelier: hairline list row hover ──────────────────────────────────── */
+.atelier-row {
+  transition: background 80ms ease-out;
+}
+.atelier-row:hover {
+  background: var(--color-line-soft);
 }
