@@ -229,5 +229,15 @@
  *        main has overflow-x-hidden as a safety net.
  *        Decorative NO.### serial removed from list rows + detail
  *        title (no real numbering exists in the data).
+ * 0.11.0 Tag taxonomy reframed: TagType becomes
+ *        ガチャ / バザール / ショップ / その他 (gacha/bazaar/shop/other),
+ *        replacing period/gacha/category/custom across the registration,
+ *        edit, and tags screens. TagChip color map and tags-page
+ *        groupings update in lockstep. Dexie bumps to v5 with an
+ *        upgrade that maps any existing tag.type values
+ *        (period/category/custom → other; gacha kept as-is) so prior
+ *        data keeps rendering. AppHeader's LIVLY / MY-SHOP REF wordmark
+ *        is now a Link to "/" so a top-left tap returns to home from
+ *        anywhere; the back arrow on detail pages is unchanged.
  */
-export const APP_VERSION = "0.10.0";
+export const APP_VERSION = "0.11.0";

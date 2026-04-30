@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Menu } from "lucide-react";
 
@@ -31,7 +32,11 @@ export default function AppHeader({
           </button>
         ) : null}
 
-        <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+        <Link
+          href="/"
+          aria-label="ホームに戻る"
+          className="flex-1 min-w-0 flex flex-col gap-[3px] -my-1 py-1"
+        >
           <span
             className="text-[22px] leading-none tracking-[0.16em] font-normal text-[var(--color-gold-deep)]"
             style={{ fontFamily: "var(--font-display)" }}
@@ -44,7 +49,7 @@ export default function AppHeader({
           >
             MY-SHOP REF
           </span>
-        </div>
+        </Link>
 
         <button
           aria-label="メニューを開く"

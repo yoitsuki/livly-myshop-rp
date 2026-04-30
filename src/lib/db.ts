@@ -4,7 +4,15 @@ import type { CropPreset } from "./preset";
 import { SEED_PRESETS } from "./preset";
 import type { ShopPhase } from "./shopPeriods";
 
-export type TagType = "period" | "gacha" | "category" | "custom";
+export type TagType = "gacha" | "bazaar" | "shop" | "other";
+
+/** Map of legacy v4 tag types to the v5 set, used by the Dexie upgrade. */
+const LEGACY_TAG_TYPE_MAP: Record<string, TagType> = {
+  period: "other",
+  gacha: "gacha",
+  category: "other",
+  custom: "other",
+};
 
 /** Crop rectangle in source-image pixel coordinates, plus the source dimensions. */
 export interface ItemCropRecord {
@@ -130,6 +138,21 @@ export class AppDB extends Dexie {
       })
       .upgrade(async (tx) => {
         await tx.table("items").clear();
+      });
+    // v5: TagType vocabulary changes from period/gacha/category/custom to
+    // gacha/bazaar/shop/other. Map any existing tags so they keep rendering
+    // (they would otherwise fall outside the UI's record types).
+    this.version(5)
+      .stores({
+        items: "id, name, category, createdAt, updatedAt, *tagIds",
+        tags: "id, name, type, createdAt",
+        settings: "id",
+      })
+      .upgrade(async (tx) => {
+        await tx.table("tags").toCollection().modify((t: Tag) => {
+          const legacy = t.type as unknown as string;
+          t.type = LEGACY_TAG_TYPE_MAP[legacy] ?? "other";
+        });
       });
   }
 }
