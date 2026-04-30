@@ -87,7 +87,7 @@ export default function DrawerNav({
                 onClick={onClose}
                 className={`relative flex items-center gap-3 pl-4 pr-4 py-3 text-[14px] transition-colors ${
                   active
-                    ? "text-[var(--color-gold-deep)] font-bold bg-[var(--color-line-soft)]"
+                    ? "text-[var(--color-gold-deep)] bg-[var(--color-line-soft)]"
                     : "text-[var(--color-text)] hover:bg-[var(--color-line-soft)]"
                 }`}
               >

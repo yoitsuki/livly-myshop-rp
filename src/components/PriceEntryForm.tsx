@@ -163,7 +163,12 @@ export default function PriceEntryForm({
             >
               <ImagePlus size={20} strokeWidth={1.8} className="text-gold-deep" />
               <div className="text-left">
-                <div className="text-[14px] font-bold">スクショから自動入力</div>
+                <div
+                  className="text-[16px]"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  スクショから自動入力
+                </div>
                 <div className="text-[10.5px] text-muted">画像は保存されません</div>
               </div>
             </button>
@@ -177,7 +182,10 @@ export default function PriceEntryForm({
                   className="w-16 h-16 object-cover shrink-0"
                 />
                 <div className="min-w-0 flex-1 text-[12px] text-text/85">
-                  <div className="truncate font-bold">
+                  <div
+                    className="truncate text-[14px]"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
                     {pickedFile?.name ?? "選択した画像"}
                   </div>
                   <div className="text-muted text-[11px] inline-flex items-center gap-1">
@@ -305,7 +313,7 @@ export default function PriceEntryForm({
                   onClick={() => onChange({ ...value, shopPhase: p, shopAuto: false })}
                   className={`px-3 h-9 text-[12px] transition-colors ${
                     active
-                      ? "bg-gold text-white font-bold"
+                      ? "bg-gold text-white"
                       : "text-text/70 hover:text-text"
                   }`}
                 >

@@ -105,7 +105,8 @@ export default function PresetForm({
           value={draft.name}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           placeholder="例: 通常レイアウト"
-          className={`${inputClass()} font-bold text-[15px]`}
+          className={`${inputClass()} text-[17px]`}
+          style={{ fontFamily: "var(--font-display)" }}
         />
       </Field>
 
@@ -134,7 +135,7 @@ export default function PresetForm({
                   onClick={() => setDraft({ ...draft, colorMode: m.value })}
                   className={`px-3 h-9 text-[12px] transition-colors ${
                     active
-                      ? "bg-gold text-white font-bold"
+                      ? "bg-gold text-white"
                       : "text-text/70 hover:text-text"
                   }`}
                 >
@@ -291,7 +292,7 @@ function RectFieldset({
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold-deep px-1">
+      <div className="text-[10px] font-medium tracking-[0.18em] uppercase text-gold-deep px-1">
         {legend}
       </div>
       <div className="grid grid-cols-4 gap-1.5">

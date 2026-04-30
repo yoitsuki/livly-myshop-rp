@@ -32,7 +32,10 @@ export default function PresetsPage() {
   return (
     <div className="pt-3 pb-8 space-y-5">
       <div className="flex items-center gap-2">
-        <h2 className="text-[14px] font-bold text-text flex-1">
+        <h2
+          className="text-[20px] text-text flex-1"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
           切り抜きプリセット
         </h2>
         <Link href="/presets/new">
@@ -55,7 +58,7 @@ export default function PresetsPage() {
           上の「新規追加」から作成するか、
           <button
             onClick={onResetSeeds}
-            className="text-gold-deep font-bold mx-1 hover:underline"
+            className="text-gold-deep mx-1 hover:underline"
           >
             既定の 2 件を復元
           </button>
@@ -66,7 +69,10 @@ export default function PresetsPage() {
           {presets.map((p) => (
             <li key={p.id} className="px-2 py-3 flex items-start gap-2">
               <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-bold text-text truncate">
+                <div
+                  className="text-[16px] text-text truncate"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
                   {p.name}
                 </div>
                 <div className="text-[11px] text-muted">{describePreset(p)}</div>
@@ -77,7 +83,7 @@ export default function PresetsPage() {
               </div>
               <Link
                 href={`/presets/${encodeURIComponent(p.id)}`}
-                className="text-[12px] text-gold-deep font-bold hover:underline shrink-0 px-2 py-1"
+                className="text-[12px] text-gold-deep hover:underline shrink-0 px-2 py-1"
               >
                 編集
               </Link>

@@ -32,7 +32,7 @@
   --shadow-header: 0 1px 0 var(--color-line);
 
   /* Font semantic aliases — used in component styles */
-  --font-display: var(--font-cormorant), "Noto Serif JP", serif;
+  --font-display: var(--font-cormorant), var(--font-noto-serif-jp), "Noto Serif JP", serif;
   --font-body: var(--font-noto-jp), "Noto Sans JP", system-ui, sans-serif;
   --font-label: var(--font-inter), system-ui, sans-serif;
 

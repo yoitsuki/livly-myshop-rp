@@ -254,7 +254,8 @@ export default function EditItemPage({
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={`${inputClass()} font-bold text-[15px]`}
+          className={`${inputClass()} text-[17px]`}
+          style={{ fontFamily: "var(--font-display)" }}
         />
       </Field>
 
@@ -453,7 +454,7 @@ function TagPicker({
                 onClick={() => toggle(t.id)}
                 className={`px-2.5 h-7 text-[12px] border transition-colors ${
                   on
-                    ? "bg-gold text-white border-gold font-bold"
+                    ? "bg-gold text-white border-gold"
                     : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
               >

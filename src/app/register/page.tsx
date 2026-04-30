@@ -305,7 +305,12 @@ export default function RegisterPage() {
         >
           <ImagePlus size={26} strokeWidth={1.6} className="text-gold-deep" />
           <div className="text-left">
-            <div className="text-[14px] font-bold text-text">スクショを選ぶ</div>
+            <div
+              className="text-[16px] text-text"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              スクショを選ぶ
+            </div>
             <div className="text-[11px] text-muted">タップしてファイルから取り込み</div>
           </div>
         </button>
@@ -404,7 +409,8 @@ export default function RegisterPage() {
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={`${inputClass({ highlighted: isAuto("name") })} font-bold text-[15px]`}
+          className={`${inputClass({ highlighted: isAuto("name") })} text-[17px]`}
+          style={{ fontFamily: "var(--font-display)" }}
           placeholder="例: 籐の揺りかご"
         />
       </Field>
@@ -687,7 +693,7 @@ function ShopPeriodField({
                 onClick={() => onChange(yearMonth, p)}
                 className={`px-3 h-9 text-[12px] transition-colors ${
                   active
-                    ? "bg-gold text-white font-bold"
+                    ? "bg-gold text-white"
                     : "text-text/70 hover:text-text"
                 }`}
               >
@@ -758,7 +764,7 @@ function TagPicker({
                 onClick={() => toggle(t.id)}
                 className={`px-2.5 h-7 text-[12px] border transition-colors ${
                   on
-                    ? "bg-gold text-white border-gold font-bold"
+                    ? "bg-gold text-white border-gold"
                     : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
               >

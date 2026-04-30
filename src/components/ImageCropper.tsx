@@ -266,7 +266,12 @@ export default function ImageCropper({
         >
           <X size={22} strokeWidth={1.8} />
         </button>
-        <div className="text-[13px] font-bold tracking-wide">{title}</div>
+        <div
+          className="text-[15px] tracking-wide"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {title}
+        </div>
         <button
           onClick={onConfirmClick}
           disabled={busy || !rect}

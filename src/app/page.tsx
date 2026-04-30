@@ -98,7 +98,7 @@ export default function Home() {
                 }
                 className={`px-2.5 h-7 text-[12px] border transition-colors ${
                   on
-                    ? "bg-gold text-white border-gold font-bold"
+                    ? "bg-gold text-white border-gold"
                     : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
                 style={{ borderRadius: 0 }}
@@ -162,7 +162,7 @@ function CategoryChip({
       onClick={onClick}
       className={`shrink-0 px-3.5 text-[12.5px] border transition-colors ${
         active
-          ? "bg-gold text-white border-gold font-bold"
+          ? "bg-gold text-white border-gold"
           : "bg-white text-text/80 border-[var(--color-line)] hover:border-[var(--color-line-strong)]"
       }`}
       style={{ height: 30, borderRadius: 0, fontFamily: "var(--font-body)" }}
@@ -180,7 +180,10 @@ function EmptyState({ hasItems }: { hasItems: boolean }) {
         strokeWidth={1.4}
         className="mx-auto text-muted mb-3"
       />
-      <div className="text-[15px] font-bold text-text">
+      <div
+        className="text-[18px] text-text"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
         {hasItems ? "条件に合うアイテムはありません" : "まだアイテムがありません"}
       </div>
       <div className="text-[12.5px] text-muted mt-1.5 leading-relaxed">
