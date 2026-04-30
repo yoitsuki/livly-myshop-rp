@@ -229,5 +229,39 @@
  *        main has overflow-x-hidden as a safety net.
  *        Decorative NO.### serial removed from list rows + detail
  *        title (no real numbering exists in the data).
+ * 0.11.0 Tag taxonomy reframed: TagType becomes
+ *        ガチャ / バザール / ショップ / その他 (gacha/bazaar/shop/other),
+ *        replacing period/gacha/category/custom across the registration,
+ *        edit, and tags screens. TagChip color map and tags-page
+ *        groupings update in lockstep. Dexie bumps to v5 with an
+ *        upgrade that maps any existing tag.type values
+ *        (period/category/custom → other; gacha kept as-is) so prior
+ *        data keeps rendering. AppHeader's LIVLY / MY-SHOP REF wordmark
+ *        is now a Link to "/" so a top-left tap returns to home from
+ *        anywhere; the back arrow on detail pages is unchanged.
+ * 0.11.1 Detail-page tidy + back-button fix.
+ *        Drops three hairlines from the item detail spread: the rule
+ *        next to the right-aligned category, the title block's bottom
+ *        border, and the bottom border of the MIN PRICE bar. The first
+ *        market-reference entry no longer doubles a top border with
+ *        the section header (`first:border-t-0`). Each market entry
+ *        now puts the period badge and the REF price on the same
+ *        baseline row (price drops to 20px Cormorant; edit/delete
+ *        actions stay top-right and align to the row top). The
+ *        separate REF row is gone; the date/source meta moves up
+ *        directly under the badge+price line.
+ *        Back arrow no longer calls router.back() — the save handlers
+ *        on /items/[id]/edit, /prices/new, /prices/[entryId]/edit
+ *        used router.push, so history accumulated and a single
+ *        back-tap could land on a stale edit screen. AppShell now
+ *        derives a parentHref (detail → "/", edit/prices/* →
+ *        "/items/[id]") and AppHeader's back button is a Link to that
+ *        path. Save handlers also switch to router.replace so
+ *        OS-level swipe-back / browser back stays sane.
+ * 0.11.2 Drops the two remaining rules that bracketed the item name:
+ *        the AppHeader's "─── ITEM DETAIL ───" sub-rail (and its
+ *        detailLabel prop) above the name, and the MIN PRICE bar's
+ *        top border below the tags. The header now ends at its single
+ *        bottom hairline; MIN PRICE sits as a flat row.
  */
-export const APP_VERSION = "0.10.0";
+export const APP_VERSION = "0.11.2";

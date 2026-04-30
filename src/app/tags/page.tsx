@@ -14,19 +14,19 @@ import {
 import { Button, Field, inputClass, IconButton } from "@/components/ui";
 
 const TYPE_LABEL: Record<TagType, string> = {
-  period: "期間",
   gacha: "ガチャ",
-  category: "分類",
-  custom: "カスタム",
+  bazaar: "バザール",
+  shop: "ショップ",
+  other: "その他",
 };
 
-const TYPE_ORDER: TagType[] = ["gacha", "period", "category", "custom"];
+const TYPE_ORDER: TagType[] = ["gacha", "bazaar", "shop", "other"];
 
 export default function TagsPage() {
   const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
   const items = useLiveQuery(() => db().items.toArray(), [], []);
   const [name, setName] = useState("");
-  const [type, setType] = useState<TagType>("custom");
+  const [type, setType] = useState<TagType>("other");
 
   const usageCount = useMemo(() => {
     const map = new Map<string, number>();

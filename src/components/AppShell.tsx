@@ -5,16 +5,35 @@ import { usePathname } from "next/navigation";
 import AppHeader from "./AppHeader";
 import DrawerNav from "./DrawerNav";
 
+/**
+ * Resolves the "parent" path for the back button. We avoid router.back()
+ * because router.push from save handlers builds up an unpredictable history
+ * stack — a single back-tap could land on an old edit screen instead of the
+ * detail page. Instead we navigate explicitly to a known parent.
+ */
+function parentHref(pathname: string): string | null {
+  const itemMatch = pathname.match(/^\/items\/([^/]+)(\/.*)?$/);
+  if (itemMatch) {
+    const [, itemId, rest] = itemMatch;
+    if (!rest) return "/"; // detail page → home
+    return `/items/${itemId}`; // edit / prices/* → detail
+  }
+  return null;
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
 
-  // Back button on item detail/edit pages.
-  const back = pathname.startsWith("/items/");
+  const backHref = parentHref(pathname);
 
   return (
     <div className="min-h-dvh flex flex-col">
-      <AppHeader onMenuClick={() => setOpen(true)} back={back} />
+      <AppHeader
+        onMenuClick={() => setOpen(true)}
+        back={!!backHref}
+        backHref={backHref ?? undefined}
+      />
       <DrawerNav open={open} onClose={() => setOpen(false)} />
       <main className="flex-1 w-full max-w-screen-sm mx-auto px-4 pb-24 pt-2 overflow-x-hidden">
         {children}

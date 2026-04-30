@@ -2,10 +2,10 @@ import type { Tag, TagType } from "@/lib/db";
 
 /** Atelier: flat rectangular pills with warm tinted backgrounds. */
 const TYPE_BG: Record<TagType, string> = {
-  period: "var(--color-lavender)",   /* #f2ebe2 */
   gacha: "var(--color-pink)",        /* #f5ede2 */
-  custom: "var(--color-sky)",        /* #e4eeed */
-  category: "var(--color-mint)",     /* #f1eadd */
+  bazaar: "var(--color-lavender)",   /* #f2ebe2 */
+  shop: "var(--color-mint)",         /* #f1eadd */
+  other: "var(--color-sky)",         /* #e4eeed */
 };
 
 export default function TagChip({

@@ -175,7 +175,7 @@ export default function EditItemPage({
 
         await db().items.put(next);
       });
-      router.push(`/items/${i.id}`);
+      router.replace(`/items/${i.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
       setBusy("idle");
@@ -424,7 +424,7 @@ function TagPicker({
 }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newType, setNewType] = useState<TagType>("custom");
+  const [newType, setNewType] = useState<TagType>("other");
 
   const toggle = (id: string) => {
     onChange(
@@ -492,10 +492,10 @@ function TagPicker({
               onChange={(e) => setNewType(e.target.value as TagType)}
               className={`${inputClass({ fullWidth: false })} w-24 shrink-0 h-9 text-[12px]`}
             >
-              <option value="period">期間</option>
               <option value="gacha">ガチャ</option>
-              <option value="category">分類</option>
-              <option value="custom">カスタム</option>
+              <option value="bazaar">バザール</option>
+              <option value="shop">ショップ</option>
+              <option value="other">その他</option>
             </select>
             <Button onClick={add} size="sm">
               追加

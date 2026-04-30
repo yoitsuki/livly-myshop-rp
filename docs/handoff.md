@@ -44,9 +44,12 @@
 
 `src/lib/version.ts` の `APP_VERSION` を更新する運用。Drawer 下部に表示される。
 
-最新: **0.10.0**（branch `claude/apply-atelier-theme-1UvcU`）
+最新: **0.11.2**（branch `claude/add-tags-navigation-k5qjz`）
 
 直近のチェンジログ要約:
+- 0.11.2 — アイテム名の上下を挟んでいた残りの 2 本を削除。`AppHeader` の `─── ITEM DETAIL ───` サブレール（`back={true}` 時のみ表示していた）を撤去し、`detailLabel` prop を削除。MIN PRICE バーの上線（border-t）も外して flat な行に。
+- 0.11.1 — **詳細ページのライン整理 + 戻るボタン修正**。詳細ページから 3 本のヘアラインを削除（カテゴリ右寄せ横の rule、タイトルブロックの下線、MIN PRICE バーの下線）。MARKET REFERENCE 一覧の 1 件目はセクションヘッダのヘアラインと二重にならないよう `first:border-t-0`。各 entry は **期間バッジと参考価格を同じベースラインに並べる** レイアウトに（Cormorant 20px、edit/delete アクションは右上）。`PriceEntryRow` の独立 REF 行は廃止し、日時メタが直下に。**戻るボタンを `router.back()` から固定の親パスへの Link に変更**: 保存ハンドラが `router.push` で履歴を積んでいたため、編集→価格追加→戻るで編集画面に戻る現象が起きていた。`AppShell.parentHref()` で detail → `/`、edit / prices/\* → `/items/[id]` を解決して `AppHeader` に渡し、`<Link>` で遷移。各保存ハンドラも `router.replace` に切替（OS のスワイプバックも安定）。
+- 0.11.0 — **タグ分類の刷新**: `TagType` を `period / gacha / category / custom` から **`gacha / bazaar / shop / other`**（ガチャ / バザール / ショップ / その他）に差替え。`/register`, `/items/[id]/edit`, `/tags` のセレクト + デフォルト値、`TagChip` の `TYPE_BG` マップ、`/tags` の `TYPE_LABEL` / `TYPE_ORDER` を同時更新。Dexie を **v5** に上げ、既存タグの `type` を upgrade フックで再マップ（`gacha` はそのまま、`period` / `category` / `custom` は `other` へ。`items` は触らない）。**ヘッダの 2 行ロゴ "LIVLY / MY-SHOP REF" を `Link href="/"` 化** し、左上タップでどこからでもホームに戻れるように。詳細ページ等の戻るボタンは挙動変更なし（`router.back()`）。
 - 0.10.0 — **Atelier テーマ** への全面差替え。warm white (`#ffffff`) + warm hairline (`--color-line #e7dfd5`) + DEEP TEAL アクセントの editorial 系ビジュアル。`rounded-*` と `shadow-*` を全廃 (Atelier は角丸ゼロ・影なし、`--shadow-card`/`--shadow-fab` は `none`、`--shadow-focus` のみ 2px ティールリング)。タイポは 3 軸: **Cormorant Garamond + Noto Serif JP** (見出し `--font-display`) / **Noto Sans JP** (本文 `--font-body`) / **Inter** (トラックアウト極小ラベル `--font-label`)。`font-bold` を全撤去し、強調はセリフ見出しに移行。一覧はカード→ヘアライン行 (`atelier-row`) + corner-tick サムネ (`.atelier-thumb`)。詳細は editorial spread (タイトル → ハッシュタグ → MIN PRICE バー → MARKET REFERENCE → 補助としての画像 → メタ → DELETE/EDIT)。`AppHeader` 2 行ロゴ "LIVLY / MY-SHOP REF"、`back` 時に `ITEM DETAIL` サブレール。`DrawerNav` も同ロゴ + 3px ティール左バー。`TagChip` は warm 矩形ピル化 (clip-path 旅行タグ廃止)。`FAB` は 52×52 矩形・無影・無アニメ。プリミティブは Atelier 化 (Field ラベル `--font-label` 10px 0.18em uppercase / Badge トラックアウト平箱 / Toast 影＆角丸撤去 / Button・IconButton danger を `--color-danger` トークン化)。**iOS Safari standalone PWA で `window.confirm()` が無音で `undefined` を返す問題**を踏み、詳細ページの DELETE はカスタム `ConfirmDialog` モーダル (CANCEL / DELETE) に差替え。`<button type="button">` 明示。`min-w-0` / `max-w-full` / `overflow-x-hidden` 追加 (iOS datetime-local の overflow 対策)。装飾的 `NO.###` シリアルは削除 (実データなし)
 - 0.9.0 — Primary accent を **DEEP TEAL `#006a71`** へ (gold-deep `#004a4f`)。期間バッジを 3 段階に整理（白文字ミント → ソフトグレー薄ミント → 薄グレー近白）。`REF`→`参考価格`、`最低`→`最低価格` ラベル化。`Badge` / `IconButton` / `Toast` プリミティブ追加。`/settings` の保存通知 → Toast、各削除ボタン → IconButton。AppHeader にスクロール時の影。PWA manifest + appleWebApp meta + `/public/icon.svg`
 - 0.8.x — Step 2 移行（`/register`, `/items/[id]/edit`, `/tags`, `/settings`, `/presets` + `PresetForm` + `ImageCropper`）。OCR 自動入力の "黄色塗り" → **入力枠を mint 色 (`border-gold`)** に置換 + Sparkles 自動入力ラベル。`fieldInputClass` の w-full と flex-1 競合を `inputClass({ fullWidth: false })` で解消（v0.8.1）
@@ -64,7 +67,7 @@
 
 ## 4. データモデル（要点だけ）
 
-`src/lib/db.ts` を読むのが正本。Dexie バージョンは **v4**。
+`src/lib/db.ts` を読むのが正本。Dexie バージョンは **v5**。
 
 ```ts
 interface Item {
@@ -132,8 +135,8 @@ src/
     settings/page.tsx       OCR プロバイダ + Claude API key/モデル + ストレージ使用量
     api/claude-ocr/route.ts Claude Vision プロキシ
   components/
-    AppHeader.tsx           2行ロゴ "LIVLY / MY-SHOP REF" + back 時 "ITEM DETAIL" サブレール
-    AppShell.tsx            ドロワー state + main に overflow-x-hidden (datetime overflow 対策)
+    AppHeader.tsx           2行ロゴ "LIVLY / MY-SHOP REF" (Link to "/") + back 時に左の戻るアロー (Link to parentHref)。サブレールは v0.11.2 で撤去
+    AppShell.tsx            ドロワー state + main に overflow-x-hidden (datetime overflow 対策)。`parentHref(pathname)` で戻るボタンの遷移先を解決 (detail → "/"、edit / prices/* → "/items/[id]")
     DrawerNav.tsx           右からスライドイン。同ロゴ + 3px ティール左バーで active 表示
     ItemCard.tsx            一覧 1 行 (atelier-row + corner-tick サムネ + Cormorant 名 + 参考/最低価格 + 期間バッジ右寄せ)
     ImageCropper.tsx        モーダル切抜き。中点ハンドル 4 つ (square、Atelier 化済)。fillExtent prop で「初期枠=画像全体」モード
@@ -189,16 +192,16 @@ docs/
 - フォント 3 軸 (`--font-display` / `--font-body` / `--font-label`)
   - **`--font-display`** = `Cormorant Garamond` + `Noto Serif JP` — タイトル / 名前 / 価格数値。**和文も明朝で出す** (v0.10.0 でユーザー判断切替済)
   - **`--font-body`** = `Noto Sans JP` — 本文 / placeholder / 「参考価格」「最低価格」のような本文ラベル
-  - **`--font-label`** = `Inter` — トラックアウト極小ラベル (`MIN PRICE` / `ITEM DETAIL` / `MARKET REFERENCE` / button 内文字 等)
+  - **`--font-label`** = `Inter` — トラックアウト極小ラベル (`MIN PRICE` / `MARKET REFERENCE` / button 内文字 等)
 - **`font-bold` / `font-medium` は強調目的では使わない** (v0.10.0 で全撤去)。強調は display フォントで表現、構造系のアクティブ表現は背景色だけで対比を作る
 - 緑は **本物のアクセントだけ**に: primary CTA / FAB / 最新の period badge / focus ring / active drawer 左バー / OCR 自動入力フィールドの border / Cormorant 価格数値・タイトルの強い色
-- ヘッダ: **2 行ロゴ** "LIVLY" (Cormorant 22px / 0.16em) + "MY-SHOP REF" (Inter 8.5px / 0.42em uppercase)。`back={true}` 時は下にサブレール `─── ITEM DETAIL ───` (現状 detail page 用、他画面に展開する場合は `<AppShell>` で `back` を切り替える必要あり)
+- ヘッダ: **2 行ロゴ** "LIVLY" (Cormorant 22px / 0.16em) + "MY-SHOP REF" (Inter 8.5px / 0.42em uppercase)。**ロゴ全体が `Link href="/"`** (v0.11.0)、左上タップでどこからでもホームに戻る。`back={true}` 時はロゴの左に戻るアローが出る。サブレール `─── ITEM DETAIL ───` は v0.11.2 で撤去済（`detailLabel` prop も削除）。
 - ホーム一覧 (`ItemCard`): corner-tick サムネ (`atelier-thumb`、4 隅にティール 6px ティック) + Cormorant の名前 + 参考/最低価格行 + 期間バッジ右寄せ + タグ。**カテゴリ行とシリアル NO.### は v0.10.0 で削除済**
-- 詳細 (`items/[id]`): editorial spread 順に Title block (右寄せカテゴリ + Cormorant 28px 名前) → ハッシュタグ → MIN PRICE バー → MARKET REFERENCE 一覧 → **ヒーロー画像 (補助としてここ)** → メタ → DELETE / EDIT。ヒーロー画像は `atelier-thumb` フレームの正方形
+- 詳細 (`items/[id]`): editorial spread 順に Title block (右寄せカテゴリ + Cormorant 28px 名前、上下にラインなし — v0.11.1/0.11.2) → ハッシュタグ → MIN PRICE バー (border なし — v0.11.2) → MARKET REFERENCE 一覧 → **ヒーロー画像 (補助としてここ)** → メタ → DELETE / EDIT。ヒーロー画像は `atelier-thumb` フレームの正方形。MARKET REFERENCE の各 entry は **期間バッジと参考価格を同じベースラインに並べる** (Cormorant 20px、edit/delete アクションは右上)。1 件目は `first:border-t-0` でセクションヘッダ hairline と二重にしない
 - 期間バッジ (`PeriodBadge` ローカル component) は 3 段階: 最新 `bg: --color-gold` + 白文字 + ティール枠 / 一つ前 transparent + `--color-gold-deep` + 同枠 / それより古い transparent + `--color-muted` + 同枠
-- 戻るボタンは左、ハンバーガーは右、ドロワーは右からスライドイン
+- 戻るボタンは左、ハンバーガーは右、ドロワーは右からスライドイン。**戻るボタンは `router.back()` ではなく `AppShell.parentHref()` で解決した固定パスへの `<Link>`** (v0.11.1)。各保存ハンドラ (`/items/[id]/edit`, `/prices/new`, `/prices/[entryId]/edit`) も `router.replace` で detail に戻る — `router.push` で履歴を積むと「編集 → 価格追加 → 戻る」で編集画面に戻ってしまうため
 - 切抜き UI: 中点ハンドル 4 つ (square、Atelier 化済)、オーバーレイは `rgba(20,40,38,0.92)`、ハンドルは白 + gold-deep
-- `TagChip` は **warm 矩形ピル** (`bg: var(--color-{type})` + 0.5px hairline + 角丸ゼロ)。type 別の地色は `--color-pink/lavender/sky/mint` (Atelier 値に更新済)
+- `TagChip` は **warm 矩形ピル** (`bg: var(--color-{type})` + 0.5px hairline + 角丸ゼロ)。`TagType` は v0.11.0 で `gacha / bazaar / shop / other` (ガチャ / バザール / ショップ / その他) に刷新。type 別の地色は gacha=`--color-pink` / bazaar=`--color-lavender` / shop=`--color-mint` / other=`--color-sky` (Atelier 値)
 - 自動入力フィールドのマーカー: `inputClass({ highlighted: true })` で mint border + Sparkles ラベル (踏襲)
 
 ### 機能
@@ -245,6 +248,7 @@ docs/
 | iOS Safari で datetime-local 入力が viewport を突破する | iOS の native datetime UI は内部最小幅が広く、grid-cols-2 (~165px/col) や `flex-1` で押し潰せない | (1) `grid-cols-1 sm:grid-cols-2` で stack (2) `Field` 外側に `min-w-0` (3) `inputClass` に `min-w-0 max-w-full` (4) `AppShell` main に `overflow-x-hidden` を保険として配置 — v0.10.0 で導入 |
 | 和文タイトルがゴシックのまま (Cormorant の意図と外れる) | `--font-display` 指定でも `Noto Serif JP` が `next/font/google` でロードされていないと OS 依存のフォールバックになる | v0.10.0 で `Noto_Serif_JP` を `next/font/google` で正式にロード済 (`layout.tsx`)。`--font-display` は `var(--font-cormorant), var(--font-noto-serif-jp), "Noto Serif JP", serif` の順 |
 | 過去の `tag-chip` (旅行タグ clip-path) で eyelet が白抜けに見えない | 旧仕様。Atelier では `TagChip` を warm 矩形ピルに置き換え (v0.10.0)。`globals.css` の `.tag-chip` クラスは削除済 | `TagChip` は今は inline-style で平箱を出すだけ。clip-path 系のレガシーが残っていたら削除 |
+| 戻るボタンを押すと意図しない画面 (例: 編集画面) に戻る | 各保存ハンドラが `router.push` で detail へ遷移していたため履歴が累積。`router.back()` は履歴の 1 個前を見るだけなので、複数階層を往復すると古い edit / prices/new が掘り起こされる | v0.11.1 で `AppShell.parentHref(pathname)` を導入し、`AppHeader` の戻るアローを **固定パスへの `<Link>`** に変更。保存ハンドラも `router.replace` に切替えて履歴汚染を防止 |
 
 ---
 
@@ -263,11 +267,10 @@ UI 変更を含む場合は dev サーバ起動 + ブラウザで操作確認す
 
 ## 9. 未着手 / 今後の候補
 
-v0.10.0 で **Atelier テーマへの全面差替え + 後続の細かい修正群** を完了。**ユーザー曰く「今のバージョンはこれで終わりにする」**。
+v0.10.0 で **Atelier テーマへの全面差替え** を完了し、v0.11.x で **タグ分類の再編・ナビゲーション修正・詳細ページのライン整理** を上乗せ。**ユーザー曰く「いったん終わり」**。
 
 ### Atelier 関連で次ラウンドが来そうな箇所
 - **`ConfirmDialog` の primitives 切り出し** — 現状 `items/[id]/page.tsx` 内に local component。`tags` / `presets` ページの削除も `window.confirm()` のままなので、同じ事象が起きる前に `components/ui/ConfirmDialog.tsx` に出して再利用するのが筋
-- **`AppHeader` のサブレール展開** — 現状 `back={true}` 時のみ `ITEM DETAIL` を表示。`AppShell` で `pathname` を見てルート毎に `detailLabel` を出し分ければ register / settings / tags / presets / prices の各画面にも `ITEM REGISTRATION` / `SETTINGS` 等が出せる。Atelier 化の第 3 ラウンド候補
 - **register / edit の画面タイトルブロック** — 詳細ページのような editorial title block (右寄せカテゴリ + Cormorant 大きめ見出し) を入れると一貫感が出る
 - **section 化** — register / edit のフォームを「画像」「基本情報」「価格」「タグ」のように `MARKET REFERENCE` 風セクションヘッダで区切る
 
