@@ -164,13 +164,12 @@ export default function ItemDetailPage({
     <div className="pb-8">
 
       {/* ── Title block ──────────────────────────────────────────── */}
-      <div className="pt-4 pb-3 border-b border-[var(--color-line)]">
-        {/* hairline · category */}
+      <div className="pt-4 pb-3">
+        {/* category — right-aligned, no rule */}
         {i.category && (
-          <div className="flex items-center gap-2 mb-2">
-            <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
+          <div className="flex justify-end mb-2">
             <span
-              className="text-[var(--color-muted)] shrink-0"
+              className="text-[var(--color-muted)]"
               style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
             >
               {i.category}
@@ -194,7 +193,7 @@ export default function ItemDetailPage({
 
       {/* ── Tags ─────────────────────────────────────────────────── */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-[5px] mt-4">
+        <div className="flex flex-wrap gap-[5px] mb-4">
           {tags.map((t) => (
             <TagChip key={t.id} tag={t} />
           ))}
@@ -202,7 +201,7 @@ export default function ItemDetailPage({
       )}
 
       {/* ── MIN PRICE bar ────────────────────────────────────────── */}
-      <div className="flex items-center mt-4 border-t border-b border-[var(--color-line)] py-3">
+      <div className="flex items-center border-t border-[var(--color-line)] py-3">
         <span
           className="text-[var(--color-muted)] flex-1 uppercase"
           style={{ fontFamily: "var(--font-label)", fontSize: 9, letterSpacing: "0.28em" }}
@@ -251,7 +250,10 @@ export default function ItemDetailPage({
         {/* price entries */}
         <ul>
           {entries.map((entry) => (
-            <li key={entry.id} className="border-t border-[var(--color-line)] py-3">
+            <li
+              key={entry.id}
+              className="border-t border-[var(--color-line)] first:border-t-0 py-3"
+            >
               <PriceEntryRow
                 entry={entry}
                 onEdit={() => router.push(`/items/${i.id}/prices/${entry.id}/edit`)}
@@ -396,22 +398,38 @@ function PriceEntryRow({
 
   return (
     <div>
-      {/* top row: period badge + actions */}
-      <div className="flex items-center justify-between gap-2">
-        {hasPeriod ? (
-          <PeriodBadge
-            yearMonth={entry.shopPeriod!.yearMonth}
-            phase={entry.shopPeriod!.phase}
-          />
-        ) : (
-          <span
-            className="text-[var(--color-muted)]"
-            style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
-          >
-            時期未指定
+      {/* top row: period badge + ref price + actions */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-baseline gap-2.5 flex-wrap min-w-0">
+          {hasPeriod ? (
+            <PeriodBadge
+              yearMonth={entry.shopPeriod!.yearMonth}
+              phase={entry.shopPeriod!.phase}
+            />
+          ) : (
+            <span
+              className="text-[var(--color-muted)]"
+              style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
+            >
+              時期未指定
+            </span>
+          )}
+          <span className="flex items-baseline gap-1.5">
+            <span
+              className="text-[var(--color-gold-deep)] tabular-nums"
+              style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}
+            >
+              {formatPrice(entry.refPriceMin)}–{formatPrice(entry.refPriceMax)}
+            </span>
+            <span
+              className="text-[var(--color-muted)]"
+              style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+            >
+              GP
+            </span>
           </span>
-        )}
-        <div className="flex items-center gap-0.5">
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0 self-start">
           <button
             type="button"
             onClick={onEdit}
@@ -432,31 +450,9 @@ function PriceEntryRow({
         </div>
       </div>
 
-      {/* reference price */}
-      <div className="flex items-baseline gap-1.5 mt-2">
-        <span
-          className="text-[var(--color-muted)] uppercase"
-          style={{ fontFamily: "var(--font-label)", fontSize: 8.5, letterSpacing: "0.28em" }}
-        >
-          REF
-        </span>
-        <span
-          className="text-[var(--color-gold-deep)] tabular-nums"
-          style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500 }}
-        >
-          {formatPrice(entry.refPriceMin)}–{formatPrice(entry.refPriceMax)}
-        </span>
-        <span
-          className="text-[var(--color-muted)]"
-          style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
-        >
-          GP
-        </span>
-      </div>
-
       {/* meta: date + source */}
       <div
-        className="flex items-center gap-1.5 mt-1 text-[var(--color-muted)]"
+        className="flex items-center gap-1.5 mt-1.5 text-[var(--color-muted)]"
         style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
       >
         <Calendar size={11} strokeWidth={1.8} />

@@ -75,7 +75,7 @@ export default function NewPriceEntryPage({
           !hasMain && form.priceSource ? form.priceSource.trim() : undefined,
       };
       await addPriceEntry(i.id, entry);
-      router.push(`/items/${i.id}`);
+      router.replace(`/items/${i.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
       setBusy(false);

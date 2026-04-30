@@ -175,7 +175,7 @@ export default function EditItemPage({
 
         await db().items.put(next);
       });
-      router.push(`/items/${i.id}`);
+      router.replace(`/items/${i.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
       setBusy("idle");

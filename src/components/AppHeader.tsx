@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Menu } from "lucide-react";
 
 interface Props {
   onMenuClick: () => void;
   /** When true, shows a back button and the detail sub-header rule. */
   back?: boolean;
+  /** Destination for the back button — falls back to "/" when omitted. */
+  backHref?: string;
   /** Label shown in the detail rule row (only when back=true). */
   detailLabel?: string;
 }
@@ -15,21 +16,20 @@ interface Props {
 export default function AppHeader({
   onMenuClick,
   back,
+  backHref = "/",
   detailLabel = "ITEM DETAIL",
 }: Props) {
-  const router = useRouter();
-
   return (
     <header className="sticky top-0 z-30 bg-[var(--color-cream)] border-b border-[var(--color-line)]">
       <div className="max-w-screen-sm mx-auto px-4 flex items-center gap-3 pt-4 pb-3.5">
         {back ? (
-          <button
+          <Link
+            href={backHref}
             aria-label="戻る"
-            onClick={() => router.back()}
             className="-ml-1.5 w-8 h-8 flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
           >
             <ArrowLeft size={20} strokeWidth={1.6} />
-          </button>
+          </Link>
         ) : null}
 
         <Link

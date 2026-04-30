@@ -239,5 +239,24 @@
  *        data keeps rendering. AppHeader's LIVLY / MY-SHOP REF wordmark
  *        is now a Link to "/" so a top-left tap returns to home from
  *        anywhere; the back arrow on detail pages is unchanged.
+ * 0.11.1 Detail-page tidy + back-button fix.
+ *        Drops three hairlines from the item detail spread: the rule
+ *        next to the right-aligned category, the title block's bottom
+ *        border, and the bottom border of the MIN PRICE bar. The first
+ *        market-reference entry no longer doubles a top border with
+ *        the section header (`first:border-t-0`). Each market entry
+ *        now puts the period badge and the REF price on the same
+ *        baseline row (price drops to 20px Cormorant; edit/delete
+ *        actions stay top-right and align to the row top). The
+ *        separate REF row is gone; the date/source meta moves up
+ *        directly under the badge+price line.
+ *        Back arrow no longer calls router.back() — the save handlers
+ *        on /items/[id]/edit, /prices/new, /prices/[entryId]/edit
+ *        used router.push, so history accumulated and a single
+ *        back-tap could land on a stale edit screen. AppShell now
+ *        derives a parentHref (detail → "/", edit/prices/* →
+ *        "/items/[id]") and AppHeader's back button is a Link to that
+ *        path. Save handlers also switch to router.replace so
+ *        OS-level swipe-back / browser back stays sane.
  */
-export const APP_VERSION = "0.11.0";
+export const APP_VERSION = "0.11.1";
