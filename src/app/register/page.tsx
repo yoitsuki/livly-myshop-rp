@@ -429,7 +429,7 @@ export default function RegisterPage() {
         <CategorySuggestions />
       </Field>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field
           label="最低販売価格 (GP)"
           labelAdornment={isAuto("minPrice") ? autoBadge : undefined}

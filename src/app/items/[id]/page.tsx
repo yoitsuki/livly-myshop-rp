@@ -127,7 +127,6 @@ export default function ItemDetailPage({
   const i = item as Item;
   const tags = allTags.filter((t) => i.tagIds.includes(t.id));
   const entries = sortedPriceEntries(i);
-  const serial = String(i.createdAt % 1000).padStart(3, "0");
 
   const onDelete = async () => {
     if (!confirm(`「${i.name}」を削除しますか？`)) return;
@@ -153,24 +152,18 @@ export default function ItemDetailPage({
 
       {/* ── Title block ──────────────────────────────────────────── */}
       <div className="pt-4 pb-3 border-b border-[var(--color-line)]">
-        {/* serial · hairline · category */}
-        <div className="flex items-center gap-2 mb-2">
-          <span
-            className="text-[var(--color-muted)] uppercase"
-            style={{ fontFamily: "var(--font-label)", fontSize: 9, letterSpacing: "0.30em" }}
-          >
-            NO.{serial}
-          </span>
-          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
-          {i.category && (
+        {/* hairline · category */}
+        {i.category && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
             <span
               className="text-[var(--color-muted)] shrink-0"
               style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
             >
               {i.category}
             </span>
-          )}
-        </div>
+          </div>
+        )}
         {/* item name */}
         <h2
           className="text-[var(--color-text)] leading-snug break-words"
@@ -184,11 +177,6 @@ export default function ItemDetailPage({
         >
           {i.name}
         </h2>
-      </div>
-
-      {/* ── Hero image ───────────────────────────────────────────── */}
-      <div className="mt-4">
-        <AtelierHero src={mainUrl} alt={i.name} />
       </div>
 
       {/* ── Tags ─────────────────────────────────────────────────── */}
@@ -224,6 +212,11 @@ export default function ItemDetailPage({
         >
           GP
         </span>
+      </div>
+
+      {/* ── Hero image (supplementary) ──────────────────────────── */}
+      <div className="mt-4">
+        <AtelierHero src={mainUrl} alt={i.name} />
       </div>
 
       {/* ── MARKET REFERENCE section ──────────────────────────────── */}

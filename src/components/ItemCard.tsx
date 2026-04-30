@@ -103,9 +103,6 @@ export default function ItemCard({
 
   const latest = latestPriceEntry(item);
 
-  /* Short decorative serial derived from creation timestamp */
-  const serial = String(item.createdAt % 1000).padStart(3, "0");
-
   return (
     <Link
       href={`/items/${item.id}`}
@@ -114,29 +111,19 @@ export default function ItemCard({
       <AtelierThumb src={thumbUrl} alt={item.name} size={64} />
 
       <div className="min-w-0 flex-1" style={{ paddingTop: 1 }}>
-        {/* meta row: serial · hairline · period badge */}
-        <div className="flex items-center gap-2 mb-[5px]">
-          <span
-            className="text-[var(--color-muted)] uppercase"
-            style={{
-              fontFamily: "var(--font-label)",
-              fontSize: 9,
-              letterSpacing: "0.30em",
-            }}
-          >
-            NO.{serial}
-          </span>
-          <span
-            className="h-px flex-1 bg-[var(--color-line)] min-w-[8px]"
-            aria-hidden
-          />
-          {latest?.shopPeriod && (
+        {/* meta row: hairline · period badge */}
+        {latest?.shopPeriod && (
+          <div className="flex items-center gap-2 mb-[5px]">
+            <span
+              className="h-px flex-1 bg-[var(--color-line)] min-w-[8px]"
+              aria-hidden
+            />
             <PeriodBadge
               yearMonth={latest.shopPeriod.yearMonth}
               phase={latest.shopPeriod.phase}
             />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* item name — Cormorant serif */}
         <h3
@@ -152,31 +139,17 @@ export default function ItemCard({
           {item.name || "(名称未設定)"}
         </h3>
 
-        {/* category — wide tracked label */}
-        {item.category && (
-          <div
-            className="text-[var(--color-muted)] mt-0.5"
-            style={{
-              fontFamily: "var(--font-label)",
-              fontSize: 9.5,
-              letterSpacing: "0.18em",
-            }}
-          >
-            {item.category}
-          </div>
-        )}
-
-        {/* REF price */}
+        {/* 参考価格 */}
         <div className="flex items-baseline gap-1.5 mt-[7px]">
           <span
-            className="text-[var(--color-muted)] uppercase"
+            className="text-[var(--color-muted)]"
             style={{
-              fontFamily: "var(--font-label)",
-              fontSize: 8.5,
-              letterSpacing: "0.28em",
+              fontFamily: "var(--font-body)",
+              fontSize: 11,
+              letterSpacing: "0.04em",
             }}
           >
-            REF
+            参考価格
           </span>
           <span
             className="text-[var(--color-gold-deep)] tabular-nums"
@@ -203,21 +176,16 @@ export default function ItemCard({
           </span>
         </div>
 
-        {/* MIN price */}
+        {/* 最低価格 */}
         <div
           className="text-[var(--color-muted)] mt-px tabular-nums"
           style={{
-            fontFamily: "var(--font-label)",
-            fontSize: 10,
-            letterSpacing: "0.06em",
+            fontFamily: "var(--font-body)",
+            fontSize: 11,
+            letterSpacing: "0.04em",
           }}
         >
-          <span
-            style={{ letterSpacing: "0.20em", fontSize: 8.5 }}
-            className="uppercase"
-          >
-            MIN
-          </span>{" "}
+          <span>最低価格</span>{" "}
           {formatPrice(item.minPrice)} GP
         </div>
 
