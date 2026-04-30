@@ -91,6 +91,11 @@ export default function ItemDetailPage({
   const item = useLiveQuery(() => db().items.get(id), [id]);
   const allTags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    message: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+
   const mainSrc = item?.mainImageBlob;
   const [mainUrl, setMainUrl] = useState<string | undefined>();
 
@@ -128,23 +133,31 @@ export default function ItemDetailPage({
   const tags = allTags.filter((t) => i.tagIds.includes(t.id));
   const entries = sortedPriceEntries(i);
 
-  const onDelete = async () => {
-    if (!confirm(`「${i.name}」を削除しますか？`)) return;
-    await deleteItem(i.id);
-    router.push("/");
+  const onDelete = () => {
+    setConfirmDialog({
+      message: `「${i.name}」を削除しますか？\nこの操作は取り消せません。`,
+      onConfirm: async () => {
+        await deleteItem(i.id);
+        router.push("/");
+      },
+    });
   };
 
-  const onDeleteEntry = async (entryId: string) => {
+  const onDeleteEntry = (entryId: string) => {
     if (entries.length <= 1) {
       alert("最後の価格は削除できません。アイテムごと削除してください。");
       return;
     }
-    if (!confirm("この価格を削除しますか？")) return;
-    try {
-      await deletePriceEntry(i.id, entryId);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "削除に失敗しました");
-    }
+    setConfirmDialog({
+      message: "この価格を削除しますか？",
+      onConfirm: async () => {
+        try {
+          await deletePriceEntry(i.id, entryId);
+        } catch (e) {
+          alert(e instanceof Error ? e.message : "削除に失敗しました");
+        }
+      },
+    });
   };
 
   return (
@@ -214,11 +227,6 @@ export default function ItemDetailPage({
         </span>
       </div>
 
-      {/* ── Hero image (supplementary) ──────────────────────────── */}
-      <div className="mt-4">
-        <AtelierHero src={mainUrl} alt={i.name} />
-      </div>
-
       {/* ── MARKET REFERENCE section ──────────────────────────────── */}
       <div className="mt-6">
         {/* section header */}
@@ -255,6 +263,11 @@ export default function ItemDetailPage({
         </ul>
       </div>
 
+      {/* ── Hero image (supplementary, below market reference) ─── */}
+      <div className="mt-6">
+        <AtelierHero src={mainUrl} alt={i.name} />
+      </div>
+
       {/* ── Metadata ─────────────────────────────────────────────── */}
       <div
         className="mt-4 pt-3 border-t border-[var(--color-line)] text-[var(--color-muted)] tabular-nums"
@@ -269,6 +282,7 @@ export default function ItemDetailPage({
       {/* ── Action buttons ───────────────────────────────────────── */}
       <div className="flex gap-2 mt-4">
         <button
+          type="button"
           onClick={onDelete}
           className="flex items-center justify-center gap-1.5 px-4 py-2.5 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors"
           style={{
@@ -294,6 +308,74 @@ export default function ItemDetailPage({
           <Pencil size={13} strokeWidth={1.8} />
           EDIT
         </Link>
+      </div>
+
+      <ConfirmDialog
+        dialog={confirmDialog}
+        onClose={() => setConfirmDialog(null)}
+      />
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  dialog,
+  onClose,
+}: {
+  dialog: { message: string; onConfirm: () => Promise<void> | void } | null;
+  onClose: () => void;
+}) {
+  if (!dialog) return null;
+  const handleConfirm = async () => {
+    await dialog.onConfirm();
+    onClose();
+  };
+  return (
+    <div
+      className="fixed inset-0 z-[70] bg-[var(--color-text)]/40 flex items-center justify-center p-5"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-white border border-[var(--color-line)] max-w-sm w-full p-5"
+        style={{ borderRadius: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="text-[var(--color-text)] leading-relaxed mb-5 whitespace-pre-line"
+          style={{ fontFamily: "var(--font-body)", fontSize: 14 }}
+        >
+          {dialog.message}
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10,
+              letterSpacing: "0.24em",
+              borderRadius: 0,
+            }}
+          >
+            CANCEL
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            className="px-4 py-2 bg-[var(--color-danger)] text-white hover:opacity-90 transition-opacity"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10,
+              letterSpacing: "0.24em",
+              borderRadius: 0,
+            }}
+          >
+            DELETE
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -331,6 +413,7 @@ function PriceEntryRow({
         )}
         <div className="flex items-center gap-0.5">
           <button
+            type="button"
             onClick={onEdit}
             aria-label="価格を編集"
             className="w-[26px] h-[26px] flex items-center justify-center text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-text)] transition-colors"
@@ -338,6 +421,7 @@ function PriceEntryRow({
             <Pencil size={13} strokeWidth={1.8} />
           </button>
           <button
+            type="button"
             onClick={onDelete}
             disabled={!deletable}
             aria-label="価格を削除"

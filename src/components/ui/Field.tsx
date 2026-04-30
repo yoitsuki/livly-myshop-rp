@@ -26,7 +26,7 @@ export default function Field({
   children,
 }: FieldProps) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       {(label || labelAdornment) && (
         <div className="flex items-center gap-1.5 px-1">
           {label && (
@@ -91,7 +91,7 @@ export function inputClass(opts?: InputClassOpts): string {
   const width = fullWidth ? "w-full" : "";
   return [
     width,
-    "bg-white border rounded-none",
+    "min-w-0 max-w-full bg-white border rounded-none",
     borderColor,
     "px-3",
     sizing,

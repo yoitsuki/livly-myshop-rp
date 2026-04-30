@@ -111,20 +111,6 @@ export default function ItemCard({
       <AtelierThumb src={thumbUrl} alt={item.name} size={64} />
 
       <div className="min-w-0 flex-1" style={{ paddingTop: 1 }}>
-        {/* meta row: hairline · period badge */}
-        {latest?.shopPeriod && (
-          <div className="flex items-center gap-2 mb-[5px]">
-            <span
-              className="h-px flex-1 bg-[var(--color-line)] min-w-[8px]"
-              aria-hidden
-            />
-            <PeriodBadge
-              yearMonth={latest.shopPeriod.yearMonth}
-              phase={latest.shopPeriod.phase}
-            />
-          </div>
-        )}
-
         {/* item name — Cormorant serif */}
         <h3
           className="text-[var(--color-text)] leading-snug break-words"
@@ -139,8 +125,8 @@ export default function ItemCard({
           {item.name || "(名称未設定)"}
         </h3>
 
-        {/* 参考価格 */}
-        <div className="flex items-baseline gap-1.5 mt-[7px]">
+        {/* 参考価格 + period badge */}
+        <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1 mt-[7px]">
           <span
             className="text-[var(--color-muted)]"
             style={{
@@ -174,6 +160,14 @@ export default function ItemCard({
           >
             GP
           </span>
+          {latest?.shopPeriod && (
+            <span className="ml-auto self-center">
+              <PeriodBadge
+                yearMonth={latest.shopPeriod.yearMonth}
+                phase={latest.shopPeriod.phase}
+              />
+            </span>
+          )}
         </div>
 
         {/* 最低価格 */}
