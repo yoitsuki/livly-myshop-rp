@@ -180,5 +180,54 @@
  *        short_name / theme_color / standalone display, plus an
  *        apple-mobile-web-app meta and a /public/icon.svg for the home
  *        screen.
+ * 0.10.0 Atelier theme — full visual-language replacement.
+ *        Palette swaps to warm white + warm hairlines (--color-line
+ *        #e7dfd5) + deep teal accent (--color-gold #006a71). All
+ *        rounded-* and shadow-* are dropped: Atelier is corner-less
+ *        and shadow-less; --shadow-card / --shadow-fab become `none`,
+ *        --shadow-focus stays as a 2px teal ring.
+ *        Typography becomes a 3-axis system: Cormorant Garamond +
+ *        Noto Serif JP for titles (--font-display), Noto Sans JP for
+ *        body (--font-body), Inter for tracked-out micro labels
+ *        (--font-label). All font-bold uses are removed: emphasis
+ *        moves to the serif title font (no weight bump), structural
+ *        active states rely on background color alone.
+ *        Layout: cards → hairline list rows. Item rows on /
+ *        carry no card chrome — just a 1px border-top, the corner-
+ *        tick atelier-thumb, item name in serif, and 参考価格 /
+ *        最低価格 in body font with the period badge pinned right
+ *        on the 参考価格 row. Detail page (/items/[id]) becomes an
+ *        editorial spread: NO-prefix removed, title block with
+ *        hairline-aligned category, MIN PRICE bar, MARKET REFERENCE
+ *        list, hero image as supplementary reference below the
+ *        market entries, then metadata + DELETE / EDIT actions.
+ *        AppHeader switches to a 2-line LIVLY / MY-SHOP REF logo
+ *        with an optional ITEM DETAIL sub-rail when back=true.
+ *        DrawerNav adopts the same wordmark; active item gets a
+ *        3px teal left bar.
+ *        TagChip becomes a flat warm-tinted rectangle with a 0.5px
+ *        hairline (the luggage-tag silhouette is retired).
+ *        FAB becomes a 52×52 deep-teal square (no shadow, no
+ *        animation).
+ *        ui primitives Atelier-ified: Field labels use --font-label
+ *        at 10px / 0.18em uppercase; inputClass drops rounded-md;
+ *        Badge becomes a tracked-out flat rectangle with palette-
+ *        token tones (warn pinks consolidated to --color-danger);
+ *        Toast loses its shadow and rounded corners and adopts the
+ *        label font; Button / IconButton primary + danger variants
+ *        switch to palette tokens.
+ *        Two functional fixes shipped alongside the redesign:
+ *        (1) iOS Safari standalone PWAs silently drop window.confirm()
+ *        and prompt(), so the detail page replaces native confirm()
+ *        with a custom Atelier modal ("CANCEL" / "DELETE", danger
+ *        button on the right). The same modal handles per-entry
+ *        deletes. Action buttons get explicit type="button".
+ *        (2) iOS datetime-local could push grid cells past the
+ *        viewport, so the 最低販売価格 / 確認日時 row stacks vertically
+ *        on narrow screens (grid-cols-1 sm:grid-cols-2), Field gains
+ *        min-w-0, inputClass adds min-w-0 max-w-full, and AppShell's
+ *        main has overflow-x-hidden as a safety net.
+ *        Decorative NO.### serial removed from list rows + detail
+ *        title (no real numbering exists in the data).
  */
-export const APP_VERSION = "0.9.0";
+export const APP_VERSION = "0.10.0";
