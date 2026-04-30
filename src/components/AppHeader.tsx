@@ -5,19 +5,16 @@ import { ArrowLeft, Menu } from "lucide-react";
 
 interface Props {
   onMenuClick: () => void;
-  /** When true, shows a back button and the detail sub-header rule. */
+  /** When true, shows a back button. */
   back?: boolean;
   /** Destination for the back button — falls back to "/" when omitted. */
   backHref?: string;
-  /** Label shown in the detail rule row (only when back=true). */
-  detailLabel?: string;
 }
 
 export default function AppHeader({
   onMenuClick,
   back,
   backHref = "/",
-  detailLabel = "ITEM DETAIL",
 }: Props) {
   return (
     <header className="sticky top-0 z-30 bg-[var(--color-cream)] border-b border-[var(--color-line)]">
@@ -59,19 +56,6 @@ export default function AppHeader({
           <Menu size={22} strokeWidth={1.4} />
         </button>
       </div>
-
-      {back && (
-        <div className="max-w-screen-sm mx-auto px-[18px] pb-3.5 flex items-center gap-2.5">
-          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
-          <span
-            className="text-[9.5px] tracking-[0.34em] uppercase text-[var(--color-muted)]"
-            style={{ fontFamily: "var(--font-label)" }}
-          >
-            {detailLabel}
-          </span>
-          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
-        </div>
-      )}
     </header>
   );
 }

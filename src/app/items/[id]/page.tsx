@@ -201,7 +201,7 @@ export default function ItemDetailPage({
       )}
 
       {/* ── MIN PRICE bar ────────────────────────────────────────── */}
-      <div className="flex items-center border-t border-[var(--color-line)] py-3">
+      <div className="flex items-center py-3">
         <span
           className="text-[var(--color-muted)] flex-1 uppercase"
           style={{ fontFamily: "var(--font-label)", fontSize: 9, letterSpacing: "0.28em" }}

@@ -258,5 +258,10 @@
  *        "/items/[id]") and AppHeader's back button is a Link to that
  *        path. Save handlers also switch to router.replace so
  *        OS-level swipe-back / browser back stays sane.
+ * 0.11.2 Drops the two remaining rules that bracketed the item name:
+ *        the AppHeader's "─── ITEM DETAIL ───" sub-rail (and its
+ *        detailLabel prop) above the name, and the MIN PRICE bar's
+ *        top border below the tags. The header now ends at its single
+ *        bottom hairline; MIN PRICE sits as a flat row.
  */
-export const APP_VERSION = "0.11.1";
+export const APP_VERSION = "0.11.2";
