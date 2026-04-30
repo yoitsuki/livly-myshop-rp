@@ -6,11 +6,12 @@ export default function Fab({ href }: { href: string }) {
     <Link
       href={href}
       aria-label="新規登録"
-      className="fixed bottom-6 right-6 z-20 w-12 h-12 rounded-full bg-gold text-white
-        shadow-[var(--shadow-fab)] hover:bg-gold-deep active:scale-95
-        transition-all duration-150 ease-out flex items-center justify-center"
+      className="fixed bottom-6 right-6 z-20 w-[52px] h-[52px] bg-[var(--color-gold-deep)] text-white
+        hover:bg-gold active:scale-95 transition-colors duration-150 ease-out
+        flex items-center justify-center"
+      style={{ borderRadius: 0 }}
     >
-      <Plus size={22} strokeWidth={2.6} />
+      <Plus size={22} strokeWidth={2.2} />
     </Link>
   );
 }

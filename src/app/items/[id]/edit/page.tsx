@@ -245,7 +245,7 @@ export default function EditItemPage({
       </p>
 
       {error && (
-        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger)] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
@@ -254,7 +254,8 @@ export default function EditItemPage({
         <input
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={`${inputClass()} font-bold text-[15px]`}
+          className={`${inputClass()} text-[17px]`}
+          style={{ fontFamily: "var(--font-display)" }}
         />
       </Field>
 
@@ -349,7 +350,7 @@ function SlotPreview({
   onClear?: () => void;
 }) {
   return (
-    <div className="relative rounded-lg border border-[var(--color-line)] bg-white overflow-hidden">
+    <div className="relative border border-[var(--color-line)] bg-white overflow-hidden">
       <div className="aspect-square bg-[var(--color-line-soft)] flex items-center justify-center text-muted">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -387,9 +388,9 @@ function SlotPreview({
             onClear();
           }}
           aria-label={`${label}を削除`}
-          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-text/85 text-white flex items-center justify-center hover:bg-text transition-colors"
+          className="absolute top-1 right-1 w-6 h-6 bg-text/85 text-white flex items-center justify-center hover:bg-text transition-colors"
         >
-          <X size={14} strokeWidth={2.6} />
+          <X size={14} strokeWidth={1.8} />
         </button>
       )}
     </div>
@@ -451,9 +452,9 @@ function TagPicker({
                 key={t.id}
                 type="button"
                 onClick={() => toggle(t.id)}
-                className={`px-2.5 h-7 rounded-md text-[12px] border transition-colors ${
+                className={`px-2.5 h-7 text-[12px] border transition-colors ${
                   on
-                    ? "bg-gold text-white border-gold font-bold"
+                    ? "bg-gold text-white border-gold"
                     : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                 }`}
               >
@@ -465,7 +466,7 @@ function TagPicker({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="px-2.5 h-7 rounded-md text-[12px] border border-dashed border-[var(--color-line-strong)] text-muted hover:text-text hover:border-gold/60 transition-colors"
+              className="px-2.5 h-7 text-[12px] border border-dashed border-[var(--color-line-strong)] text-muted hover:text-text hover:border-gold/60 transition-colors"
             >
               ＋ 新規タグ
             </button>

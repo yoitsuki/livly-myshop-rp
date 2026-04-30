@@ -26,8 +26,9 @@ export default function Card({
 }: CardProps) {
   return (
     <div
+      style={{ borderRadius: 0 }}
       className={[
-        "bg-white rounded-lg",
+        "bg-white",
         border ? "border border-[var(--color-line)]" : "",
         shadow ? "shadow-[var(--shadow-card)]" : "",
         PADDING[padding],

@@ -107,7 +107,7 @@ export default function SettingsPage() {
             />
             <button
               onClick={() => setShowKey((s) => !s)}
-              className="p-1.5 text-muted hover:text-text rounded transition-colors"
+              className="p-1.5 text-muted hover:text-text transition-colors"
               aria-label={showKey ? "キーを隠す" : "キーを表示"}
             >
               {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -137,14 +137,20 @@ export default function SettingsPage() {
         <div className="space-y-2 text-[13px] text-text/85 px-1">
           <div className="flex items-baseline gap-3 tabular-nums">
             <span>
-              <span className="font-bold text-[15px] text-text">
+              <span
+                className="text-[20px] text-text"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 {itemCount}
               </span>
               <span className="text-muted text-[11px] ml-0.5">items</span>
             </span>
             <span className="text-[var(--color-line-strong)]">/</span>
             <span>
-              <span className="font-bold text-[15px] text-text">
+              <span
+                className="text-[20px] text-text"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 {tagCount}
               </span>
               <span className="text-muted text-[11px] ml-0.5">tags</span>
@@ -160,7 +166,7 @@ export default function SettingsPage() {
                   {Math.round((storage.usage / storage.quota) * 100)}%
                 </span>
               </div>
-              <div className="h-1 rounded-full bg-[var(--color-line)] overflow-hidden">
+              <div className="h-1 bg-[var(--color-line)] overflow-hidden">
                 <div
                   className="h-full bg-gold"
                   style={{
@@ -180,7 +186,7 @@ export default function SettingsPage() {
         <CropPresetSummary presets={settings.cropPresets ?? []} />
         <Link
           href="/presets"
-          className="inline-flex items-center gap-1 text-[12px] text-gold-deep font-bold hover:underline"
+          className="inline-flex items-center gap-1 text-[12px] text-gold-deep hover:underline"
         >
           プリセット管理を開く →
         </Link>
@@ -217,7 +223,7 @@ function Section({
   return (
     <section className="space-y-3">
       <div className="px-1">
-        <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold-deep">
+        <h3 className="text-[10px] font-medium tracking-[0.18em] uppercase text-gold-deep">
           {title}
         </h3>
         {hint && (
@@ -244,14 +250,15 @@ function RadioCard({
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-lg border p-3 transition-all duration-150 ease-out ${
+      className={`text-left border p-3 transition-all duration-150 ease-out ${
         active
-          ? "border-gold bg-white shadow-[var(--shadow-focus)]"
+          ? "border-gold-deep bg-white shadow-[var(--shadow-focus)]"
           : "border-[var(--color-line)] bg-white hover:border-[var(--color-line-strong)]"
       }`}
     >
       <div
-        className={`font-bold text-[13px] ${active ? "text-gold-deep" : "text-text"}`}
+        className={`text-[16px] ${active ? "text-gold-deep" : "text-text"}`}
+        style={{ fontFamily: "var(--font-display)" }}
       >
         {label}
       </div>
@@ -279,7 +286,12 @@ function CropPresetSummary({ presets }: { presets: CropPreset[] }) {
     <ul className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
       {presets.map((p) => (
         <li key={p.id} className="px-1 py-2">
-          <div className="text-[13px] font-bold text-text">{p.name}</div>
+          <div
+            className="text-[15px] text-text"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {p.name}
+          </div>
           <div className="text-[10.5px] text-muted">{describePreset(p)}</div>
         </li>
       ))}

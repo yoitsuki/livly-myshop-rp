@@ -105,7 +105,8 @@ export default function PresetForm({
           value={draft.name}
           onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           placeholder="例: 通常レイアウト"
-          className={`${inputClass()} font-bold text-[15px]`}
+          className={`${inputClass()} text-[17px]`}
+          style={{ fontFamily: "var(--font-display)" }}
         />
       </Field>
 
@@ -124,7 +125,7 @@ export default function PresetForm({
 
       <Field label="色条件">
         <div className="space-y-2">
-          <div className="inline-flex bg-white border border-[var(--color-line)] rounded-md p-0.5 flex-wrap">
+          <div className="inline-flex bg-white border border-[var(--color-line)] p-0.5 flex-wrap">
             {COLOR_MODES.map((m) => {
               const active = draft.colorMode === m.value;
               return (
@@ -132,9 +133,9 @@ export default function PresetForm({
                   key={m.value}
                   type="button"
                   onClick={() => setDraft({ ...draft, colorMode: m.value })}
-                  className={`px-3 h-9 rounded text-[12px] transition-colors ${
+                  className={`px-3 h-9 text-[12px] transition-colors ${
                     active
-                      ? "bg-gold text-white font-bold"
+                      ? "bg-gold text-white"
                       : "text-text/70 hover:text-text"
                   }`}
                 >
@@ -159,7 +160,7 @@ export default function PresetForm({
                   className={`${inputClass({ fullWidth: false })} font-mono tabular-nums flex-1 min-w-0`}
                 />
                 <span
-                  className="w-10 h-11 rounded-md border border-[var(--color-line)] shrink-0"
+                  className="w-10 h-11 border border-[var(--color-line)] shrink-0"
                   style={{ backgroundColor: draft.topLeftHex ?? "#ffffff" }}
                   aria-hidden
                 />
@@ -214,7 +215,7 @@ export default function PresetForm({
       </button>
 
       {error && (
-        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger)] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}
@@ -291,7 +292,7 @@ function RectFieldset({
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold-deep px-1">
+      <div className="text-[10px] font-medium tracking-[0.18em] uppercase text-gold-deep px-1">
         {legend}
       </div>
       <div className="grid grid-cols-4 gap-1.5">

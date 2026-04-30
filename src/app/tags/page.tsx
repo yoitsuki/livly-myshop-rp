@@ -114,7 +114,7 @@ export default function TagsPage() {
           if (list.length === 0) return null;
           return (
             <section key={t} className="space-y-1">
-              <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gold-deep px-1">
+              <h3 className="text-[10px] font-medium tracking-[0.18em] uppercase text-gold-deep px-1">
                 {TYPE_LABEL[t]}
               </h3>
               <ul className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">

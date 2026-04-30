@@ -17,13 +17,13 @@ const VARIANT: Record<Variant, string> = {
   subtle:
     "text-text bg-[var(--color-line-soft)] hover:bg-[var(--color-line)]",
   danger:
-    "text-[#a04050] hover:bg-[var(--color-danger-soft)]",
+    "text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]",
 };
 
 const SIZE: Record<Size, string> = {
-  sm: "w-7 h-7 rounded",
-  md: "w-9 h-9 rounded-md",
-  lg: "w-10 h-10 rounded-md",
+  sm: "w-7 h-7",
+  md: "w-9 h-9",
+  lg: "w-10 h-10",
 };
 
 const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(

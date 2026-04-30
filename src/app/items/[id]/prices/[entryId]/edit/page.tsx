@@ -109,12 +109,15 @@ export default function EditPriceEntryPage({
 
   return (
     <div className="pt-3 pb-6 space-y-4">
-      <h2 className="text-[16px] font-bold text-text px-1">
+      <h2
+        className="text-[20px] text-text px-1 leading-snug"
+        style={{ fontFamily: "var(--font-display)" }}
+      >
         「{i.name}」の参考価格を編集
       </h2>
 
       {error && (
-        <div className="rounded-md bg-[var(--color-danger-soft)] border border-[#e9b9c0] px-3 py-2 text-[13px] text-text">
+        <div className="bg-[var(--color-danger-soft)] border border-[var(--color-danger)] px-3 py-2 text-[13px] text-text">
           {error}
         </div>
       )}

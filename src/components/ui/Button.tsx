@@ -18,19 +18,19 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT: Record<Variant, string> = {
   primary:
-    "bg-gold text-white border border-transparent font-bold hover:bg-gold-deep",
+    "bg-gold text-white border border-transparent hover:bg-gold-deep",
   secondary:
     "bg-white border border-[var(--color-line-strong)] text-gold-deep hover:bg-[var(--color-line-soft)]",
   ghost:
     "bg-transparent border border-transparent text-gold-deep hover:bg-[var(--color-line-soft)]",
   danger:
-    "bg-white border border-[#e9b9c0] text-[#a04050] hover:bg-[var(--color-danger-soft)]",
+    "bg-white border border-[var(--color-danger)] text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)]",
 };
 
 const SIZE: Record<Size, string> = {
-  sm: "h-8 px-3 text-[13px] rounded-md gap-1",
-  md: "h-10 px-4 text-[14px] rounded-lg gap-1.5",
-  lg: "h-12 px-5 text-[15px] rounded-lg gap-2",
+  sm: "h-8 px-3 text-[13px] gap-1",
+  md: "h-10 px-4 text-[14px] gap-1.5",
+  lg: "h-12 px-5 text-[15px] gap-2",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -53,6 +53,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       ref={ref}
       type={type}
       disabled={disabled || loading}
+      style={{ borderRadius: 0, fontFamily: "var(--font-label)", letterSpacing: "0.06em" }}
       className={[
         "inline-flex items-center justify-center font-medium tabular-nums",
         "transition-all duration-150 ease-out outline-none",

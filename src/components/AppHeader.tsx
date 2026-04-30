@@ -1,60 +1,72 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Menu } from "lucide-react";
 
 interface Props {
   onMenuClick: () => void;
-  /** When true, shows a back button on the left instead of an empty slot. */
+  /** When true, shows a back button and the detail sub-header rule. */
   back?: boolean;
+  /** Label shown in the detail rule row (only when back=true). */
+  detailLabel?: string;
 }
 
-export default function AppHeader({ onMenuClick, back }: Props) {
+export default function AppHeader({
+  onMenuClick,
+  back,
+  detailLabel = "ITEM DETAIL",
+}: Props) {
   const router = useRouter();
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   return (
-    <header
-      className={`sticky top-0 z-30 bg-white/95 backdrop-blur transition-shadow duration-150 ease-out ${
-        scrolled ? "shadow-[var(--shadow-header)]" : ""
-      }`}
-    >
-      <div className="max-w-screen-sm mx-auto px-3 h-12 flex items-center gap-2">
+    <header className="sticky top-0 z-30 bg-[var(--color-cream)] border-b border-[var(--color-line)]">
+      <div className="max-w-screen-sm mx-auto px-4 flex items-center gap-3 pt-4 pb-3.5">
         {back ? (
           <button
             aria-label="戻る"
             onClick={() => router.back()}
-            className="p-2 -ml-1 rounded-md hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors text-text"
+            className="-ml-1.5 w-8 h-8 flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
           >
-            <ArrowLeft size={22} strokeWidth={2.2} />
+            <ArrowLeft size={20} strokeWidth={1.6} />
           </button>
-        ) : (
-          <span className="w-9 h-9 -ml-1" aria-hidden />
-        )}
-        <div className="flex-1 min-w-0 leading-tight">
-          <div className="text-[10px] text-muted tracking-[0.22em] font-medium uppercase">
-            Livly · My-Shop
-          </div>
-          <h1 className="text-[16px] font-bold text-gold-deep tracking-wide truncate">
-            参考価格めも
-          </h1>
+        ) : null}
+
+        <div className="flex-1 min-w-0 flex flex-col gap-[3px]">
+          <span
+            className="text-[22px] leading-none tracking-[0.16em] font-normal text-[var(--color-gold-deep)]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            LIVLY
+          </span>
+          <span
+            className="text-[8.5px] leading-none tracking-[0.42em] font-medium text-[var(--color-muted)] uppercase"
+            style={{ fontFamily: "var(--font-label)" }}
+          >
+            MY-SHOP REF
+          </span>
         </div>
+
         <button
           aria-label="メニューを開く"
           onClick={onMenuClick}
-          className="p-2 -mr-1 rounded-md hover:bg-[var(--color-line-soft)] active:bg-[var(--color-line)] transition-colors text-text"
+          className="-mr-1.5 w-8 h-8 flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
         >
-          <Menu size={22} strokeWidth={2.2} />
+          <Menu size={22} strokeWidth={1.4} />
         </button>
       </div>
+
+      {back && (
+        <div className="max-w-screen-sm mx-auto px-[18px] pb-3.5 flex items-center gap-2.5">
+          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
+          <span
+            className="text-[9.5px] tracking-[0.34em] uppercase text-[var(--color-muted)]"
+            style={{ fontFamily: "var(--font-label)" }}
+          >
+            {detailLabel}
+          </span>
+          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
+        </div>
+      )}
     </header>
   );
 }

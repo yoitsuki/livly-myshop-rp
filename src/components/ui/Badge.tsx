@@ -19,30 +19,30 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 const TONE: Record<Variant, Record<Tone, string>> = {
   solid: {
     mint: "bg-gold text-white",
-    neutral: "bg-text text-white",
-    warn: "bg-[#c46070] text-white",
+    neutral: "bg-[var(--color-text)] text-white",
+    warn: "bg-[var(--color-danger)] text-white",
     info: "bg-[#5b8fb9] text-white",
-    muted: "bg-[var(--color-line-strong)] text-text",
+    muted: "bg-[var(--color-line-strong)] text-[var(--color-text)]",
   },
   soft: {
     mint: "bg-[var(--color-line-soft)] text-gold-deep",
-    neutral: "bg-[var(--color-line-soft)] text-text",
-    warn: "bg-[var(--color-danger-soft)] text-[#a04050]",
-    info: "bg-sky text-text/80",
-    muted: "bg-[var(--color-line-soft)] text-muted",
+    neutral: "bg-[var(--color-line-soft)] text-[var(--color-text)]",
+    warn: "bg-[var(--color-danger-soft)] text-[var(--color-danger)]",
+    info: "bg-sky text-[var(--color-text)]/80",
+    muted: "bg-[var(--color-line-soft)] text-[var(--color-muted)]",
   },
   outline: {
     mint: "border border-gold text-gold-deep",
-    neutral: "border border-[var(--color-line-strong)] text-text",
-    warn: "border border-[#e9b9c0] text-[#a04050]",
-    info: "border border-[#b9d8ec] text-text/80",
-    muted: "border border-[var(--color-line)] text-muted",
+    neutral: "border border-[var(--color-line-strong)] text-[var(--color-text)]",
+    warn: "border border-[var(--color-danger)] text-[var(--color-danger)]",
+    info: "border border-[#b9d8ec] text-[var(--color-text)]/80",
+    muted: "border border-[var(--color-line)] text-[var(--color-muted)]",
   },
 };
 
 const SIZE: Record<Size, string> = {
-  sm: "h-5 px-2 text-[10.5px]",
-  md: "h-6 px-2.5 text-[11.5px]",
+  sm: "h-5 px-2 text-[10px] tracking-[0.12em]",
+  md: "h-6 px-2.5 text-[11px] tracking-[0.10em]",
 };
 
 export default function Badge({
@@ -56,7 +56,7 @@ export default function Badge({
   return (
     <span
       className={[
-        "inline-flex items-center justify-center rounded-md font-medium tabular-nums whitespace-nowrap leading-none",
+        "inline-flex items-center justify-center font-[var(--font-label)] font-medium tabular-nums whitespace-nowrap leading-none uppercase",
         SIZE[size],
         TONE[variant][tone],
         className ?? "",

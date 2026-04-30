@@ -262,18 +262,23 @@ export default function ImageCropper({
         <button
           onClick={onCancel}
           aria-label="キャンセル"
-          className="p-2 -ml-1 rounded-md hover:bg-white/10 transition-colors"
+          className="p-2 -ml-1 hover:bg-white/10 transition-colors"
         >
-          <X size={22} strokeWidth={2.2} />
+          <X size={22} strokeWidth={1.8} />
         </button>
-        <div className="text-[13px] font-bold tracking-wide">{title}</div>
+        <div
+          className="text-[15px] tracking-wide"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
+          {title}
+        </div>
         <button
           onClick={onConfirmClick}
           disabled={busy || !rect}
           aria-label="決定"
-          className="p-2 -mr-1 rounded-md hover:bg-white/10 disabled:opacity-50 transition-colors"
+          className="p-2 -mr-1 hover:bg-white/10 disabled:opacity-50 transition-colors"
         >
-          <Check size={22} strokeWidth={2.4} />
+          <Check size={22} strokeWidth={1.8} />
         </button>
       </div>
 
@@ -340,7 +345,7 @@ export default function ImageCropper({
                   <span
                     key={h.key}
                     data-handle={h.key}
-                    className={`absolute w-4 h-4 rounded-full bg-white border-2 border-gold-deep ${h.pos}`}
+                    className={`absolute w-4 h-4 bg-white border-2 border-gold-deep ${h.pos}`}
                     style={{ cursor: h.cursor }}
                   />
                 ))}
