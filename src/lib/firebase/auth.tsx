@@ -36,12 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const auth = firebaseAuth();
+
     // Surface any error from a prior signInWithRedirect round-trip.
-    getRedirectResult(firebaseAuth).catch(() => {
+    getRedirectResult(auth).catch(() => {
       // onAuthStateChanged will still fire; swallow to avoid an unhandled rejection.
     });
 
-    return onAuthStateChanged(firebaseAuth, (next) => {
+    return onAuthStateChanged(auth, (next) => {
       setUser(next);
       setLoading(false);
     });
@@ -74,13 +76,14 @@ function prefersRedirect(): boolean {
 
 export async function signInGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider();
+  const auth = firebaseAuth();
   if (prefersRedirect()) {
-    await signInWithRedirect(firebaseAuth, provider);
+    await signInWithRedirect(auth, provider);
     return;
   }
-  await signInWithPopup(firebaseAuth, provider);
+  await signInWithPopup(auth, provider);
 }
 
 export async function signOutCurrent(): Promise<void> {
-  await signOut(firebaseAuth);
+  await signOut(firebaseAuth());
 }
