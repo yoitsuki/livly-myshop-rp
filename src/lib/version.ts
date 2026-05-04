@@ -263,5 +263,14 @@
  *        detailLabel prop) above the name, and the MIN PRICE bar's
  *        top border below the tags. The header now ends at its single
  *        bottom hairline; MIN PRICE sits as a flat row.
+ * 0.12.0 Phase 1 of the Firebase migration: Firebase Auth (Google) +
+ *        AuthProvider context wraps the app, and AppShell gates its
+ *        children behind a LoginScreen. Three render states: loading
+ *        (blank), unauthenticated (Google sign-in button), and
+ *        authenticated-but-not-admin (shows the user's UID for copy
+ *        into NEXT_PUBLIC_ADMIN_UID, with a sign-out fallback). Touch
+ *        devices use signInWithRedirect to dodge mobile-Safari popup
+ *        blocks; desktop uses signInWithPopup. Existing Dexie data and
+ *        write paths are untouched in this phase.
  */
-export const APP_VERSION = "0.11.2";
+export const APP_VERSION = "0.12.0";
