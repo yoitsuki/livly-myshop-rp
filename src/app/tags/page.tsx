@@ -2,15 +2,15 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Home, Trash2 } from "lucide-react";
+import { useItems, useTags } from "@/lib/firebase/hooks";
 import {
   createTag,
-  db,
   deleteTag,
+  deleteTagWithCascade,
   type Tag,
   type TagType,
-} from "@/lib/db";
+} from "@/lib/firebase/repo";
 import { Button, Field, inputClass, IconButton } from "@/components/ui";
 
 const TYPE_LABEL: Record<TagType, string> = {
@@ -23,8 +23,8 @@ const TYPE_LABEL: Record<TagType, string> = {
 const TYPE_ORDER: TagType[] = ["gacha", "bazaar", "shop", "other"];
 
 export default function TagsPage() {
-  const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
-  const items = useLiveQuery(() => db().items.toArray(), [], []);
+  const tags = useTags() ?? [];
+  const items = useItems() ?? [];
   const [name, setName] = useState("");
   const [type, setType] = useState<TagType>("other");
 
@@ -61,18 +61,12 @@ export default function TagsPage() {
       )
     )
       return;
-    if (usage > 0 && items) {
-      await db().transaction("rw", db().items, async () => {
-        for (const it of items) {
-          if (it.tagIds.includes(t.id)) {
-            await db().items.update(it.id, {
-              tagIds: it.tagIds.filter((x) => x !== t.id),
-            });
-          }
-        }
-      });
+    if (usage > 0) {
+      const affected = items.filter((it) => it.tagIds.includes(t.id)).map((it) => it.id);
+      await deleteTagWithCascade(t.id, affected);
+    } else {
+      await deleteTag(t.id);
     }
-    await deleteTag(t.id);
   };
 
   return (

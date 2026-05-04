@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Home, Plus, RotateCcw, Trash2 } from "lucide-react";
-import { db, getSettings, patchSettings } from "@/lib/db";
+import { useSettings } from "@/lib/firebase/hooks";
+import { getSettings, patchSettings } from "@/lib/firebase/repo";
 import {
   describePreset,
   SEED_PRESETS,
@@ -12,7 +12,7 @@ import {
 import { Button, IconButton } from "@/components/ui";
 
 export default function PresetsPage() {
-  const stored = useLiveQuery(() => db().settings.get("singleton"), []);
+  const stored = useSettings();
   const presets: CropPreset[] = stored?.cropPresets ?? [];
 
   const onDelete = async (id: string) => {

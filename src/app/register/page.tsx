@@ -2,12 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Crop, ImagePlus, Loader2, ScanText, Sparkles, X } from "lucide-react";
+import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
 import {
   createItem,
   createTag,
-  db,
   getSettings,
   uid,
   type ItemCropRecord,
@@ -15,7 +14,7 @@ import {
   type ShopPeriodRecord,
   type Tag,
   type TagType,
-} from "@/lib/db";
+} from "@/lib/firebase/repo";
 import { compressImage, type CropRect } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
@@ -90,8 +89,8 @@ export default function RegisterPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
 
-  const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
-  const settings = useLiveQuery(() => db().settings.get("singleton"), []);
+  const tags = useTags() ?? [];
+  const settings = useSettings();
   const [ocrDone, setOcrDone] = useState(false);
 
   useEffect(() => {
@@ -269,6 +268,7 @@ export default function RegisterPage() {
         minPrice: Number(form.minPrice) || 0,
         priceEntries: [initialEntry],
       });
+
       router.push("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
@@ -708,7 +708,7 @@ function ShopPeriodField({
 }
 
 function CategorySuggestions() {
-  const items = useLiveQuery(() => db().items.toArray(), [], []);
+  const items = useItems();
   const categories = useMemo(() => {
     const set = new Set<string>();
     items?.forEach((i) => i.category && set.add(i.category));

@@ -1,24 +1,22 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLiveQuery } from "dexie-react-hooks";
 import {
   Calendar,
   Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
+import { useItem, useTags } from "@/lib/firebase/hooks";
 import {
-  db,
   deleteItem,
   deletePriceEntry,
   sortedPriceEntries,
   type Item,
   type PriceEntry,
-  type Tag,
-} from "@/lib/db";
+} from "@/lib/firebase/repo";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
@@ -88,23 +86,15 @@ export default function ItemDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const item = useLiveQuery(() => db().items.get(id), [id]);
-  const allTags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
+  const item = useItem(id);
+  const allTags = useTags() ?? [];
 
   const [confirmDialog, setConfirmDialog] = useState<{
     message: string;
     onConfirm: () => Promise<void> | void;
   } | null>(null);
 
-  const mainSrc = item?.mainImageBlob;
-  const [mainUrl, setMainUrl] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (!mainSrc) return setMainUrl(undefined);
-    const url = URL.createObjectURL(mainSrc);
-    setMainUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [mainSrc]);
+  const mainUrl = item?.mainImageUrl;
 
   if (item === undefined) {
     return (

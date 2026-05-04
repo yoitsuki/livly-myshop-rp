@@ -2,8 +2,8 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db, getSettings, patchSettings } from "@/lib/db";
+import { useSettings } from "@/lib/firebase/hooks";
+import { getSettings, patchSettings } from "@/lib/firebase/repo";
 import type { CropPreset } from "@/lib/preset";
 import PresetForm from "@/components/PresetForm";
 
@@ -13,7 +13,7 @@ export default function EditPresetPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const stored = useLiveQuery(() => db().settings.get("singleton"), []);
+  const stored = useSettings();
   const presets = stored?.cropPresets ?? [];
   const preset = presets.find((p) => p.id === decodeURIComponent(id));
 

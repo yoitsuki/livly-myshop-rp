@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Eye, EyeOff, Home } from "lucide-react";
-import { db, getSettings, patchSettings, type AppSettings } from "@/lib/db";
+import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
+import { getSettings, patchSettings, type AppSettings } from "@/lib/firebase/repo";
 import { describePreset, type CropPreset } from "@/lib/preset";
 import { Button, Field, fieldInputClass, Toast } from "@/components/ui";
 
@@ -21,16 +21,17 @@ const CLAUDE_MODELS = [
 ];
 
 export default function SettingsPage() {
-  const stored = useLiveQuery(() => db().settings.get("singleton"), []);
+  const stored = useSettings();
   const settings: AppSettings | undefined = stored ?? DEFAULT_SETTINGS;
   useEffect(() => {
     if (stored === undefined) return;
-    if (stored === null) {
-      getSettings().catch(() => undefined);
-    }
+    // First-load seeding when the singleton doesn't exist yet.
+    getSettings().catch(() => undefined);
   }, [stored]);
-  const itemCount = useLiveQuery(() => db().items.count(), [], 0);
-  const tagCount = useLiveQuery(() => db().tags.count(), [], 0);
+  const items = useItems();
+  const tags = useTags();
+  const itemCount = items?.length ?? 0;
+  const tagCount = tags?.length ?? 0;
 
   const [showKey, setShowKey] = useState(false);
   const [keyDraft, setKeyDraft] = useState<string | undefined>();

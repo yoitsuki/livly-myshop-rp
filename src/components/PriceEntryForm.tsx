@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
 import { ImagePlus, Loader2, ScanText, Sparkles } from "lucide-react";
-import { db, getSettings } from "@/lib/db";
+import { useSettings } from "@/lib/firebase/hooks";
+import { getSettings } from "@/lib/firebase/repo";
 import { compressImage } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
@@ -67,7 +67,7 @@ export default function PriceEntryForm({
   const [busy, setBusy] = useState<"idle" | "load" | "ocr">("idle");
   const [ocrDone, setOcrDone] = useState(false);
   const [ocrError, setOcrError] = useState<string | undefined>();
-  const settings = useLiveQuery(() => db().settings.get("singleton"), []);
+  const settings = useSettings();
 
   useEffect(() => {
     if (!pickedFile) return setPreviewUrl(undefined);
