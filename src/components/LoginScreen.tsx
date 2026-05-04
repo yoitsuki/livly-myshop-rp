@@ -6,9 +6,15 @@ import { signInGoogle, signOutCurrent } from "@/lib/firebase/auth";
 import { ADMIN_UID } from "@/lib/firebase/client";
 import Button from "./ui/Button";
 
-export default function LoginScreen({ user }: { user: User | null }) {
+export default function LoginScreen({
+  user,
+  redirectError,
+}: {
+  user: User | null;
+  redirectError?: string | null;
+}) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(redirectError ?? null);
 
   async function handleSignIn() {
     setBusy(true);
