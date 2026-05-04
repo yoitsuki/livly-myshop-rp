@@ -1,4 +1,4 @@
-import type { Tag, TagType } from "@/lib/db";
+import type { Tag, TagType } from "@/lib/firebase/types";
 
 /** Atelier: flat rectangular pills with warm tinted backgrounds. */
 const TYPE_BG: Record<TagType, string> = {

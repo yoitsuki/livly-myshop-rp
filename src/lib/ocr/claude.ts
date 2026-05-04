@@ -1,5 +1,6 @@
 "use client";
 
+import { firebaseAuth } from "@/lib/firebase/client";
 import type { ExtractedFields } from "./parse";
 
 async function blobToDataUrl(blob: Blob): Promise<string> {
@@ -11,6 +12,13 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+async function adminBearer(): Promise<string> {
+  const user = firebaseAuth().currentUser;
+  if (!user) throw new Error("OCR を呼ぶ前にログインが必要です");
+  const token = await user.getIdToken();
+  return `Bearer ${token}`;
+}
+
 export async function recognizeWithClaude(
   blob: Blob,
   apiKey: string,
@@ -19,7 +27,10 @@ export async function recognizeWithClaude(
   const imageDataUrl = await blobToDataUrl(blob);
   const res = await fetch("/api/claude-ocr", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: await adminBearer(),
+    },
     body: JSON.stringify({ apiKey, model, imageDataUrl }),
   });
   if (!res.ok) {
