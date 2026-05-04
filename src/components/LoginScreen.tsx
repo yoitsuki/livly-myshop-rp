@@ -114,6 +114,14 @@ function ErrorText({ children }: { children: React.ReactNode }) {
 }
 
 function messageOf(e: unknown): string {
+  if (e && typeof e === "object") {
+    const code = "code" in e && typeof e.code === "string" ? e.code : null;
+    const msg =
+      "message" in e && typeof e.message === "string" ? e.message : null;
+    if (code && msg) return `${msg} (${code})`;
+    if (code) return code;
+    if (msg) return msg;
+  }
   if (e instanceof Error) return e.message;
   return "エラーが発生しました";
 }
