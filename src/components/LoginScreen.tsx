@@ -114,6 +114,7 @@ function ConfigDiagnostic() {
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    adminUid: process.env.NEXT_PUBLIC_ADMIN_UID,
   };
   return (
     <details className="mt-8 text-left text-[11px] text-muted">
