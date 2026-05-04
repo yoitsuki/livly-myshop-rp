@@ -95,13 +95,37 @@ export default function LoginScreen({ user }: { user: User | null }) {
         </Button>
       </div>
       {error && <ErrorText>{error}</ErrorText>}
+      <ConfigDiagnostic />
     </Frame>
+  );
+}
+
+function ConfigDiagnostic() {
+  const fields = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  };
+  return (
+    <details className="mt-8 text-left text-[11px] text-muted">
+      <summary className="cursor-pointer">config diagnostic</summary>
+      <ul className="mt-2 space-y-1 font-mono break-all">
+        {Object.entries(fields).map(([k, v]) => (
+          <li key={k}>
+            {k}: {v ? `${v.slice(0, 12)}…` : "(empty)"}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center px-6 py-16 text-center">
+    <div className="min-h-dvh flex flex-col items-center px-6 pt-16 pb-12 text-center">
       <div className="w-full max-w-xs">{children}</div>
     </div>
   );
@@ -115,7 +139,11 @@ function ErrorText({ children }: { children: React.ReactNode }) {
 
 function messageOf(e: unknown): string {
   if (e && typeof e === "object") {
-    const code = "code" in e && typeof e.code === "string" ? e.code : null;
+    const rawCode = "code" in e ? (e as { code?: unknown }).code : undefined;
+    const code =
+      typeof rawCode === "string" || typeof rawCode === "number"
+        ? String(rawCode)
+        : null;
     const msg =
       "message" in e && typeof e.message === "string" ? e.message : null;
     if (code && msg) return `${msg} (${code})`;
