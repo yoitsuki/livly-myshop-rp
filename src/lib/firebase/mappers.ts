@@ -80,7 +80,19 @@ export function tagFromFs(id: string, data: DocumentData): Tag {
 
 export function settingsToFs(s: AppSettings): DocumentData {
   return compact({
-    cropPresets: s.cropPresets,
+    cropPresets: s.cropPresets?.map((p) =>
+      compact({
+        id: p.id,
+        name: p.name,
+        width: p.width,
+        height: p.height,
+        colorMode: p.colorMode,
+        topLeftHex: p.topLeftHex,
+        colorTolerance: p.colorTolerance,
+        icon: p.icon,
+        main: p.main,
+      }),
+    ),
   });
 }
 
