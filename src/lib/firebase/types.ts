@@ -53,8 +53,5 @@ export interface Tag {
 
 export interface AppSettings {
   id: "singleton";
-  ocrProvider: "tesseract" | "claude";
-  claudeApiKey?: string;
-  claudeModel?: string;
   cropPresets?: CropPreset[];
 }

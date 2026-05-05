@@ -80,9 +80,6 @@ export function tagFromFs(id: string, data: DocumentData): Tag {
 
 export function settingsToFs(s: AppSettings): DocumentData {
   return compact({
-    ocrProvider: s.ocrProvider,
-    claudeApiKey: s.claudeApiKey,
-    claudeModel: s.claudeModel,
     cropPresets: s.cropPresets,
   });
 }
@@ -90,9 +87,6 @@ export function settingsToFs(s: AppSettings): DocumentData {
 export function settingsFromFs(data: DocumentData): AppSettings {
   return {
     id: "singleton",
-    ocrProvider: data.ocrProvider === "claude" ? "claude" : "tesseract",
-    claudeApiKey: data.claudeApiKey,
-    claudeModel: data.claudeModel,
     cropPresets: data.cropPresets,
   };
 }

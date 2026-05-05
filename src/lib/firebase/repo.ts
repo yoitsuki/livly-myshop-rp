@@ -276,8 +276,6 @@ export async function deleteTagWithCascade(
 
 const DEFAULT_SETTINGS: AppSettings = {
   id: "singleton",
-  ocrProvider: "tesseract",
-  claudeModel: "claude-sonnet-4-6",
   cropPresets: SEED_PRESETS,
 };
 

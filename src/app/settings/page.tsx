@@ -4,15 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Home } from "lucide-react";
 import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
-import { getSettings, patchSettings, type AppSettings } from "@/lib/firebase/repo";
+import { getSettings } from "@/lib/firebase/repo";
+import { useLocalSettings } from "@/lib/localSettings";
 import { describePreset, type CropPreset } from "@/lib/preset";
 import { Button, Field, fieldInputClass, Toast } from "@/components/ui";
-
-const DEFAULT_SETTINGS: AppSettings = {
-  id: "singleton",
-  ocrProvider: "tesseract",
-  claudeModel: "claude-sonnet-4-6",
-};
 
 const CLAUDE_MODELS = [
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
@@ -21,13 +16,15 @@ const CLAUDE_MODELS = [
 ];
 
 export default function SettingsPage() {
-  const stored = useSettings();
-  const settings: AppSettings | undefined = stored ?? DEFAULT_SETTINGS;
+  const cloudSettings = useSettings();
   useEffect(() => {
-    if (stored === undefined) return;
-    // First-load seeding when the singleton doesn't exist yet.
+    if (cloudSettings === undefined) return;
+    // Seed the singleton + cropPresets on first read.
     getSettings().catch(() => undefined);
-  }, [stored]);
+  }, [cloudSettings]);
+
+  const { settings: local, patch: patchLocal } = useLocalSettings();
+
   const items = useItems();
   const tags = useTags();
   const itemCount = items?.length ?? 0;
@@ -36,50 +33,32 @@ export default function SettingsPage() {
   const [showKey, setShowKey] = useState(false);
   const [keyDraft, setKeyDraft] = useState<string | undefined>();
   const [saved, setSaved] = useState(false);
-  const [storage, setStorage] = useState<{
-    usage: number;
-    quota: number;
-  } | null>(null);
 
-  useEffect(() => {
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.storage ||
-      !navigator.storage.estimate
-    )
-      return;
-    navigator.storage.estimate().then((est) => {
-      if (est.usage != null && est.quota != null) {
-        setStorage({ usage: est.usage, quota: est.quota });
-      }
-    });
-  }, [itemCount]);
-
-  if (!settings) {
-    return <div className="pt-6 text-center text-muted">読み込み中…</div>;
-  }
-
-  const update = async (patch: Partial<AppSettings>) => {
-    await patchSettings(patch);
+  const flashSaved = () => {
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1200);
   };
 
-  const apiKeyValue = keyDraft ?? settings.claudeApiKey ?? "";
+  const updateLocal = (patch: Parameters<typeof patchLocal>[0]) => {
+    patchLocal(patch);
+    flashSaved();
+  };
+
+  const apiKeyValue = keyDraft ?? local.claudeApiKey ?? "";
 
   return (
     <div className="pt-3 pb-8 space-y-8">
       <Section title="OCR エンジン" hint="画像から文字を抽出する方法を選びます。">
         <div className="grid grid-cols-2 gap-2">
           <RadioCard
-            active={settings.ocrProvider === "tesseract"}
-            onClick={() => update({ ocrProvider: "tesseract" })}
+            active={local.ocrProvider === "tesseract"}
+            onClick={() => updateLocal({ ocrProvider: "tesseract" })}
             label="Tesseract"
             sub="ブラウザ内 / キー不要 / やや遅い"
           />
           <RadioCard
-            active={settings.ocrProvider === "claude"}
-            onClick={() => update({ ocrProvider: "claude" })}
+            active={local.ocrProvider === "claude"}
+            onClick={() => updateLocal({ ocrProvider: "claude" })}
             label="Claude Vision"
             sub="高精度 / API キー必須"
           />
@@ -97,7 +76,7 @@ export default function SettingsPage() {
               onChange={(e) => setKeyDraft(e.target.value)}
               onBlur={() => {
                 if (keyDraft !== undefined) {
-                  update({ claudeApiKey: keyDraft.trim() || undefined });
+                  updateLocal({ claudeApiKey: keyDraft.trim() || undefined });
                   setKeyDraft(undefined);
                 }
               }}
@@ -117,8 +96,8 @@ export default function SettingsPage() {
         </Field>
         <Field label="モデル">
           <select
-            value={settings.claudeModel ?? "claude-sonnet-4-6"}
-            onChange={(e) => update({ claudeModel: e.target.value })}
+            value={local.claudeModel ?? "claude-sonnet-4-6"}
+            onChange={(e) => updateLocal({ claudeModel: e.target.value })}
             className={fieldInputClass}
           >
             {CLAUDE_MODELS.map((m) => (
@@ -129,54 +108,32 @@ export default function SettingsPage() {
           </select>
         </Field>
         <p className="text-[11px] text-muted px-1 leading-relaxed">
-          キーは端末内 (IndexedDB) のみに保存されます。送信時は Next.js
+          キーは端末内 (localStorage) のみに保存されます。送信時は Next.js
           の Route Handler 経由で Anthropic API に転送します。
         </p>
       </Section>
 
-      <Section title="ストレージ">
-        <div className="space-y-2 text-[13px] text-text/85 px-1">
-          <div className="flex items-baseline gap-3 tabular-nums">
-            <span>
-              <span
-                className="text-[20px] text-text"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                {itemCount}
-              </span>
-              <span className="text-muted text-[11px] ml-0.5">items</span>
+      <Section title="件数">
+        <div className="flex items-baseline gap-3 tabular-nums px-1 text-text/85">
+          <span>
+            <span
+              className="text-[20px] text-text"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              {itemCount}
             </span>
-            <span className="text-[var(--color-line-strong)]">/</span>
-            <span>
-              <span
-                className="text-[20px] text-text"
-                style={{ fontFamily: "var(--font-display)" }}
-              >
-                {tagCount}
-              </span>
-              <span className="text-muted text-[11px] ml-0.5">tags</span>
+            <span className="text-muted text-[11px] ml-0.5">items</span>
+          </span>
+          <span className="text-[var(--color-line-strong)]">/</span>
+          <span>
+            <span
+              className="text-[20px] text-text"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              {tagCount}
             </span>
-          </div>
-          {storage && (
-            <div className="text-[12px] text-muted space-y-1">
-              <div className="flex items-baseline justify-between tabular-nums">
-                <span>
-                  使用 {formatBytes(storage.usage)} / {formatBytes(storage.quota)}
-                </span>
-                <span>
-                  {Math.round((storage.usage / storage.quota) * 100)}%
-                </span>
-              </div>
-              <div className="h-1 bg-[var(--color-line)] overflow-hidden">
-                <div
-                  className="h-full bg-gold"
-                  style={{
-                    width: `${Math.min(100, (storage.usage / storage.quota) * 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
+            <span className="text-muted text-[11px] ml-0.5">tags</span>
+          </span>
         </div>
       </Section>
 
@@ -184,20 +141,13 @@ export default function SettingsPage() {
         title="切り抜きプリセット"
         hint="画像取り込み時のクロップ範囲を保存します。詳細は専用画面で編集します。"
       >
-        <CropPresetSummary presets={settings.cropPresets ?? []} />
+        <CropPresetSummary presets={cloudSettings?.cropPresets ?? []} />
         <Link
           href="/presets"
           className="inline-flex items-center gap-1 text-[12px] text-gold-deep hover:underline"
         >
           プリセット管理を開く →
         </Link>
-      </Section>
-
-      <Section title="クラウド連携 (将来)" hint="Drive バックアップは未実装です。">
-        <p className="text-[12px] text-muted px-1 leading-relaxed">
-          現時点では画像とメタデータをすべて端末内 (IndexedDB) に保存して
-          います。後ほど Google Drive バックアップを追加予定です。
-        </p>
       </Section>
 
       <Link href="/" className="block">
@@ -266,13 +216,6 @@ function RadioCard({
       <div className="text-[10.5px] text-muted leading-tight mt-0.5">{sub}</div>
     </button>
   );
-}
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
 function CropPresetSummary({ presets }: { presets: CropPreset[] }) {

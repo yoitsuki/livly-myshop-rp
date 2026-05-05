@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2, ScanText, Sparkles } from "lucide-react";
-import { useSettings } from "@/lib/firebase/hooks";
-import { getSettings } from "@/lib/firebase/repo";
+import { getLocalSettings, useLocalSettings } from "@/lib/localSettings";
 import { compressImage } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
@@ -67,7 +66,7 @@ export default function PriceEntryForm({
   const [busy, setBusy] = useState<"idle" | "load" | "ocr">("idle");
   const [ocrDone, setOcrDone] = useState(false);
   const [ocrError, setOcrError] = useState<string | undefined>();
-  const settings = useSettings();
+  const { settings: local } = useLocalSettings();
 
   useEffect(() => {
     if (!pickedFile) return setPreviewUrl(undefined);
@@ -101,17 +100,17 @@ export default function PriceEntryForm({
     setOcrError(undefined);
     setBusy("ocr");
     try {
-      const s = await getSettings();
+      const ocr = getLocalSettings();
       const downscaled = await compressImage(pickedFile, {
         maxWidth: 1600,
         quality: 0.8,
       });
       let extracted: ExtractedFields = {};
-      if (s.ocrProvider === "claude" && s.claudeApiKey) {
+      if (ocr.ocrProvider === "claude" && ocr.claudeApiKey) {
         extracted = await recognizeWithClaude(
           downscaled,
-          s.claudeApiKey,
-          s.claudeModel
+          ocr.claudeApiKey,
+          ocr.claudeModel
         );
       } else {
         const text = await recognizeJapanese(downscaled);
@@ -134,8 +133,8 @@ export default function PriceEntryForm({
   };
 
   const ocrLabel =
-    settings?.ocrProvider === "claude" && settings?.claudeApiKey
-      ? `Claude API・${settings.claudeModel ?? "claude-sonnet-4-6"}`
+    local.ocrProvider === "claude" && local.claudeApiKey
+      ? `Claude API・${local.claudeModel ?? "claude-sonnet-4-6"}`
       : "Tesseract (端末内)";
 
   return (

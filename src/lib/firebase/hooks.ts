@@ -72,11 +72,7 @@ export function useSettings(): AppSettings | undefined {
       if (snap.exists()) {
         setData(settingsFromFs(snap.data()));
       } else {
-        setData({
-          id: "singleton",
-          ocrProvider: "tesseract",
-          claudeModel: "claude-sonnet-4-6",
-        });
+        setData({ id: "singleton" });
       }
     });
   }, []);
