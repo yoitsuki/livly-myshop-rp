@@ -11,16 +11,8 @@ import {
   type Tag,
   type TagType,
 } from "@/lib/firebase/repo";
+import { TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
 import { Button, Field, inputClass, IconButton } from "@/components/ui";
-
-const TYPE_LABEL: Record<TagType, string> = {
-  gacha: "ガチャ",
-  bazaar: "バザール",
-  shop: "ショップ",
-  other: "その他",
-};
-
-const TYPE_ORDER: TagType[] = ["gacha", "bazaar", "shop", "other"];
 
 export default function TagsPage() {
   const tags = useTags() ?? [];

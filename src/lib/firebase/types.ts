@@ -2,7 +2,7 @@ import type { CropPreset } from "../preset";
 import type { ShopPhase } from "../shopPeriods";
 import type { CropRect } from "../image";
 
-export type TagType = "gacha" | "bazaar" | "shop" | "other";
+export type TagType = "gacha" | "bazaar" | "gradely" | "creators" | "other";
 
 export interface ItemCropRecord {
   rect: CropRect;
@@ -48,6 +48,8 @@ export interface Tag {
   name: string;
   type: TagType;
   color?: string;
+  /** Optional ordering within /tags page; createdAt is the tiebreaker. */
+  displayOrder?: number;
   createdAt: number;
 }
 

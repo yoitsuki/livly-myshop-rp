@@ -1084,9 +1084,10 @@ function TagPicker({
               onChange={(e) => setNewType(e.target.value as TagType)}
               className={`${inputClass({ fullWidth: false })} w-24 shrink-0 h-9 text-[12px]`}
             >
-              <option value="gacha">ガチャ</option>
+              <option value="gacha">通常ガチャ</option>
               <option value="bazaar">バザール</option>
-              <option value="shop">ショップ</option>
+              <option value="gradely">グレデリー</option>
+              <option value="creators">クリエイターズ</option>
               <option value="other">その他</option>
             </select>
             <Button onClick={add} size="sm">
