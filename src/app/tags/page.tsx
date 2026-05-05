@@ -38,7 +38,9 @@ export default function TagsPage() {
   const items = useItems() ?? [];
   const [name, setName] = useState("");
   const [type, setType] = useState<TagType>("other");
-  const [addError, setAddError] = useState<string | undefined>();
+  const [addStatus, setAddStatus] = useState<
+    { kind: "error" | "ok"; text: string } | undefined
+  >();
 
   const usageCount = useMemo(() => {
     const map = new Map<string, number>();
@@ -56,24 +58,39 @@ export default function TagsPage() {
   }, [tags]);
 
   const onAdd = async () => {
-    setAddError(undefined);
+    setAddStatus(undefined);
     const trimmed = name.trim();
     if (!trimmed) {
-      setAddError("タグ名を入力してください");
+      setAddStatus({ kind: "error", text: "タグ名を入力してください" });
       return;
     }
     const existing = tags.find((t) => t.name === trimmed);
     if (existing) {
-      setAddError(
-        `同じ名前のタグが既にあります (${TYPE_LABEL[existing.type]} に登録済み)。先に削除してから追加してください`,
-      );
+      setAddStatus({
+        kind: "error",
+        text: `同じ名前のタグが既にあります (${TYPE_LABEL[existing.type]} に登録済み)。先に削除してから追加してください`,
+      });
       return;
     }
     try {
       await createTag({ name: trimmed, type });
       setName("");
+      setAddStatus({
+        kind: "ok",
+        text: `「${trimmed}」を追加しました (${TYPE_LABEL[type]})`,
+      });
+      setTimeout(() => {
+        setAddStatus((prev) =>
+          prev?.kind === "ok" && prev.text.startsWith(`「${trimmed}」`)
+            ? undefined
+            : prev,
+        );
+      }, 3000);
     } catch (e) {
-      setAddError(e instanceof Error ? e.message : "タグの追加に失敗しました");
+      setAddStatus({
+        kind: "error",
+        text: e instanceof Error ? e.message : "タグの追加に失敗しました",
+      });
     }
   };
 
@@ -126,9 +143,22 @@ export default function TagsPage() {
             追加
           </Button>
         </div>
-        {addError && (
-          <div className="mt-2 bg-[var(--color-danger-soft)] border border-[var(--color-danger)] px-3 py-2 text-[12.5px] text-text leading-relaxed">
-            {addError}
+        {addStatus && (
+          <div
+            className="mt-2 px-3 py-2 text-[12.5px] text-text leading-relaxed"
+            style={{
+              background:
+                addStatus.kind === "error"
+                  ? "var(--color-danger-soft)"
+                  : "#e8f0e8",
+              border: `1px solid ${
+                addStatus.kind === "error"
+                  ? "var(--color-danger)"
+                  : "var(--color-gold-deep)"
+              }`,
+            }}
+          >
+            {addStatus.text}
           </div>
         )}
       </Field>
