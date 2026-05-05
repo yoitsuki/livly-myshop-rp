@@ -2,7 +2,14 @@ import type { CropPreset } from "../preset";
 import type { ShopPhase } from "../shopPeriods";
 import type { CropRect } from "../image";
 
-export type TagType = "gacha" | "bazaar" | "gradely" | "creators" | "other";
+export type TagType =
+  | "gacha"
+  | "bazaar"
+  | "nuts"
+  | "gradely"
+  | "collab"
+  | "creators"
+  | "other";
 
 export interface ItemCropRecord {
   rect: CropRect;

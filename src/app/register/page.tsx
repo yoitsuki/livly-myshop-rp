@@ -1115,7 +1115,9 @@ function TagPicker({
             >
               <option value="gacha">通常ガチャ</option>
               <option value="bazaar">バザール</option>
+              <option value="nuts">ナッツ</option>
               <option value="gradely">グレデリー</option>
+              <option value="collab">コラボ</option>
               <option value="creators">クリエイターズ</option>
               <option value="other">その他</option>
             </select>

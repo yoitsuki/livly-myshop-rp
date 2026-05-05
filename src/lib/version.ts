@@ -272,6 +272,17 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.16.0 タグ周りの拡張: TagType を 7 種に — ナッツ (warm dusty
+ *        lavender) と コラボショップ (muted olive) を新設。
+ *        SEED_TAGS 定数 (58 件) を src/lib/seedTags.ts に同梱し、
+ *        repo.seedTagsIfMissing() が既存タグ名と突き合わせて未登録分
+ *        だけを 1 つの writeBatch で書き込む idempotent な実装。
+ *        /tags ページに「シード読み込み」ボタンを追加 — 確認ダイア
+ *        ログ後にバッチ書き込みし、結果バナーに「新規 N 件 / skip M
+ *        件」を出す。ホームのタグフィルタ列を TagType ごとのセクシ
+ *        ョンに分割し、各セクションに Atelier --font-label の小見出
+ *        し (tracked-out uppercase) を載せた。register / item edit の
+ *        type select にも nuts / collab の option を追加。
  * 0.15.3 詳細ページ上部の EDIT ボタンを横幅いっぱいに拡張し、
  *        タップしやすい一次アクションとして強調。
  * 0.15.2 normalizeTagType の旧 'shop' → 'gradely' 自動置換コードを
@@ -348,4 +359,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.15.3";
+export const APP_VERSION = "0.16.0";

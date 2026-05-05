@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useItems, useTags } from "@/lib/firebase/hooks";
 import { latestPriceEntry } from "@/lib/firebase/repo";
+import { TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
 import SearchBar from "@/components/SearchBar";
 import ItemCard from "@/components/ItemCard";
 import Fab from "@/components/Fab";
@@ -85,26 +86,42 @@ export default function Home() {
       )}
 
       {tags && tags.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
-          {tags.map((t) => {
-            const on = activeTagIds.includes(t.id);
+        <div className="space-y-2.5">
+          {TYPE_ORDER.map((type) => {
+            const group = tags.filter((t) => t.type === type);
+            if (group.length === 0) return null;
             return (
-              <button
-                key={t.id}
-                onClick={() =>
-                  setActiveTagIds((prev) =>
-                    on ? prev.filter((x) => x !== t.id) : [...prev, t.id]
-                  )
-                }
-                className={`px-2.5 h-7 text-[12px] border transition-colors ${
-                  on
-                    ? "bg-gold text-white border-gold"
-                    : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
-                }`}
-                style={{ borderRadius: 0 }}
-              >
-                #{t.name}
-              </button>
+              <section key={type} className="space-y-1">
+                <h3
+                  className="text-[10px] font-medium tracking-[0.18em] uppercase text-[var(--color-muted)] px-1"
+                  style={{ fontFamily: "var(--font-label)" }}
+                >
+                  {TYPE_LABEL[type]}
+                </h3>
+                <div className="flex gap-1.5 flex-wrap">
+                  {group.map((t) => {
+                    const on = activeTagIds.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() =>
+                          setActiveTagIds((prev) =>
+                            on ? prev.filter((x) => x !== t.id) : [...prev, t.id]
+                          )
+                        }
+                        className={`px-2.5 h-7 text-[12px] border transition-colors ${
+                          on
+                            ? "bg-gold text-white border-gold"
+                            : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
+                        }`}
+                        style={{ borderRadius: 0 }}
+                      >
+                        #{t.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
             );
           })}
         </div>

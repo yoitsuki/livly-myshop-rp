@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { GripVertical, Home, Trash2 } from "lucide-react";
+import { GripVertical, Home, Sparkles, Trash2 } from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -27,9 +27,11 @@ import {
   deleteTag,
   deleteTagWithCascade,
   reorderTags,
+  seedTagsIfMissing,
   type Tag,
   type TagType,
 } from "@/lib/firebase/repo";
+import { SEED_TAGS } from "@/lib/seedTags";
 import { TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
 import { Button, Field, inputClass, IconButton } from "@/components/ui";
 
@@ -41,6 +43,7 @@ export default function TagsPage() {
   const [addStatus, setAddStatus] = useState<
     { kind: "error" | "ok"; text: string } | undefined
   >();
+  const [seeding, setSeeding] = useState(false);
 
   const usageCount = useMemo(() => {
     const map = new Map<string, number>();
@@ -91,6 +94,31 @@ export default function TagsPage() {
         kind: "error",
         text: e instanceof Error ? e.message : "タグの追加に失敗しました",
       });
+    }
+  };
+
+  const onSeed = async () => {
+    if (
+      !confirm(
+        `シードタグ ${SEED_TAGS.length} 件を読み込みます。同名のタグは skip されます。続行しますか？`,
+      )
+    )
+      return;
+    setSeeding(true);
+    setAddStatus(undefined);
+    try {
+      const { created, skipped } = await seedTagsIfMissing();
+      setAddStatus({
+        kind: "ok",
+        text: `シード読み込み完了 — 新規 ${created} 件 / 既存 ${skipped} 件は skip`,
+      });
+    } catch (e) {
+      setAddStatus({
+        kind: "error",
+        text: e instanceof Error ? e.message : "シード読み込みに失敗しました",
+      });
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -185,6 +213,17 @@ export default function TagsPage() {
           </div>
         )}
       </div>
+
+      <Button
+        variant="secondary"
+        size="lg"
+        fullWidth
+        icon={<Sparkles size={16} />}
+        onClick={onSeed}
+        disabled={seeding}
+      >
+        {seeding ? "読み込み中…" : `シード (${SEED_TAGS.length} 件) を読み込む`}
+      </Button>
 
       <Link href="/" className="block">
         <Button variant="secondary" size="lg" fullWidth icon={<Home size={16} />}>

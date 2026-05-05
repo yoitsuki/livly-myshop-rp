@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   runTransaction,
   setDoc,
   writeBatch,
@@ -16,6 +18,7 @@ import {
   settingsToFs,
   tagToFs,
 } from "./mappers";
+import { SEED_TAGS } from "../seedTags";
 import {
   deleteAllItemImages,
   deleteItemImage,
@@ -261,6 +264,45 @@ export async function reorderTags(
     batch.update(doc(firestore(), "tags", id), { displayOrder });
   }
   await batch.commit();
+}
+
+/**
+ * Idempotent bulk seeder. Reads every existing tag name, then writes the
+ * subset of SEED_TAGS whose name is not already present. 58 entries fit
+ * comfortably in a single 500-op writeBatch.
+ */
+export async function seedTagsIfMissing(): Promise<{
+  created: number;
+  skipped: number;
+}> {
+  const snap = await getDocs(collection(firestore(), "tags"));
+  const existing = new Set(
+    snap.docs.map((d) => (d.data().name as string | undefined) ?? ""),
+  );
+
+  const toCreate = SEED_TAGS.filter((t) => !existing.has(t.name));
+  if (toCreate.length === 0) {
+    return { created: 0, skipped: SEED_TAGS.length };
+  }
+
+  const batch = writeBatch(firestore());
+  const now = Date.now();
+  for (const t of toCreate) {
+    const id = uid();
+    const tag: Tag = {
+      id,
+      name: t.name,
+      type: t.type,
+      createdAt: now,
+    };
+    batch.set(doc(firestore(), "tags", id), tagToFs(tag));
+  }
+  await batch.commit();
+
+  return {
+    created: toCreate.length,
+    skipped: SEED_TAGS.length - toCreate.length,
+  };
 }
 
 /**
