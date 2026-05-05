@@ -2,12 +2,31 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Home, Trash2 } from "lucide-react";
+import { GripVertical, Home, Trash2 } from "lucide-react";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useItems, useTags } from "@/lib/firebase/hooks";
 import {
   createTag,
   deleteTag,
   deleteTagWithCascade,
+  reorderTags,
   type Tag,
   type TagType,
 } from "@/lib/firebase/repo";
@@ -80,7 +99,7 @@ export default function TagsPage() {
           <select
             value={type}
             onChange={(e) => setType(e.target.value as TagType)}
-            className={`${inputClass({ fullWidth: false })} w-24 shrink-0`}
+            className={`${inputClass({ fullWidth: false })} w-28 shrink-0`}
           >
             {TYPE_ORDER.map((t) => (
               <option key={t} value={t}>
@@ -99,36 +118,13 @@ export default function TagsPage() {
           const list = grouped.get(t) ?? [];
           if (list.length === 0) return null;
           return (
-            <section key={t} className="space-y-1">
-              <h3 className="text-[10px] font-medium tracking-[0.18em] uppercase text-gold-deep px-1">
-                {TYPE_LABEL[t]}
-              </h3>
-              <ul className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
-                {list.map((tag) => {
-                  const count = usageCount.get(tag.id) ?? 0;
-                  return (
-                    <li
-                      key={tag.id}
-                      className="flex items-center gap-2 px-2 py-2.5"
-                    >
-                      <span className="flex-1 min-w-0 truncate text-[14px] text-text">
-                        #{tag.name}
-                      </span>
-                      <span className="text-[11px] text-muted shrink-0 tabular-nums">
-                        {count} 件
-                      </span>
-                      <IconButton
-                        size="sm"
-                        onClick={() => onDelete(tag)}
-                        aria-label="削除"
-                      >
-                        <Trash2 size={14} />
-                      </IconButton>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+            <TagGroup
+              key={t}
+              type={t}
+              tags={list}
+              usageCount={usageCount}
+              onDelete={onDelete}
+            />
           );
         })}
         {tags.length === 0 && (
@@ -146,5 +142,127 @@ export default function TagsPage() {
         </Button>
       </Link>
     </div>
+  );
+}
+
+/**
+ * One tag-type group with drag-to-reorder. Each drop persists the new order
+ * for every tag in the group via reorderTags(); the snapshot listener
+ * subsequently re-renders the list from the source of truth.
+ */
+function TagGroup({
+  type,
+  tags,
+  usageCount,
+  onDelete,
+}: {
+  type: TagType;
+  tags: Tag[];
+  usageCount: Map<string, number>;
+  onDelete: (t: Tag) => void;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const onDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = tags.findIndex((t) => t.id === active.id);
+    const newIndex = tags.findIndex((t) => t.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const reordered = arrayMove(tags, oldIndex, newIndex);
+    await reorderTags(
+      reordered.map((t, i) => ({ id: t.id, displayOrder: i })),
+    );
+  };
+
+  return (
+    <section className="space-y-1">
+      <h3 className="text-[10px] font-medium tracking-[0.18em] uppercase text-gold-deep px-1">
+        {TYPE_LABEL[type]}
+      </h3>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+      >
+        <SortableContext
+          items={tags.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <ul className="divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+            {tags.map((tag) => (
+              <SortableTagRow
+                key={tag.id}
+                tag={tag}
+                count={usageCount.get(tag.id) ?? 0}
+                onDelete={() => onDelete(tag)}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
+    </section>
+  );
+}
+
+function SortableTagRow({
+  tag,
+  count,
+  onDelete,
+}: {
+  tag: Tag;
+  count: number;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tag.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    background: isDragging ? "var(--color-line-soft)" : undefined,
+    touchAction: "none",
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-2 py-2.5"
+    >
+      <button
+        type="button"
+        aria-label="並び替え"
+        className="shrink-0 -ml-1 p-1 text-[var(--color-muted)] cursor-grab touch-none active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={16} strokeWidth={1.6} />
+      </button>
+      <span className="flex-1 min-w-0 truncate text-[14px] text-text">
+        #{tag.name}
+      </span>
+      <span className="text-[11px] text-muted shrink-0 tabular-nums">
+        {count} 件
+      </span>
+      <IconButton size="sm" onClick={onDelete} aria-label="削除">
+        <Trash2 size={14} />
+      </IconButton>
+    </li>
   );
 }

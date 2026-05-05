@@ -248,6 +248,22 @@ export async function deleteTag(id: string): Promise<void> {
 }
 
 /**
+ * Persist a new displayOrder for a list of tags. Single writeBatch so all
+ * the tags in the dragged group flip atomically (no transient out-of-order
+ * frame in the snapshot listeners).
+ */
+export async function reorderTags(
+  ordered: Array<{ id: string; displayOrder: number }>,
+): Promise<void> {
+  if (ordered.length === 0) return;
+  const batch = writeBatch(firestore());
+  for (const { id, displayOrder } of ordered) {
+    batch.update(doc(firestore(), "tags", id), { displayOrder });
+  }
+  await batch.commit();
+}
+
+/**
  * Cascades the deletion: every item that referenced the tag has its tagIds
  * array rewritten. Done in a batch with the tag delete so listeners only see
  * a consistent state.
