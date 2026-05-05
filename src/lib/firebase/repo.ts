@@ -235,6 +235,99 @@ export async function deletePriceEntry(
   });
 }
 
+export interface MergePriceEntryInput {
+  itemId: string;
+  newEntry: Omit<PriceEntry, "id" | "createdAt">;
+  /**
+   * When set, replaces the item's main image with the supplied blob (and
+   * mainCrop, if provided). The new image is uploaded outside the
+   * transaction so the doc only ever points at fully-written objects.
+   */
+  replaceMainImage?: {
+    blob: Blob;
+    crop?: ItemCropRecord;
+  };
+}
+
+/**
+ * Adds a new price entry to an existing item. If the new entry's
+ * shopPeriod.yearMonth matches an existing entry's yearMonth, that older
+ * entry is dropped (the new one wins — "1 件扱い" per yearMonth).
+ *
+ * Optionally replaces the main image. The icon is never touched.
+ */
+export async function mergeItemPriceEntry(
+  input: MergePriceEntryInput,
+): Promise<void> {
+  const main = input.replaceMainImage
+    ? await uploadItemImage(
+        input.itemId,
+        "main",
+        input.replaceMainImage.blob,
+      )
+    : undefined;
+
+  const ref = doc(firestore(), "items", input.itemId);
+  await runTransaction(firestore(), async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error("アイテムが見つかりませんでした");
+    const current = itemFromFs(snap.id, snap.data());
+    const newYearMonth = input.newEntry.shopPeriod?.yearMonth;
+
+    const filtered = newYearMonth
+      ? current.priceEntries.filter(
+          (e) => e.shopPeriod?.yearMonth !== newYearMonth,
+        )
+      : current.priceEntries;
+
+    const now = Date.now();
+    const newEntry: PriceEntry = {
+      ...input.newEntry,
+      id: uid(),
+      createdAt: now,
+    };
+
+    const next: Item = {
+      ...current,
+      priceEntries: [...filtered, newEntry],
+      updatedAt: now,
+    };
+
+    if (main) {
+      next.mainImageUrl = main.url;
+      next.mainImageStoragePath = main.path;
+      if (input.replaceMainImage?.crop) {
+        next.mainCrop = input.replaceMainImage.crop;
+      }
+    }
+
+    tx.set(ref, itemToFs(next));
+  });
+}
+
+/**
+ * Whether `candidateYearMonth` is at least as recent as every other
+ * yearMonth in the item's priceEntries (entries that share the candidate
+ * yearMonth itself are excluded since the merge replaces them).
+ *
+ * Returns false if the candidate yearMonth is empty/undefined — in that
+ * case there is no period to compare against, so by convention the new
+ * entry is not "the newest".
+ */
+export function isNewestYearMonth(
+  item: Pick<Item, "priceEntries">,
+  candidateYearMonth: string | undefined,
+): boolean {
+  if (!candidateYearMonth) return false;
+  const others = item.priceEntries
+    .filter((e) => e.shopPeriod?.yearMonth !== candidateYearMonth)
+    .map((e) => e.shopPeriod?.yearMonth)
+    .filter((y): y is string => !!y);
+  if (others.length === 0) return true;
+  const max = others.reduce((a, b) => (a > b ? a : b));
+  return candidateYearMonth >= max;
+}
+
 // ---- Tags ------------------------------------------------------------------
 
 export async function createTag(

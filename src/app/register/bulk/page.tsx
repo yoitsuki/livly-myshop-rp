@@ -11,8 +11,14 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { useSettings } from "@/lib/firebase/hooks";
-import { createItem, uid, type PriceEntry } from "@/lib/firebase/repo";
+import { useItems, useSettings } from "@/lib/firebase/hooks";
+import {
+  createItem,
+  isNewestYearMonth,
+  mergeItemPriceEntry,
+  uid,
+  type PriceEntry,
+} from "@/lib/firebase/repo";
 import { cropAndEncode } from "@/lib/image";
 import { useBulkDraft } from "@/lib/bulk/context";
 import {
@@ -33,6 +39,7 @@ import { Button, IconButton } from "@/components/ui";
 export default function BulkRegisterPage() {
   const router = useRouter();
   const settings = useSettings();
+  const allItems = useItems();
   const { settings: local } = useLocalSettings();
   const {
     entries,
@@ -179,28 +186,57 @@ export default function BulkRegisterPage() {
             })
           : undefined;
 
-        const initialEntry: PriceEntry = {
-          id: uid(),
-          shopPeriod: entry.shopPeriod,
-          refPriceMin: entry.refPriceMin,
-          refPriceMax: entry.refPriceMax || entry.refPriceMin,
-          checkedAt: entry.checkedAt,
-          priceSource:
-            !mainBlob && entry.priceSource ? entry.priceSource : undefined,
-          createdAt: Date.now(),
-        };
+        const trimmedName = entry.name.trim();
+        const existingItem = (allItems ?? []).find(
+          (i) => i.name === trimmedName,
+        );
 
-        await createItem({
-          iconBlob,
-          mainImageBlob: mainBlob,
-          iconCrop: entry.iconCrop,
-          mainCrop: entry.mainCrop,
-          name: entry.name.trim(),
-          category: entry.category.trim(),
-          tagIds: entry.tagIds,
-          minPrice: entry.minPrice,
-          priceEntries: [initialEntry],
-        });
+        if (existingItem) {
+          // Same-name match: silently merge into the existing item.
+          // Replace the main image only if the new entry's yearMonth is at
+          // least as recent as every other yearMonth on the item.
+          const newYearMonth = entry.shopPeriod?.yearMonth;
+          const replaceMain =
+            !!mainBlob && isNewestYearMonth(existingItem, newYearMonth);
+          await mergeItemPriceEntry({
+            itemId: existingItem.id,
+            newEntry: {
+              shopPeriod: entry.shopPeriod,
+              refPriceMin: entry.refPriceMin,
+              refPriceMax: entry.refPriceMax || entry.refPriceMin,
+              checkedAt: entry.checkedAt,
+              priceSource:
+                !mainBlob && entry.priceSource ? entry.priceSource : undefined,
+            },
+            replaceMainImage:
+              replaceMain && mainBlob
+                ? { blob: mainBlob, crop: entry.mainCrop }
+                : undefined,
+          });
+        } else {
+          const initialEntry: PriceEntry = {
+            id: uid(),
+            shopPeriod: entry.shopPeriod,
+            refPriceMin: entry.refPriceMin,
+            refPriceMax: entry.refPriceMax || entry.refPriceMin,
+            checkedAt: entry.checkedAt,
+            priceSource:
+              !mainBlob && entry.priceSource ? entry.priceSource : undefined,
+            createdAt: Date.now(),
+          };
+
+          await createItem({
+            iconBlob,
+            mainImageBlob: mainBlob,
+            iconCrop: entry.iconCrop,
+            mainCrop: entry.mainCrop,
+            name: trimmedName,
+            category: entry.category.trim(),
+            tagIds: entry.tagIds,
+            minPrice: entry.minPrice,
+            priceEntries: [initialEntry],
+          });
+        }
         removeEntry(entry.id);
         succeeded++;
       } catch (e) {

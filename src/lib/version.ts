@@ -272,6 +272,17 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.16.1 アイテム重複登録の検知 + マージ。/register で同名アイテム
+ *        を検知したら、価格を「追加 (別期間)」または「更新 (同じ
+ *        yearMonth)」の確認モーダルを出し、「✅ メイン画像を更新する」
+ *        チェック (デフォルト ON は新期間が既存より新しい時のみ) で
+ *        メイン画像差し替えも選べるようにした。/register/bulk では
+ *        サイレントにマージ — 新期間がそのアイテム内で最新なら main
+ *        画像も自動で差し替え、そうでなければ既存画像を保持。
+ *        repo.mergeItemPriceEntry が同一 yearMonth の priceEntry を
+ *        新しい方で置き換える「1 件扱い」を提供し、メイン画像差し替
+ *        えはトランザクション外でアップロード → 内側で doc 書き込み
+ *        の updateItem パターンを踏襲。
  * 0.16.0 タグ周りの拡張: TagType を 7 種に — ナッツ (warm dusty
  *        lavender) と コラボショップ (muted olive) を新設。
  *        SEED_TAGS 定数 (58 件) を src/lib/seedTags.ts に同梱し、
@@ -359,4 +370,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.16.0";
+export const APP_VERSION = "0.16.1";

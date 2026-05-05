@@ -16,8 +16,11 @@ import {
   createItem,
   createTag,
   getSettings,
+  isNewestYearMonth,
+  mergeItemPriceEntry,
   patchSettings,
   uid,
+  type Item,
   type ItemCropRecord,
   type PriceEntry,
   type ShopPeriodRecord,
@@ -133,11 +136,17 @@ function RegisterPageInner() {
   const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
 
   const tags = useTags() ?? [];
+  const allItems = useItems();
   const cloudSettings = useSettings();
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
   const [presetModalInitial, setPresetModalInitial] =
     useState<CropPreset | null>(null);
+  const [mergeDialog, setMergeDialog] = useState<{
+    existing: Item;
+    willReplaceEntry: boolean;
+    defaultReplaceMain: boolean;
+  } | null>(null);
   const bulkPopulatedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -414,6 +423,24 @@ function RegisterPageInner() {
       return;
     }
     setError(undefined);
+
+    // Same-name detection: if an item with the same trimmed name already
+    // exists, surface the merge dialog instead of creating a duplicate.
+    const trimmedName = form.name.trim();
+    const existingItem = (allItems ?? []).find((i) => i.name === trimmedName);
+    if (existingItem) {
+      const newYearMonth = form.shopYearMonth || undefined;
+      const willReplaceEntry =
+        !!newYearMonth &&
+        existingItem.priceEntries.some(
+          (e) => e.shopPeriod?.yearMonth === newYearMonth,
+        );
+      const defaultReplaceMain =
+        !!mainBlob && isNewestYearMonth(existingItem, newYearMonth);
+      setMergeDialog({ existing: existingItem, willReplaceEntry, defaultReplaceMain });
+      return;
+    }
+
     setBusy("save");
     try {
       const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
@@ -446,6 +473,40 @@ function RegisterPageInner() {
         priceEntries: [initialEntry],
       });
 
+      router.push("/");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存に失敗しました");
+      setBusy("idle");
+    }
+  };
+
+  const confirmMerge = async (replaceMain: boolean) => {
+    if (!mergeDialog) return;
+    setBusy("save");
+    setError(undefined);
+    try {
+      const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
+        ? {
+            yearMonth: form.shopYearMonth,
+            phase: form.shopPhase,
+            auto: !!mainBlob && form.shopAuto,
+          }
+        : undefined;
+      const newEntry = {
+        shopPeriod,
+        refPriceMin: Number(form.refPriceMin) || 0,
+        refPriceMax: Number(form.refPriceMax) || 0,
+        checkedAt: fromLocalInput(form.checkedAt),
+        priceSource:
+          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+      };
+      await mergeItemPriceEntry({
+        itemId: mergeDialog.existing.id,
+        newEntry,
+        replaceMainImage:
+          replaceMain && mainBlob ? { blob: mainBlob, crop: mainCrop } : undefined,
+      });
+      setMergeDialog(null);
       router.push("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
@@ -895,6 +956,128 @@ function RegisterPageInner() {
           </div>
         </div>
       )}
+
+      {mergeDialog && (
+        <MergeDialog
+          existingName={mergeDialog.existing.name}
+          willReplaceEntry={mergeDialog.willReplaceEntry}
+          newYearMonth={form.shopYearMonth || undefined}
+          newPhase={form.shopPhase}
+          defaultReplaceMain={mergeDialog.defaultReplaceMain}
+          canReplaceMain={!!mainBlob}
+          busy={busy === "save"}
+          onCancel={() => setMergeDialog(null)}
+          onConfirm={confirmMerge}
+        />
+      )}
+    </div>
+  );
+}
+
+function MergeDialog({
+  existingName,
+  willReplaceEntry,
+  newYearMonth,
+  newPhase,
+  defaultReplaceMain,
+  canReplaceMain,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  existingName: string;
+  willReplaceEntry: boolean;
+  newYearMonth: string | undefined;
+  newPhase: ShopPhase;
+  defaultReplaceMain: boolean;
+  canReplaceMain: boolean;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: (replaceMain: boolean) => void;
+}) {
+  const [replaceMain, setReplaceMain] = useState(defaultReplaceMain);
+  const periodLabel = newYearMonth
+    ? formatShopPeriod(newYearMonth, newPhase)
+    : "期間未設定";
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] bg-[var(--color-text)]/40 flex items-center justify-center p-5"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-white border border-[var(--color-line)] max-w-sm w-full p-5"
+        style={{ borderRadius: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="text-[var(--color-text)] leading-relaxed mb-4"
+          style={{ fontFamily: "var(--font-body)", fontSize: 14 }}
+        >
+          <p>
+            既存のアイテム「{existingName}」が見つかりました。
+          </p>
+          <p className="mt-2">
+            {willReplaceEntry
+              ? `${periodLabel} の価格を新しい内容で更新します。`
+              : `${periodLabel} の価格を追加します。`}
+          </p>
+        </div>
+        <label
+          className={`flex items-center gap-2 mb-5 ${
+            canReplaceMain ? "" : "opacity-50"
+          }`}
+          style={{ fontFamily: "var(--font-body)", fontSize: 13 }}
+        >
+          <input
+            type="checkbox"
+            checked={canReplaceMain && replaceMain}
+            disabled={!canReplaceMain}
+            onChange={(e) => setReplaceMain(e.target.checked)}
+            className="w-4 h-4 accent-[var(--color-gold-deep)]"
+          />
+          <span>
+            メイン画像を更新する
+            {!canReplaceMain && (
+              <span className="text-muted text-[11px] ml-1">
+                (新しいメイン画像が未設定)
+              </span>
+            )}
+          </span>
+        </label>
+        <div className="flex gap-2 justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors disabled:opacity-50"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10,
+              letterSpacing: "0.24em",
+              borderRadius: 0,
+            }}
+          >
+            CANCEL
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(replaceMain && canReplaceMain)}
+            disabled={busy}
+            className="px-4 py-2 bg-[var(--color-gold-deep)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10,
+              letterSpacing: "0.24em",
+              borderRadius: 0,
+            }}
+          >
+            {busy ? "保存中…" : willReplaceEntry ? "UPDATE" : "ADD"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
