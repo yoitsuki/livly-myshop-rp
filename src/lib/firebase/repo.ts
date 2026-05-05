@@ -293,6 +293,7 @@ export async function seedTagsIfMissing(): Promise<{
       id,
       name: t.name,
       type: t.type,
+      displayOrder: SEED_TAGS.indexOf(t),
       createdAt: now,
     };
     batch.set(doc(firestore(), "tags", id), tagToFs(tag));
