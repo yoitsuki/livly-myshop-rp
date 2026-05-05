@@ -153,11 +153,11 @@ export default function ItemDetailPage({
   return (
     <div className="pb-8">
 
-      {/* ── Top action: EDIT (right-aligned) ─────────────────────── */}
-      <div className="flex justify-end pt-3">
+      {/* ── Top action: EDIT (full width) ────────────────────────── */}
+      <div className="pt-3">
         <Link
           href={`/items/${i.id}/edit`}
-          className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-gold-deep)] text-white hover:bg-gold transition-colors"
+          className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 bg-[var(--color-gold-deep)] text-white hover:bg-gold transition-colors"
           style={{
             fontFamily: "var(--font-label)",
             fontSize: 10,
