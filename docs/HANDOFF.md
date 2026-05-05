@@ -1,0 +1,403 @@
+# 引継ぎ書 — リヴリー マイショップ 参考価格めも
+
+新しい Claude セッションで作業を続けるためのコンテキスト。
+**最新セッションが落ちた場合、まずこのファイルを読んでから着手すること。**
+
+---
+
+## 1. 何を作っているか
+
+リヴリーアイランド（ゲーム）の「マイショップ」出品画面のスクショから、
+アイテム名・カテゴリ・最低販売価格・参考販売価格を取り込んで蓄積し、
+あとから「種類」「ガチャ名」「期間」で横断検索できる個人用 Web アプリ。
+
+- 主用途: スマホで使う（mobile-first）
+- 使うのは作者本人ひとり（admin）
+- v0.13.0 から **Firebase** を使ったクラウド管理に移行済（Phase 1 + Phase 2）
+- 公開閲覧用の viewer リポジトリは未着手（計画書 §10 Phase 3）
+
+---
+
+## 2. 技術スタック
+
+| 領域 | 採用 | メモ |
+|---|---|---|
+| フレームワーク | **Next.js 16.2.4 (App Router) + Turbopack** | `pnpm dev` / `pnpm build` |
+| 言語 | TypeScript | strict |
+| スタイル | **Tailwind CSS v4** | `src/app/globals.css` に CSS 変数 |
+| 認証 | **Firebase Auth (Google サインイン)** | `src/lib/firebase/auth.tsx` の AuthProvider が AppShell の外側を包み、admin UID 一致時のみ通す |
+| メタデータ | **Cloud Firestore** | `items` / `tags` / `settings` の 3 コレクション。`src/lib/firebase/repo.ts` |
+| 画像保存 | **Firebase Storage** | `items/{id}/{icon\|main}.jpg` の固定パスで上書き保存。Download URL を Firestore doc に保管 |
+| 画面下層 | **`src/lib/firebase/hooks.ts`** | useItems / useItem / useTags / useSettings — onSnapshot ベースで「ロード中は undefined」 |
+| API キー保管 | **localStorage** (端末ローカル) | `src/lib/localSettings.ts` (ocrProvider / claudeApiKey / claudeModel)。Firestore に置かない方針 (個人用かつ漏洩リスク回避) |
+| サーバ認証 | **firebase-admin** | `/api/claude-ocr` で `Authorization: Bearer <ID Token>` を `verifyIdToken` 後に admin UID チェック |
+| OCR (ローカル) | **tesseract.js** (jpn) | 既定 |
+| OCR (高精度) | **@anthropic-ai/sdk** Vision | `/api/claude-ocr` 経由 |
+| EXIF | **exifr** | DateTimeOriginal を確認日時に使う |
+| アイコン | **lucide-react** | Linux Chromium で 🏷📅 が出ない問題があり置き換え済 |
+| フォント | **Cormorant Garamond + Noto Serif JP + Inter + Noto Sans JP** | next/font/google。display=セリフ見出し、body=和文ゴシック、label=Inter (v0.10.0) |
+| UI プリミティブ | `src/components/ui/` | Button / Field / Card / Badge / IconButton / Toast (Atelier 化済) |
+| デザインテーマ | **Atelier** | warm hairline + DEEP TEAL アクセント / 角丸ゼロ / 影なし (v0.10.0) |
+| パッケージ管理 | **pnpm** | `pnpm-lock.yaml` 有 |
+| PWA | `src/app/manifest.ts` | short_name `参考価格めも` / theme `#006a71` / standalone / `/public/icon.svg` |
+
+> **注意**: `node_modules/next/dist/docs/` の Next.js 16 ガイドに目を通すこと。
+> Next.js 15 以前と API/規約が違う可能性がある（AGENTS.md にも記載）。
+
+---
+
+## 3. Firebase まわりの仕様
+
+### コレクション
+
+| コレクション | ドキュメント形 | 概要 |
+|---|---|---|
+| `items/{id}` | `Item` | アイテム + `priceEntries[]` を埋込配列で保持 |
+| `tags/{id}` | `Tag` | タグ |
+| `settings/singleton` | `{ cropPresets?: CropPreset[] }` | クロッププリセットのみ。ocrProvider / claudeApiKey / claudeModel は **localStorage** |
+
+### Storage
+
+- パス: `items/{itemId}/{icon|main}.jpg`
+- 同じパスに upload で上書き (孤児ファイルを増やさない)
+- Content-Type: `image/jpeg`、Cache-Control: `public, max-age=31536000, immutable`
+- Download URL は upload 後に取得して Firestore doc の `iconUrl` / `mainImageUrl` に書く
+
+### セキュリティルール
+
+`firestore.rules` / `storage.rules` ともに read public / write admin のみ:
+
+```
+function isAdmin() {
+  return request.auth != null
+      && request.auth.uid == 'zXleLmp8W8OwUH2j7EIg7BNyLXs2';
+}
+```
+
+ルール変更時は **Firebase Console > Firestore / Storage > ルール タブ に貼り付けて公開** (モバイルからでも可)。CLI でデプロイするなら `firebase deploy --only firestore:rules,storage:rules`。
+
+### 環境変数
+
+`.env.local.example` がテンプレ。Vercel に同じ Name で登録 (Production / Preview / Development 全部)。
+
+| Name | scope | 用途 |
+|---|---|---|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | client | Firebase init |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | client | 同上 |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | client | 同上 |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | client | 同上 |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | client | 同上 |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | client | 同上 |
+| `NEXT_PUBLIC_ADMIN_UID` | client | AppShell の admin チェック |
+| `FIREBASE_SERVICE_ACCOUNT` | **server only** | `/api/claude-ocr` の ID トークン検証用 (Firebase Console > プロジェクト設定 > サービス アカウント > 新しい秘密鍵の生成 で得た JSON を 1 行化) |
+
+> Vercel のテキスト入力欄に値を貼るとき、`<...>` プレースホルダ表記を一緒にコピペしないよう注意 (実際にあった事故)。
+
+### 認証フロー
+
+- `signInWithPopup` 一本 (`signInWithRedirect` は iOS Safari の Storage Partitioning で credential 配送が壊れるため不採用)
+- iOS Safari の vercel.app ↔ firebaseapp.com クロスドメインで `signInWithPopup` も `auth/popup-closed-by-user` を誤発火する。`src/lib/firebase/auth.tsx` の `signInGoogle()` で 2 秒間 `onAuthStateChanged` を待ち、ユーザーが復元できたら成功扱いにする回避策を入れている
+- 初回ログイン時に admin UID 未設定だと LoginScreen で UID を表示する (コピー → env に登録 → redeploy のセルフサービスフロー)
+
+---
+
+## 4. 現在のバージョン
+
+`src/lib/version.ts` の `APP_VERSION` を更新する運用。Drawer 下部に表示される。
+
+最新: **0.13.0**（branch `claude/plan-readonly-firebase-F8D7V`）
+
+直近のチェンジログ要約:
+- **0.13.0 — Phase 2 (Firebase 移行)**。Dexie 完全撤去。読み込みは `useItems` / `useItem` / `useTags` / `useSettings` (`src/lib/firebase/hooks.ts`) で onSnapshot 経由 (`useLiveQuery` と同じ "undefined while loading" の規約)。書き込みは `src/lib/firebase/repo.ts`: `createItem` / `updateItem` は icon/main の Blob を Storage に上書き upload してから Firestore doc を `runTransaction` で更新。`priceEntries` は `items/{id}` の埋込配列のまま、`addPriceEntry` / `updatePriceEntry` / `deletePriceEntry` は `runTransaction`。`deleteTag` のカスケードは `writeBatch` で「全 items の tagIds 書換 + tag 削除」を 1 トランザクション化。`/api/claude-ocr` は `Authorization: Bearer <id_token>` を要求し、`firebase-admin` で verify + admin UID 一致を確認 (`src/lib/firebase/admin.ts`)。`src/lib/ocr/claude.ts` は `firebaseAuth().currentUser.getIdToken()` を自動で添付。`Item` 型は `iconBlob/mainImageBlob` を捨て、`iconUrl/iconStoragePath/mainImageUrl/mainImageStoragePath` 持ち。`AppSettings` は `cropPresets?` のみ (OCR 設定は localStorage)。`src/lib/db.ts` 削除 + dexie / dexie-react-hooks アンインストール。
+- **0.12.0 — Phase 1 (Firebase Auth ゲート)**。`AuthProvider` (`src/lib/firebase/auth.tsx`) が AppShell を包み、3 状態でレンダリング: loading (空白) / unauthenticated (Google サインイン) / authenticated-but-not-admin (UID を表示。`NEXT_PUBLIC_ADMIN_UID` 設定 → 再デプロイの自助フロー)。Dexie の動作はこの段階では温存。
+- 0.11.2 — アイテム名の上下を挟んでいた残りの 2 本を削除。`AppHeader` の `─── ITEM DETAIL ───` サブレールを撤去。MIN PRICE バーの上線も外して flat な行に。
+- 0.11.1 — 詳細ページのライン整理 + 戻るボタン修正。MARKET REFERENCE の各 entry は **期間バッジと参考価格を同じベースラインに並べる** レイアウトに。**戻るボタンを `router.back()` から固定の親パスへの Link に変更**。各保存ハンドラも `router.replace` に切替。
+- 0.11.0 — タグ分類の刷新: `TagType` を `period / gacha / category / custom` から **`gacha / bazaar / shop / other`** に差替え。Dexie を **v5** に上げ、既存タグの `type` を upgrade フックで再マップ。**ヘッダの 2 行ロゴを `Link href="/"` 化**。
+- 0.10.0 — Atelier テーマ への全面差替え。warm white + warm hairline + DEEP TEAL アクセントの editorial 系ビジュアル。`rounded-*` と `shadow-*` を全廃。タイポ 3 軸。`font-bold` を全撤去。`ItemCard` corner-tick サムネ。詳細は editorial spread。**iOS Safari standalone PWA で `window.confirm()` が無音失敗する問題**を踏み、詳細ページの DELETE はカスタム `ConfirmDialog` モーダルに差替え。
+- 0.9.0 — Primary accent を **DEEP TEAL `#006a71`** へ。期間バッジを 3 段階に整理。`Badge` / `IconButton` / `Toast` プリミティブ追加。PWA manifest + appleWebApp meta + `/public/icon.svg`。
+- 0.8.x — Step 2 移行 (`/register`, `/items/[id]/edit`, `/tags`, `/settings`, `/presets`)。OCR 自動入力の "黄色塗り" → 入力枠を mint 色 + Sparkles ラベル。
+- 0.7.x — Step 1 — 視覚言語の刷新。Inter + Noto Sans JP に変更。`Button` `Field` `Card` プリミティブ新設。`TagChip` を旅行タグ形状に。
+- 0.6.x — マイショップ参考価格を **複数件** 保持 (`priceEntries[]`)。`minPrice` だけは Item 直下。0.6.2 で「Mint Modern」配色に大変更。
+- 0.5.x — 期間バッジを彩度ダウン系グラデーションに変更／編集画面のクロップを **per-slot + ステージング**化／単一トランザクション化／情報元を「なんおし／その他」のバッジ化。
+- 0.4.x — マルチプリセット対応 + 茶ヘッダプリセット。
+- 0.3.x — クロッププリセット + ショップ回次/フェーズ + メイン画像クリア。
+- 0.2.x — クロップ UI 整備 + 編集時 Blob コピー。
+- 0.1.0 — 初期 UI。
+
+詳細は `src/lib/version.ts` 冒頭のコメントが正本。
+
+---
+
+## 5. データモデル
+
+`src/lib/firebase/types.ts` が型の正本。
+
+```ts
+interface Item {
+  id: string;
+  iconUrl?: string;             // Storage の getDownloadURL の結果
+  iconStoragePath?: string;     // 削除時の参照用 (items/{id}/icon.jpg 等)
+  mainImageUrl?: string;
+  mainImageStoragePath?: string;
+  iconCrop?: ItemCropRecord;    // 切抜矩形 + ソース解像度
+  mainCrop?: ItemCropRecord;
+  name: string;
+  category: string;
+  tagIds: string[];
+  minPrice: number;             // 時期に依らず一定
+  priceEntries: PriceEntry[];   // 常に1件以上
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface PriceEntry {
+  id: string;
+  shopPeriod?: ShopPeriodRecord; // { yearMonth: "YYYYMM", phase, auto }
+  refPriceMin: number;
+  refPriceMax: number;
+  checkedAt: number;             // EXIF or 手動
+  priceSource?: string;          // "なんおし" / "その他"
+  createdAt: number;
+}
+
+interface AppSettings {
+  id: "singleton";
+  cropPresets?: CropPreset[];   // 端末間で共有したい設定だけ Firestore
+}
+
+// localStorage 側 (src/lib/localSettings.ts)
+interface LocalSettings {
+  ocrProvider: "tesseract" | "claude";
+  claudeApiKey?: string;
+  claudeModel?: string;
+}
+```
+
+### 書き込みヘルパ (`src/lib/firebase/repo.ts`)
+
+- `createItem(input)` — Blob を `uploadItemImage` で Storage に上げてから `setDoc(items/{id})`
+- `updateItem(id, patch)` — Blob があれば先に upload (上書き)、その後 `runTransaction` で get → put
+- `deleteItem(id)` — Firestore doc 削除 → Storage の icon/main を best-effort 削除
+- `addPriceEntry / updatePriceEntry / deletePriceEntry` — `runTransaction` で `items/{id}` の `priceEntries` 配列を read-modify-write
+- `deleteTagWithCascade(tagId, affectedItemIds)` — `writeBatch` で「対象 items の `tagIds` 書換 + tag 削除」を 1 トランザクション
+- `getSettings / patchSettings` — `settings/singleton` 取得時に `cropPresets` 未設定なら `SEED_PRESETS` で初期化
+
+### 読み取り (`src/lib/firebase/hooks.ts`)
+
+- `useItems()` — `items` を `updatedAt desc` で listen
+- `useItem(id)` — 単一 doc
+- `useTags()` — `tags` を `createdAt asc` で listen
+- `useSettings()` — `settings/singleton` を listen
+
+すべて **「初回スナップショットが来るまで undefined を返す」** ので既存の `if (!items) return null` 分岐がそのまま使える。
+
+### 保存ルール（重要）
+
+- `createdAt` は新規作成時のみ書く。**絶対に上書きしない**
+- `updatedAt` はメタ + 画像 + 価格エントリの**いずれの変更でも**更新
+- 編集ページ (`items/[id]/edit/page.tsx`) では新しい crop は **保存ボタンを押すまで component state にステージング** (pendingIcon / pendingMain / pendingClearMain)。保存時に `updateItem()` 経由で Storage upload + Firestore runTransaction を一気にやる
+- 既保存画像を再クロップする時は `fetchAsBlob(savedIconUrl)` で URL → Blob にしてから cropper に渡す (cropper は Blob 入力)
+
+### マッパーで undefined を落とす
+
+`src/lib/firebase/mappers.ts` の `compact()` が top-level の undefined キーを除去してから Firestore に渡す。Firestore は undefined 値を rejection するので必須 (Phase 2 で詰まったポイント)。
+
+---
+
+## 6. ファイル地図
+
+```
+src/
+  app/
+    layout.tsx              AuthProvider + AppShell
+    page.tsx                ホーム = 一覧 + 検索 + フィルタ + ソート
+    register/page.tsx       新規登録（EXIF + プリセット検出 + 手動 OCR）
+    items/[id]/page.tsx     詳細 (priceEntries 一覧 + +価格を追加 CTA)
+    items/[id]/edit/page.tsx 編集 (画像 / 名前 / カテゴリ / タグ / minPrice)
+    items/[id]/prices/new/page.tsx          価格を追加 (画像Blobは保存しない)
+    items/[id]/prices/[entryId]/edit/page.tsx 価格を編集
+    presets/page.tsx        プリセット一覧
+    presets/new/page.tsx
+    presets/[id]/page.tsx   編集 + 削除
+    tags/page.tsx
+    settings/page.tsx       OCR エンジン (local) + Claude (local) + 件数 + プリセット概要
+    api/claude-ocr/route.ts Claude Vision プロキシ (ID トークン検証 + admin UID 一致チェック)
+  components/
+    AppHeader.tsx           2行ロゴ "LIVLY / MY-SHOP REF" (Link to "/") + back 時に左の戻るアロー
+    AppShell.tsx            useAuth で gating。loading / unauth / non-admin / admin の 4 状態
+    LoginScreen.tsx         未ログイン: Google サインインボタン。ログイン済 admin 未設定: UID 表示。エラー / config diagnostic 折りたたみ
+    DrawerNav.tsx           右からスライドイン
+    ItemCard.tsx            一覧 1 行 (atelier-row + corner-tick サムネ)
+    ImageCropper.tsx        モーダル切抜き
+    PresetForm.tsx          プリセット新規/編集の共通フォーム
+    PriceEntryForm.tsx      価格エントリの共通フォーム (画像プレビュー + OCR ボタン)
+    SearchBar.tsx, TagChip.tsx, Fab.tsx
+    ui/                     共通プリミティブ (Button / Field / Card / Badge / IconButton / Toast)
+  app/manifest.ts           PWA manifest
+  lib/
+    firebase/
+      client.ts             遅延 init (firebaseAuth() / firestore() / storage() を関数化、SSR/SSG プリレンダ時に getAuth が走らないように)
+      auth.tsx              AuthProvider / useAuth / signInGoogle (popup + iOS Safari 復元) / signOutCurrent
+      mappers.ts            itemToFs / itemFromFs / tagToFs / tagFromFs / settingsToFs / settingsFromFs + compact()
+      hooks.ts              useItems / useItem / useTags / useSettings
+      images.ts             uploadItemImage / deleteItemImage / deleteAllItemImages
+      repo.ts               CRUD + cascade delete + sortedPriceEntries / latestPriceEntry
+      admin.ts              firebase-admin init (FIREBASE_SERVICE_ACCOUNT を 1 行 JSON でパース) + requireAdmin
+      types.ts              Item / Tag / PriceEntry / AppSettings 等
+    localSettings.ts        OCR プロバイダ・キー・モデル (端末ローカル)
+    preset.ts               CropPreset + findMatchingPreset (HSV 判定)
+    image.ts                compressImage / cropAndEncode / Blob 周り
+    exif.ts                 getCheckedAt(File|Blob)
+    shopPeriods.ts          SHOP_ROUNDS + resolveShopPeriod + roundAgeIndex
+    version.ts              APP_VERSION + 変更履歴コメント
+    ocr/
+      tesseract.ts          worker をキャッシュ
+      claude.ts             /api/claude-ocr を fetch (ID トークン自動付与)
+      parse.ts              テキスト → ExtractedFields
+    utils/
+      date.ts, parsePrice.ts
+docs/
+  DATA_SOURCES.md           https://livly-guide.com/livly-myshop/ 出典記載
+  HANDOFF.md                ← このファイル
+
+firebase.json               Firestore / Storage rules デプロイ設定
+firestore.rules             admin UID のみ write、read public
+storage.rules               同上
+.firebaserc                 default project: livly-myshop-ref
+.env.local.example          env 変数のテンプレ (実値は .env.local に、コミット不可)
+```
+
+---
+
+## 7. ユーザー（作者）の好み・地雷
+
+これを覚えておくと往復が減ります:
+
+### 進め方
+- **作業は小さく** 刻む。複数機能の同時着手より 1 トピック完了 → 確認 → 次
+- バージョンは ユーザー目線の変化があったら必ず bump し、`version.ts` のコメントに 1〜3 行で記録
+- mobile-first。375〜414 px 幅で見て破綻しないこと
+- 過剰な余白を嫌う。一覧は密度高め（カード式は却下済み）
+- **コミットはこまめに。push は 1 回 (まとめて)** — Phase 2 作業時のユーザー指示
+- スクショ報告は不要 (別途、作業の途中経過のスクショ生成も依頼されない限り作らない)
+
+### UI / 配色トークン (Atelier — v0.10.0)
+- 配色は **warm white** (`--color-cream #ffffff`) ベース、**warm hairline** (`--color-line #e7dfd5`) 区切り、**DEEP TEAL** (`--color-gold #006a71` / `--color-gold-deep #00494e`) 主アクセント、**taupe muted** (`--color-muted #857769`) 副ラベル
+- レガシー Tailwind class 名 (`cream` / `beige` / `gold` / `mint` / `pink` 等) は **残してある** が CSS 変数の値が Atelier 値に更新済
+- 角丸はゼロ。`rounded-*` は **使わない**。新規コードは `borderRadius: 0` または `rounded-none`
+- 影もゼロ。`--shadow-card` / `--shadow-fab` は `none`、`--shadow-focus` のみ 2px ティールリング
+- フォント 3 軸 (`--font-display` / `--font-body` / `--font-label`)
+- **`font-bold` / `font-medium` は強調目的では使わない** (v0.10.0 で全撤去)
+- 緑は **本物のアクセントだけ**に: primary CTA / FAB / 最新の period badge / focus ring / active drawer 左バー / OCR 自動入力フィールドの border / Cormorant 価格数値・タイトルの強い色
+- ヘッダ: 2 行ロゴ "LIVLY" + "MY-SHOP REF"。**ロゴ全体が `Link href="/"`**。`back={true}` 時はロゴの左に戻るアローが出る
+- ホーム一覧 (`ItemCard`): corner-tick サムネ (`atelier-thumb`) + Cormorant の名前 + 参考/最低価格行 + 期間バッジ右寄せ + タグ
+- 詳細 (`items/[id]`): editorial spread 順に Title block → ハッシュタグ → MIN PRICE バー → MARKET REFERENCE 一覧 → ヒーロー画像 → メタ → DELETE / EDIT
+- 期間バッジは 3 段階: 最新 = 塗りつぶし / 一つ前 = 抜き枠 deep / 古い = 抜き枠 muted
+- 戻るボタンは左、ハンバーガーは右、ドロワーは右からスライドイン
+- 切抜き UI: 中点ハンドル 4 つ (square、Atelier 化済)、オーバーレイは `rgba(20,40,38,0.92)`、ハンドルは白 + gold-deep
+- `TagChip` は **warm 矩形ピル** (`bg: var(--color-{type})` + 0.5px hairline + 角丸ゼロ)
+- 自動入力フィールドのマーカー: `inputClass({ highlighted: true })` で mint border + Sparkles ラベル
+
+### 機能
+- メイン画像なしでも登録できる (priceSource を `PriceEntry` 側で持つ)
+- ショップ回次・フェーズは EXIF 撮影日時から自動推定 + 手動上書き可
+- OCR は **手動ボタンで実行**（v0.5.0 から）
+- 価格追加フローでは OCR は **参考価格のみ** 抽出
+- プリセット色判定は HSV 許容誤差
+- 編集画面は **保存ボタンを押すまで Firestore / Storage 反映なし**
+- 価格エントリ追加・編集時のスクショは **保存しない** (EXIF + OCR にだけ使う)
+- 一覧と詳細ヘッダの参考価格・期間バッジは `latestPriceEntry()` の値を表示
+- 一覧 / 詳細 の 情報元 はバッジ表示（選択肢は **なんおし / その他**）
+- 設定画面の保存通知は `<Toast open={saved} message="…" />` を使う (手書き fixed div は不可)
+- 削除/編集 等の icon-only ボタンは `<IconButton size="sm" aria-label="…">` を使う (`aria-label` 必須)
+- 入力をフレックスレイアウトに置く時は `inputClass({ fullWidth: false })` + 外側で `flex-1 min-w-0` / `w-24 shrink-0` 指定
+- **削除確認ダイアログは `window.confirm()` を使わない**。iOS Safari standalone PWA で無音失敗する。`items/[id]/page.tsx` の `ConfirmDialog` パターンを参考に
+- ボタンには `<button type="button">` を明示する
+
+### 避けるべきこと
+- description フィールド（過去にあったが削除済）
+- emoji を UI に直接書く（lucide アイコンを使う）
+- 切抜き座標を詳細ページに表示すること
+- ヘッダーの設定歯車アイコン (drawer に戻した)
+- API キーを Firestore に置くこと (v0.13 以降は localStorage 固定)
+
+---
+
+## 8. ハマりやすいポイント
+
+| 症状 | 原因 | 対処 |
+|---|---|---|
+| Vercel ビルドが `/_not-found` prerender で `auth/invalid-api-key` で落ちる | `getAuth(firebaseApp)` をモジュール top-level で呼ぶと SSG 評価時に env 不足で死ぬ | `src/lib/firebase/client.ts` で `firebaseAuth()` / `firestore()` / `storage()` を **遅延初期化関数** にしてある。サーバ評価時は config リテラルだけ触られる |
+| iOS Safari でログインしても "管理者 UID 未設定" 画面に戻る | iOS Safari の Storage Partitioning が `signInWithRedirect` の third-party 配送を切る | `signInWithRedirect` は使わず `signInWithPopup` 一本 |
+| iOS Safari でログイン直後に `auth/popup-closed-by-user` が出るが実は成功している | popup → parent への postMessage が Storage Partitioning に阻まれて誤発火 | `signInGoogle()` で `popup-closed-by-user` を catch して `onAuthStateChanged` を 2 秒待つ。user が現れたら成功扱い |
+| Vercel の env に値を貼ると `<value>` のように `<>` が混入 | プレースホルダ表記をそのままコピペ | env 値に `<` `>` は付けない。`config diagnostic` 行で先頭が `<` で始まる値があれば疑う |
+| Firestore に書こうとして "Function setDoc() called with invalid data" | object 値に `undefined` が含まれている | `src/lib/firebase/mappers.ts` の `compact()` で top-level の undefined を必ず削る。新フィールド追加時も同パターンで |
+| `画像を読み込み中…` が長く出る (register) | `handleFile` 内で毎回 `getSettings()` を呼んで Firestore 往復していた | v0.13 系で撤去済 (cropPresets は `useSettings()` の購読値 + `SEED_PRESETS` フォールバックで取る) |
+| プリセットが効かないのに静かに失敗する | findMatchingPreset の例外を try/catch で握りつぶしていた | エラーは `setError` に出すように改修済 |
+| `/api/claude-ocr` が 401 を返す | `Authorization: Bearer <id_token>` が無い、または FIREBASE_SERVICE_ACCOUNT 未設定 | クライアント側は `src/lib/ocr/claude.ts` が currentUser から自動付与。サーバ側は Vercel に FIREBASE_SERVICE_ACCOUNT (1 行 JSON) を入れる必要 |
+| 既保存画像を再クロップしようとすると「アイコン画像が登録されていません」 | edit ページの cropper は Blob 入力。`item.iconUrl` (URL 文字列) を直接渡せない | `fetchAsBlob(savedIconUrl)` で URL → Blob に変換してから cropper に渡す。`startCrop()` 内で対応済 |
+| Vercel preview で Firebase Auth が "auth/unauthorized-domain" で失敗 | Firebase Console > Authentication > 設定 > 承認済みドメイン に preview ホスト未追加 | preview URL のホスト名を承認済みドメインに足す。production ドメインも忘れずに |
+| iOS Safari (PWA standalone) で削除ボタンが何も起きない | `window.confirm()` / `prompt()` が無音で `undefined` を返す | `items/[id]/page.tsx` の `ConfirmDialog` (state 駆動の自前モーダル) に差替え済。新規追加時も `confirm()` は使わない |
+| iOS Safari で datetime-local 入力が viewport を突破する | iOS の native datetime UI は内部最小幅が広い | `grid-cols-1 sm:grid-cols-2` で stack、`min-w-0 max-w-full`、`AppShell` main に `overflow-x-hidden` (v0.10.0) |
+| 戻るボタンを押すと意図しない画面に戻る | 各保存ハンドラが `router.push` で履歴を積む → `router.back()` が古い画面を掘り起こす | v0.11.1 で `AppShell.parentHref()` 導入 + `<Link>` 化。保存ハンドラも `router.replace` |
+
+---
+
+## 9. 検証コマンド
+
+```bash
+pnpm install
+pnpm dev          # http://localhost:3000
+pnpm build        # 型チェック + プロダクションビルド
+pnpm lint         # 既存の v0.10 以前から既知の警告 15-16 件あり、機能影響なし
+```
+
+env が空の状態で build が通ることも確認したいときは `mv .env.local .env.local.bak && pnpm build && mv .env.local.bak .env.local`。SSG プリレンダで Firebase init が走らないことを担保する用。
+
+UI 変更を含む場合は dev サーバ起動 + ブラウザで操作確認すること（CLAUDE.md の指示）。動作確認の典型 5 段:
+1. 未ログイン → LoginScreen 表示
+2. Google ログイン → admin UID 一致 → ホーム表示
+3. 新規登録 → ホームに戻り 1 件追加 / Firebase Console で doc + Storage に画像
+4. 編集 → 画像差替え → 保存 → 反映
+5. OCR (Claude を選択 + API キー入力) → `/api/claude-ocr` が 200
+
+---
+
+## 10. 未着手 / 今後の候補
+
+v0.13.0 で **Phase 1 + Phase 2 (Firebase 移行)** 完了。**ユーザー曰く「いったん終わり」**。
+
+### 計画書 §10 の残フェーズ
+- **Phase 3 — viewer リポジトリ scaffold**: 公開閲覧用の `livly-myshop-viewer` リポジトリを新規作成。同じ Firebase プロジェクトを向け、ホーム + 詳細だけの read-only Next.js。書込みコードを bundle に含めない。設計コピー (globals.css / layout / 主要 components / lib のサブセット) → 同じデザインで開始 → 以後は viewer 側で独自進化 OK
+- **Phase 4 — viewer の仕上げ**: 404 ページ、OG meta、`next/image` 切替、PWA 微調整、production deploy
+
+### 細かい改善候補
+- **`ConfirmDialog` の primitives 切り出し** — 現状 `items/[id]/page.tsx` 内に local component。`tags` / `presets` ページの削除も `window.confirm()` のままなので同事象が起きる前に出す
+- **register / edit の画面タイトルブロック** — 詳細ページのような editorial title block を入れると一貫感が出る
+- **Atelier 関連 section 化** — register / edit のフォームを `MARKET REFERENCE` 風セクションヘッダで区切る
+- 茶ヘッダプリセットの **メイン画像矩形** が未指定のままプレースホルダ
+- アイテムの一括エクスポート/インポート（バックアップ）
+- 価格エントリの並び順をユーザー側で切り替え (現状は shopPeriod 降順固定)
+- PWA アイコン: 現状は `/public/icon.svg` のテキスト型。実機ホーム画面で見栄えを確認の上、PNG 192/512 を追加
+- Tailwind v4 の `@theme` で `border-line` `bg-line-soft` 等のカスタムユーティリティを宣言
+
+### 既知の lint warning (機能影響なし)
+`pnpm lint` で 15〜16 件の `react-hooks/set-state-in-effect` エラーが出るが、いずれも v0.10.0 以前から存在するパターン (`URL.createObjectURL` を effect 内で `setState` する既存ロジック)。React 19 の strict 化対応として将来別ラウンドで `useSyncExternalStore` 等に書換える余地あり。Vercel build (`next build`) は通るので公開には支障なし。
+
+### Firebase 関連の運用メモ
+- 月の Firestore 読み書きは無料枠 (50K read / 20K write) で個人用には十分
+- Storage 5 GB 無料 + 1 GB egress/日 (Blaze 必須だが無料枠内)
+- 予算アラート ($1) を Firebase Console > 使用量と請求 で設定済を推奨
+- Firebase Console > Authentication > 承認済みドメイン に preview / production の Vercel ドメインを足す必要あり (新ドメイン公開時の TODO)
+
+要望を待ってから着手するのが正解。
+
+---
+
+## 11. 新セッション開始時のチェックリスト
+
+1. このファイル全文を読む
+2. `git status` / `git log -5 --oneline` / `git branch --show-current` を確認
+3. `src/lib/version.ts` の最新バージョンと変更履歴を読む
+4. `node_modules/next/dist/docs/` で関連 Next.js 16 ガイドを確認 (該当箇所を触るとき)
+5. ユーザーの最初の要望を聞いてから動く（先回りで実装しない）
