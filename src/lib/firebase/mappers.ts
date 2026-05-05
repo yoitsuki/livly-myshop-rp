@@ -1,5 +1,6 @@
 import type { DocumentData } from "firebase/firestore";
 import type { AppSettings, Item, Tag } from "./types";
+import { normalizeTagType } from "@/lib/tagTypes";
 
 // Drop undefined values so Firestore doesn't reject the write — undefined isn't
 // a valid Firestore value, but we use undefined liberally on the TS side.
@@ -64,6 +65,7 @@ export function tagToFs(tag: Tag): DocumentData {
     name: tag.name,
     type: tag.type,
     color: tag.color,
+    displayOrder: tag.displayOrder,
     createdAt: tag.createdAt,
   });
 }
@@ -72,15 +74,29 @@ export function tagFromFs(id: string, data: DocumentData): Tag {
   return {
     id,
     name: data.name ?? "",
-    type: data.type ?? "other",
+    type: normalizeTagType(data.type),
     color: data.color,
+    displayOrder:
+      typeof data.displayOrder === "number" ? data.displayOrder : undefined,
     createdAt: typeof data.createdAt === "number" ? data.createdAt : 0,
   };
 }
 
 export function settingsToFs(s: AppSettings): DocumentData {
   return compact({
-    cropPresets: s.cropPresets,
+    cropPresets: s.cropPresets?.map((p) =>
+      compact({
+        id: p.id,
+        name: p.name,
+        width: p.width,
+        height: p.height,
+        colorMode: p.colorMode,
+        topLeftHex: p.topLeftHex,
+        colorTolerance: p.colorTolerance,
+        icon: p.icon,
+        main: p.main,
+      }),
+    ),
   });
 }
 

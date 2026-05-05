@@ -26,8 +26,16 @@ interface Props {
   onSubmit: (next: CropPreset) => Promise<void> | void;
   /** Optional delete action shown in edit mode. */
   onDelete?: () => Promise<void> | void;
-  cancelHref: string;
+  /** Used for the cancel link when onCancel isn't supplied. */
+  cancelHref?: string;
+  /** When given, renders cancel as a button instead of a Link (modal usage). */
+  onCancel?: () => void;
   submitLabel: string;
+  /**
+   * Override post-submit behavior. Default: navigate to /presets. Pass a
+   * no-op (or modal-close) when used inside a dialog.
+   */
+  onSubmitted?: () => void;
 }
 
 export default function PresetForm({
@@ -35,7 +43,9 @@ export default function PresetForm({
   onSubmit,
   onDelete,
   cancelHref,
+  onCancel,
   submitLabel,
+  onSubmitted,
 }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState<CropPreset>(
@@ -54,8 +64,22 @@ export default function PresetForm({
   const [error, setError] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
 
-  const setRect = (which: "icon" | "main", patch: Partial<CropRect>) => {
-    setDraft({ ...draft, [which]: { ...draft[which], ...patch } });
+  const setIconRect = (patch: Partial<CropRect>) => {
+    setDraft({ ...draft, icon: { ...draft.icon, ...patch } });
+  };
+  const setMainRect = (patch: Partial<CropRect>) => {
+    if (!draft.main) return;
+    setDraft({ ...draft, main: { ...draft.main, ...patch } });
+  };
+  const toggleMain = (enabled: boolean) => {
+    if (enabled) {
+      setDraft({
+        ...draft,
+        main: draft.main ?? { ...SEED_PRESETS[0].main! },
+      });
+    } else {
+      setDraft({ ...draft, main: undefined });
+    }
   };
 
   const onSave = async () => {
@@ -77,7 +101,8 @@ export default function PresetForm({
           ? draft.topLeftHex.trim().toLowerCase()
           : undefined,
       });
-      router.push("/presets");
+      if (onSubmitted) onSubmitted();
+      else router.push("/presets");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
       setSaving(false);
@@ -94,7 +119,7 @@ export default function PresetForm({
       topLeftHex: seed.topLeftHex,
       colorTolerance: seed.colorTolerance ?? DEFAULT_COLOR_TOLERANCE,
       icon: { ...seed.icon },
-      main: { ...seed.main },
+      main: seed.main ? { ...seed.main } : undefined,
     });
   };
 
@@ -197,13 +222,30 @@ export default function PresetForm({
       <RectFieldset
         legend="アイコン (icon)"
         rect={draft.icon}
-        onChange={(p) => setRect("icon", p)}
+        onChange={setIconRect}
       />
-      <RectFieldset
-        legend="メイン (main)"
-        rect={draft.main}
-        onChange={(p) => setRect("main", p)}
-      />
+
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={!!draft.main}
+            onChange={(e) => toggleMain(e.target.checked)}
+            className="accent-[var(--color-gold-deep)]"
+          />
+          <span className="text-[12px] text-text">メイン画像を切り抜く</span>
+          <span className="text-[10.5px] text-muted">
+            (オフ: メイン画像なしで登録)
+          </span>
+        </label>
+        {draft.main && (
+          <RectFieldset
+            legend="メイン (main)"
+            rect={draft.main}
+            onChange={setMainRect}
+          />
+        )}
+      </div>
 
       <button
         type="button"
@@ -221,11 +263,25 @@ export default function PresetForm({
       )}
 
       <div className="flex gap-2 pt-2">
-        <Link href={cancelHref} className="flex-1">
-          <Button variant="secondary" size="lg" fullWidth>
-            キャンセル
-          </Button>
-        </Link>
+        {onCancel ? (
+          <div className="flex-1">
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={onCancel}
+              type="button"
+            >
+              キャンセル
+            </Button>
+          </div>
+        ) : (
+          <Link href={cancelHref ?? "/presets"} className="flex-1">
+            <Button variant="secondary" size="lg" fullWidth>
+              キャンセル
+            </Button>
+          </Link>
+        )}
         <div className="flex-[2]">
           <Button
             variant="primary"

@@ -15,6 +15,7 @@ import {
   tagFromFs,
 } from "./mappers";
 import type { AppSettings, Item, Tag } from "./types";
+import { TYPE_ORDER } from "@/lib/tagTypes";
 
 /**
  * Returns `undefined` while the first snapshot is loading — matches the
@@ -59,7 +60,19 @@ export function useTags(): Tag[] | undefined {
       orderBy("createdAt", "asc"),
     );
     return onSnapshot(q, (snap) => {
-      setData(snap.docs.map((d) => tagFromFs(d.id, d.data())));
+      const tags = snap.docs.map((d) => tagFromFs(d.id, d.data()));
+      // Stable sort: TYPE_ORDER → displayOrder asc (undefined goes last) →
+      // createdAt asc as a tiebreaker.
+      tags.sort((a, b) => {
+        const ta = TYPE_ORDER.indexOf(a.type);
+        const tb = TYPE_ORDER.indexOf(b.type);
+        if (ta !== tb) return ta - tb;
+        const oa = a.displayOrder ?? Number.POSITIVE_INFINITY;
+        const ob = b.displayOrder ?? Number.POSITIVE_INFINITY;
+        if (oa !== ob) return oa - ob;
+        return a.createdAt - b.createdAt;
+      });
+      setData(tags);
     });
   }, []);
   return data;

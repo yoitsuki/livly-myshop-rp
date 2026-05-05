@@ -8,10 +8,6 @@
   --color-beige-deep: #e7dfd5;   /* stronger warm divider */
   --color-gold: #006a71;         /* primary — DEEP TEAL (unchanged) */
   --color-gold-deep: #00494e;    /* deeper teal: headings, prices, active CTA */
-  --color-pink: #f5ede2;         /* tag: gacha */
-  --color-mint: #f1eadd;         /* tag: category */
-  --color-sky: #e4eeed;          /* tag: custom */
-  --color-lavender: #f2ebe2;     /* tag: period */
   --color-text: #1f1c1a;         /* near-black warm ink */
   --color-muted: #857769;        /* taupe muted */
 
@@ -48,10 +44,6 @@
   --color-beige-deep: var(--color-beige-deep);
   --color-gold: var(--color-gold);
   --color-gold-deep: var(--color-gold-deep);
-  --color-pink: var(--color-pink);
-  --color-mint: var(--color-mint);
-  --color-sky: var(--color-sky);
-  --color-lavender: var(--color-lavender);
   --color-text: var(--color-text);
   --color-muted: var(--color-muted);
   --color-line: var(--color-line);

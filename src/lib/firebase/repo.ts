@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   runTransaction,
   setDoc,
   writeBatch,
@@ -16,6 +18,7 @@ import {
   settingsToFs,
   tagToFs,
 } from "./mappers";
+import { SEED_TAGS } from "../seedTags";
 import {
   deleteAllItemImages,
   deleteItemImage,
@@ -232,6 +235,99 @@ export async function deletePriceEntry(
   });
 }
 
+export interface MergePriceEntryInput {
+  itemId: string;
+  newEntry: Omit<PriceEntry, "id" | "createdAt">;
+  /**
+   * When set, replaces the item's main image with the supplied blob (and
+   * mainCrop, if provided). The new image is uploaded outside the
+   * transaction so the doc only ever points at fully-written objects.
+   */
+  replaceMainImage?: {
+    blob: Blob;
+    crop?: ItemCropRecord;
+  };
+}
+
+/**
+ * Adds a new price entry to an existing item. If the new entry's
+ * shopPeriod.yearMonth matches an existing entry's yearMonth, that older
+ * entry is dropped (the new one wins — "1 件扱い" per yearMonth).
+ *
+ * Optionally replaces the main image. The icon is never touched.
+ */
+export async function mergeItemPriceEntry(
+  input: MergePriceEntryInput,
+): Promise<void> {
+  const main = input.replaceMainImage
+    ? await uploadItemImage(
+        input.itemId,
+        "main",
+        input.replaceMainImage.blob,
+      )
+    : undefined;
+
+  const ref = doc(firestore(), "items", input.itemId);
+  await runTransaction(firestore(), async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error("アイテムが見つかりませんでした");
+    const current = itemFromFs(snap.id, snap.data());
+    const newYearMonth = input.newEntry.shopPeriod?.yearMonth;
+
+    const filtered = newYearMonth
+      ? current.priceEntries.filter(
+          (e) => e.shopPeriod?.yearMonth !== newYearMonth,
+        )
+      : current.priceEntries;
+
+    const now = Date.now();
+    const newEntry: PriceEntry = {
+      ...input.newEntry,
+      id: uid(),
+      createdAt: now,
+    };
+
+    const next: Item = {
+      ...current,
+      priceEntries: [...filtered, newEntry],
+      updatedAt: now,
+    };
+
+    if (main) {
+      next.mainImageUrl = main.url;
+      next.mainImageStoragePath = main.path;
+      if (input.replaceMainImage?.crop) {
+        next.mainCrop = input.replaceMainImage.crop;
+      }
+    }
+
+    tx.set(ref, itemToFs(next));
+  });
+}
+
+/**
+ * Whether `candidateYearMonth` is at least as recent as every other
+ * yearMonth in the item's priceEntries (entries that share the candidate
+ * yearMonth itself are excluded since the merge replaces them).
+ *
+ * Returns false if the candidate yearMonth is empty/undefined — in that
+ * case there is no period to compare against, so by convention the new
+ * entry is not "the newest".
+ */
+export function isNewestYearMonth(
+  item: Pick<Item, "priceEntries">,
+  candidateYearMonth: string | undefined,
+): boolean {
+  if (!candidateYearMonth) return false;
+  const others = item.priceEntries
+    .filter((e) => e.shopPeriod?.yearMonth !== candidateYearMonth)
+    .map((e) => e.shopPeriod?.yearMonth)
+    .filter((y): y is string => !!y);
+  if (others.length === 0) return true;
+  const max = others.reduce((a, b) => (a > b ? a : b));
+  return candidateYearMonth >= max;
+}
+
 // ---- Tags ------------------------------------------------------------------
 
 export async function createTag(
@@ -245,6 +341,62 @@ export async function createTag(
 
 export async function deleteTag(id: string): Promise<void> {
   await deleteDoc(doc(firestore(), "tags", id));
+}
+
+/**
+ * Persist a new displayOrder for a list of tags. Single writeBatch so all
+ * the tags in the dragged group flip atomically (no transient out-of-order
+ * frame in the snapshot listeners).
+ */
+export async function reorderTags(
+  ordered: Array<{ id: string; displayOrder: number }>,
+): Promise<void> {
+  if (ordered.length === 0) return;
+  const batch = writeBatch(firestore());
+  for (const { id, displayOrder } of ordered) {
+    batch.update(doc(firestore(), "tags", id), { displayOrder });
+  }
+  await batch.commit();
+}
+
+/**
+ * Idempotent bulk seeder. Reads every existing tag name, then writes the
+ * subset of SEED_TAGS whose name is not already present. 58 entries fit
+ * comfortably in a single 500-op writeBatch.
+ */
+export async function seedTagsIfMissing(): Promise<{
+  created: number;
+  skipped: number;
+}> {
+  const snap = await getDocs(collection(firestore(), "tags"));
+  const existing = new Set(
+    snap.docs.map((d) => (d.data().name as string | undefined) ?? ""),
+  );
+
+  const toCreate = SEED_TAGS.filter((t) => !existing.has(t.name));
+  if (toCreate.length === 0) {
+    return { created: 0, skipped: SEED_TAGS.length };
+  }
+
+  const batch = writeBatch(firestore());
+  const now = Date.now();
+  for (const t of toCreate) {
+    const id = uid();
+    const tag: Tag = {
+      id,
+      name: t.name,
+      type: t.type,
+      displayOrder: SEED_TAGS.indexOf(t),
+      createdAt: now,
+    };
+    batch.set(doc(firestore(), "tags", id), tagToFs(tag));
+  }
+  await batch.commit();
+
+  return {
+    created: toCreate.length,
+    skipped: SEED_TAGS.length - toCreate.length,
+  };
 }
 
 /**

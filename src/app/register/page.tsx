@@ -1,13 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Crop, ImagePlus, Loader2, ScanText, Sparkles, X } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  BookmarkPlus,
+  Crop,
+  ImagePlus,
+  Loader2,
+  ScanText,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
 import {
   createItem,
   createTag,
+  getSettings,
+  isNewestYearMonth,
+  mergeItemPriceEntry,
+  patchSettings,
   uid,
+  type Item,
   type ItemCropRecord,
   type PriceEntry,
   type ShopPeriodRecord,
@@ -15,7 +28,7 @@ import {
   type TagType,
 } from "@/lib/firebase/repo";
 import { getLocalSettings, useLocalSettings } from "@/lib/localSettings";
-import { compressImage, type CropRect } from "@/lib/image";
+import { compressImage, cropAndEncode, type CropRect } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
@@ -26,10 +39,24 @@ import {
   SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
-import { findMatchingPreset, SEED_PRESETS } from "@/lib/preset";
+import {
+  DEFAULT_COLOR_TOLERANCE,
+  findMatchingPreset,
+  newPresetId,
+  sampleTopLeftHex,
+  SEED_PRESETS,
+  type CropPreset,
+} from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
+import { useBulkDraft } from "@/lib/bulk/context";
+import { applyPresetRects, renderIconThumb } from "@/lib/bulk/process";
+import {
+  bulkEntryMissingFields,
+  type BulkEntry,
+} from "@/lib/bulk/types";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
+import PresetForm from "@/components/PresetForm";
 import { Button, Field, inputClass } from "@/components/ui";
 
 interface FormState {
@@ -69,7 +96,26 @@ const EMPTY_FORM: FormState = {
 type CropTarget = "icon" | "main" | null;
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[40vh]" aria-hidden />}>
+      <RegisterPageInner />
+    </Suspense>
+  );
+}
+
+function RegisterPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const bulkIndexRaw = searchParams?.get("bulkIndex") ?? null;
+  const bulkIdx =
+    bulkIndexRaw !== null && bulkIndexRaw !== ""
+      ? Number(bulkIndexRaw)
+      : null;
+  const bulk = useBulkDraft();
+  const bulkEntry =
+    bulkIdx !== null && Number.isInteger(bulkIdx) ? bulk.entries[bulkIdx] : undefined;
+  const isBulk = bulkEntry !== undefined;
+
   const fileInput = useRef<HTMLInputElement>(null);
   const [sourceBlob, setSourceBlob] = useState<Blob | undefined>();
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
@@ -80,7 +126,7 @@ export default function RegisterPage() {
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
   const [cropping, setCropping] = useState<CropTarget>(null);
-  const [presets, setPresets] = useState<{ icon: CropRect; main: CropRect } | null>(
+  const [presets, setPresets] = useState<{ icon: CropRect; main?: CropRect } | null>(
     null
   );
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
@@ -90,9 +136,18 @@ export default function RegisterPage() {
   const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
 
   const tags = useTags() ?? [];
+  const allItems = useItems();
   const cloudSettings = useSettings();
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
+  const [presetModalInitial, setPresetModalInitial] =
+    useState<CropPreset | null>(null);
+  const [mergeDialog, setMergeDialog] = useState<{
+    existing: Item;
+    willReplaceEntry: boolean;
+    defaultReplaceMain: boolean;
+  } | null>(null);
+  const bulkPopulatedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!previewUrl) return;
@@ -118,6 +173,74 @@ export default function RegisterPage() {
     setMainUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [mainBlob]);
+
+  // Bulk-edit init: when /register?bulkIndex=N has a corresponding draft
+  // entry whose source Blob is still in memory, hydrate the form from it.
+  // Runs once per entry id (guarded by bulkPopulatedRef).
+  useEffect(() => {
+    if (!bulkEntry) return;
+    if (bulkPopulatedRef.current === bulkEntry.id) return;
+    const source = bulk.getSourceBlob(bulkEntry.id);
+    if (!source) {
+      // Browser refresh dropped the blob — return to bulk page.
+      router.replace("/register/bulk");
+      return;
+    }
+    bulkPopulatedRef.current = bulkEntry.id;
+    let cancelled = false;
+
+    setSourceBlob(source);
+    setPreviewUrl(URL.createObjectURL(source));
+    if (bulkEntry.iconRect) {
+      setPresets({ icon: bulkEntry.iconRect, main: bulkEntry.mainRect });
+    }
+    if (bulkEntry.iconCrop) setIconCrop(bulkEntry.iconCrop);
+    if (bulkEntry.mainCrop) setMainCrop(bulkEntry.mainCrop);
+
+    setForm({
+      name: bulkEntry.name,
+      category: bulkEntry.category,
+      minPrice: bulkEntry.minPrice ? String(bulkEntry.minPrice) : "",
+      refPriceMin: bulkEntry.refPriceMin ? String(bulkEntry.refPriceMin) : "",
+      refPriceMax: bulkEntry.refPriceMax ? String(bulkEntry.refPriceMax) : "",
+      checkedAt: toLocalInput(bulkEntry.checkedAt || Date.now()),
+      tagIds: bulkEntry.tagIds,
+      shopYearMonth: bulkEntry.shopPeriod?.yearMonth ?? "",
+      shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
+      shopAuto: bulkEntry.shopPeriod?.auto ?? false,
+      priceSource: bulkEntry.priceSource ?? "",
+    });
+    setOcrDone(true); // fields are filled — the OCR button becomes 'rerun'
+
+    (async () => {
+      if (bulkEntry.iconRect) {
+        try {
+          const blob = await cropAndEncode(source, bulkEntry.iconRect, {
+            maxWidth: 320,
+            quality: 0.85,
+          });
+          if (!cancelled) setIconBlob(blob);
+        } catch {
+          /* ignore — user can re-crop */
+        }
+      }
+      if (bulkEntry.mainRect) {
+        try {
+          const blob = await cropAndEncode(source, bulkEntry.mainRect, {
+            maxWidth: 1200,
+            quality: 0.85,
+          });
+          if (!cancelled) setMainBlob(blob);
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bulkEntry, bulk, router]);
 
   const onPick = () => fileInput.current?.click();
 
@@ -232,6 +355,65 @@ export default function RegisterPage() {
   };
 
   const onSave = async () => {
+    if (isBulk && bulkEntry) {
+      if (!form.name.trim()) {
+        setError("アイテム名は必須です");
+        return;
+      }
+      if (!iconBlob && !mainBlob) {
+        setError("アイコンかメイン画像のどちらかを切り抜いてください");
+        return;
+      }
+      setError(undefined);
+      setBusy("save");
+      try {
+        const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
+          ? {
+              yearMonth: form.shopYearMonth,
+              phase: form.shopPhase,
+              auto: form.shopAuto,
+            }
+          : undefined;
+        const updates: Partial<BulkEntry> = {
+          name: form.name.trim(),
+          category: form.category.trim(),
+          tagIds: form.tagIds,
+          minPrice: Number(form.minPrice) || 0,
+          refPriceMin: Number(form.refPriceMin) || 0,
+          refPriceMax: Number(form.refPriceMax) || 0,
+          priceSource: form.priceSource.trim() || undefined,
+          checkedAt: fromLocalInput(form.checkedAt),
+          shopPeriod,
+          iconCrop,
+          mainCrop,
+          iconRect: iconCrop?.rect,
+          mainRect: mainCrop?.rect,
+        };
+        const source = bulk.getSourceBlob(bulkEntry.id);
+        if (source && iconCrop?.rect) {
+          try {
+            updates.iconThumbDataUrl = await renderIconThumb(
+              source,
+              iconCrop.rect,
+            );
+          } catch {
+            /* keep existing thumb if regen fails */
+          }
+        }
+        const merged = { ...bulkEntry, ...updates };
+        const valid = bulkEntryMissingFields(merged).length === 0;
+        bulk.updateEntry(bulkEntry.id, {
+          ...updates,
+          checked: valid ? true : bulkEntry.checked,
+        });
+        router.replace("/register/bulk");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "保存に失敗しました");
+        setBusy("idle");
+      }
+      return;
+    }
+
     if (!iconBlob && !mainBlob) {
       setError("アイコンかメイン画像のどちらかを切り抜いてください");
       return;
@@ -241,6 +423,24 @@ export default function RegisterPage() {
       return;
     }
     setError(undefined);
+
+    // Same-name detection: if an item with the same trimmed name already
+    // exists, surface the merge dialog instead of creating a duplicate.
+    const trimmedName = form.name.trim();
+    const existingItem = (allItems ?? []).find((i) => i.name === trimmedName);
+    if (existingItem) {
+      const newYearMonth = form.shopYearMonth || undefined;
+      const willReplaceEntry =
+        !!newYearMonth &&
+        existingItem.priceEntries.some(
+          (e) => e.shopPeriod?.yearMonth === newYearMonth,
+        );
+      const defaultReplaceMain =
+        !!mainBlob && isNewestYearMonth(existingItem, newYearMonth);
+      setMergeDialog({ existing: existingItem, willReplaceEntry, defaultReplaceMain });
+      return;
+    }
+
     setBusy("save");
     try {
       const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
@@ -280,6 +480,66 @@ export default function RegisterPage() {
     }
   };
 
+  const confirmMerge = async (replaceMain: boolean) => {
+    if (!mergeDialog) return;
+    setBusy("save");
+    setError(undefined);
+    try {
+      const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
+        ? {
+            yearMonth: form.shopYearMonth,
+            phase: form.shopPhase,
+            auto: !!mainBlob && form.shopAuto,
+          }
+        : undefined;
+      const newEntry = {
+        shopPeriod,
+        refPriceMin: Number(form.refPriceMin) || 0,
+        refPriceMax: Number(form.refPriceMax) || 0,
+        checkedAt: fromLocalInput(form.checkedAt),
+        priceSource:
+          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+      };
+      await mergeItemPriceEntry({
+        itemId: mergeDialog.existing.id,
+        newEntry,
+        replaceMainImage:
+          replaceMain && mainBlob ? { blob: mainBlob, crop: mainCrop } : undefined,
+      });
+      setMergeDialog(null);
+      router.push("/");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存に失敗しました");
+      setBusy("idle");
+    }
+  };
+
+  const openPresetFromCrop = async () => {
+    if (!sourceBlob || !iconCrop) {
+      setError("先にアイコンを切り抜いてください");
+      return;
+    }
+    try {
+      const hex = await sampleTopLeftHex(sourceBlob);
+      const initial: CropPreset = {
+        id: newPresetId(),
+        name: "",
+        width: iconCrop.source.width,
+        height: iconCrop.source.height,
+        colorMode: hex ? "match" : "none",
+        topLeftHex: hex ?? undefined,
+        colorTolerance: DEFAULT_COLOR_TOLERANCE,
+        icon: { ...iconCrop.rect },
+        main: mainCrop ? { ...mainCrop.rect } : undefined,
+      };
+      setPresetModalInitial(initial);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "プリセット初期値の取得に失敗",
+      );
+    }
+  };
+
   const isAuto = (k: keyof FormState) => autoFilled.has(k);
   const autoBadge = (
     <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
@@ -290,6 +550,20 @@ export default function RegisterPage() {
 
   return (
     <div className="space-y-5 pt-3 pb-8">
+      {isBulk && bulkEntry && bulkIdx !== null && (
+        <div
+          className="border border-[var(--color-line)] bg-[var(--color-line-soft)] px-3 py-2 flex items-center gap-2"
+          style={{ fontFamily: "var(--font-label)" }}
+        >
+          <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--color-gold-deep)]">
+            BULK ・ {bulkIdx + 1}/{bulk.entries.length}
+          </span>
+          <span className="text-[11px] text-[var(--color-muted)] truncate flex-1">
+            {bulkEntry.fileName}
+          </span>
+        </div>
+      )}
+
       <input
         ref={fileInput}
         type="file"
@@ -327,12 +601,14 @@ export default function RegisterPage() {
               alt="プレビュー"
               className="w-full max-h-72 object-contain border border-[var(--color-line)] bg-white"
             />
-            <button
-              onClick={onPick}
-              className="absolute bottom-2 right-2 px-3 h-8 bg-white/95 border border-[var(--color-line)] text-[12px] text-text/80"
-            >
-              画像を変更
-            </button>
+            {!isBulk && (
+              <button
+                onClick={onPick}
+                className="absolute bottom-2 right-2 px-3 h-8 bg-white/95 border border-[var(--color-line)] text-[12px] text-text/80"
+              >
+                画像を変更
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -363,6 +639,18 @@ export default function RegisterPage() {
               }
             />
           </div>
+
+          {iconCrop && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon={<BookmarkPlus size={14} />}
+              onClick={openPresetFromCrop}
+            >
+              クロップ結果をプリセットに登録
+            </Button>
+          )}
         </div>
       )}
 
@@ -535,10 +823,12 @@ export default function RegisterPage() {
         <Button
           variant="secondary"
           size="lg"
-          onClick={() => router.back()}
+          onClick={() =>
+            isBulk ? router.replace("/register/bulk") : router.back()
+          }
           className="flex-1"
         >
-          キャンセル
+          {isBulk ? "リストに戻る" : "キャンセル"}
         </Button>
         <div className="flex-[2]">
           <Button
@@ -549,7 +839,11 @@ export default function RegisterPage() {
             loading={busy === "save"}
             disabled={busy === "save" || (!iconBlob && !mainBlob)}
           >
-            {busy === "save" ? "保存中…" : "保存"}
+            {busy === "save"
+              ? "保存中…"
+              : isBulk
+                ? "ドラフトに反映"
+                : "保存"}
           </Button>
         </div>
       </div>
@@ -588,6 +882,202 @@ export default function RegisterPage() {
           setCropping(null);
         }}
       />
+
+      {presetModalInitial && (
+        <div
+          className="fixed inset-0 z-40 flex items-start justify-center px-4 py-6 overflow-y-auto"
+          style={{ background: "rgba(20,40,38,0.55)" }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPresetModalInitial(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-[var(--color-cream)] border border-[var(--color-line-strong)]"
+            style={{ borderRadius: 0 }}
+          >
+            <div className="px-4 pt-3 pb-2 border-b border-[var(--color-line)] flex items-center gap-2">
+              <h2
+                className="text-[16px] flex-1 text-[var(--color-gold-deep)]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                クロップをプリセットに登録
+              </h2>
+              <button
+                type="button"
+                aria-label="閉じる"
+                onClick={() => setPresetModalInitial(null)}
+                className="w-8 h-8 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-4 pb-4">
+              <PresetForm
+                initial={presetModalInitial}
+                submitLabel="プリセットを追加"
+                onCancel={() => setPresetModalInitial(null)}
+                onSubmit={async (next) => {
+                  const settings = await getSettings();
+                  const list = settings.cropPresets ?? [];
+                  await patchSettings({ cropPresets: [...list, next] });
+                  // In bulk-edit mode, snap the row onto the new preset so
+                  // the dropdown shows it when the user returns to the list.
+                  // We rebuild iconCrop/mainCrop too — the user might tweak
+                  // the rects inside the modal, and bulk-save reads the
+                  // entry's crop records (not the in-page state).
+                  if (isBulk && bulkEntry) {
+                    const sourceMeta = {
+                      width: bulkEntry.sourceWidth ?? 0,
+                      height: bulkEntry.sourceHeight ?? 0,
+                    };
+                    const patch = applyPresetRects(
+                      next.id,
+                      next.icon,
+                      next.main,
+                      sourceMeta,
+                    );
+                    bulk.updateEntry(bulkEntry.id, patch);
+                    const blob = bulk.getSourceBlob(bulkEntry.id);
+                    if (blob) {
+                      try {
+                        const thumb = await renderIconThumb(blob, next.icon);
+                        bulk.updateEntry(bulkEntry.id, {
+                          iconThumbDataUrl: thumb,
+                        });
+                      } catch {
+                        /* keep stale thumb if regen fails */
+                      }
+                    }
+                  }
+                }}
+                onSubmitted={() => setPresetModalInitial(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mergeDialog && (
+        <MergeDialog
+          existingName={mergeDialog.existing.name}
+          willReplaceEntry={mergeDialog.willReplaceEntry}
+          newYearMonth={form.shopYearMonth || undefined}
+          newPhase={form.shopPhase}
+          defaultReplaceMain={mergeDialog.defaultReplaceMain}
+          canReplaceMain={!!mainBlob}
+          busy={busy === "save"}
+          onCancel={() => setMergeDialog(null)}
+          onConfirm={confirmMerge}
+        />
+      )}
+    </div>
+  );
+}
+
+function MergeDialog({
+  existingName,
+  willReplaceEntry,
+  newYearMonth,
+  newPhase,
+  defaultReplaceMain,
+  canReplaceMain,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  existingName: string;
+  willReplaceEntry: boolean;
+  newYearMonth: string | undefined;
+  newPhase: ShopPhase;
+  defaultReplaceMain: boolean;
+  canReplaceMain: boolean;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: (replaceMain: boolean) => void;
+}) {
+  const [replaceMain, setReplaceMain] = useState(defaultReplaceMain);
+  const periodLabel = newYearMonth
+    ? formatShopPeriod(newYearMonth, newPhase)
+    : "期間未設定";
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] bg-[var(--color-text)]/40 flex items-center justify-center p-5"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-white border border-[var(--color-line)] max-w-sm w-full p-5"
+        style={{ borderRadius: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="text-[var(--color-text)] leading-relaxed mb-4"
+          style={{ fontFamily: "var(--font-body)", fontSize: 14 }}
+        >
+          <p>
+            既存のアイテム「{existingName}」が見つかりました。
+          </p>
+          <p className="mt-2">
+            {willReplaceEntry
+              ? `${periodLabel} の価格を新しい内容で更新します。`
+              : `${periodLabel} の価格を追加します。`}
+          </p>
+        </div>
+        <label
+          className={`flex items-center gap-2 mb-5 ${
+            canReplaceMain ? "" : "opacity-50"
+          }`}
+          style={{ fontFamily: "var(--font-body)", fontSize: 13 }}
+        >
+          <input
+            type="checkbox"
+            checked={canReplaceMain && replaceMain}
+            disabled={!canReplaceMain}
+            onChange={(e) => setReplaceMain(e.target.checked)}
+            className="w-4 h-4 accent-[var(--color-gold-deep)]"
+          />
+          <span>
+            メイン画像を更新する
+            {!canReplaceMain && (
+              <span className="text-muted text-[11px] ml-1">
+                (新しいメイン画像が未設定)
+              </span>
+            )}
+          </span>
+        </label>
+        <div className="flex gap-2 justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors disabled:opacity-50"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10,
+              letterSpacing: "0.24em",
+              borderRadius: 0,
+            }}
+          >
+            CANCEL
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(replaceMain && canReplaceMain)}
+            disabled={busy}
+            className="px-4 py-2 bg-[var(--color-gold-deep)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10,
+              letterSpacing: "0.24em",
+              borderRadius: 0,
+            }}
+          >
+            {busy ? "保存中…" : willReplaceEntry ? "UPDATE" : "ADD"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -806,9 +1296,12 @@ function TagPicker({
               onChange={(e) => setNewType(e.target.value as TagType)}
               className={`${inputClass({ fullWidth: false })} w-24 shrink-0 h-9 text-[12px]`}
             >
-              <option value="gacha">ガチャ</option>
+              <option value="gacha">通常ガチャ</option>
               <option value="bazaar">バザール</option>
-              <option value="shop">ショップ</option>
+              <option value="nuts">ナッツ</option>
+              <option value="gradely">グレデリー</option>
+              <option value="collab">コラボ</option>
+              <option value="creators">クリエイターズ</option>
               <option value="other">その他</option>
             </select>
             <Button onClick={add} size="sm">

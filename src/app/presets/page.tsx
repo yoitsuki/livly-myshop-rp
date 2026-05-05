@@ -77,8 +77,10 @@ export default function PresetsPage() {
                 </div>
                 <div className="text-[11px] text-muted">{describePreset(p)}</div>
                 <div className="text-[10.5px] text-muted font-mono tabular-nums mt-0.5">
-                  icon ({p.icon.x},{p.icon.y},{p.icon.w}×{p.icon.h}) / main (
-                  {p.main.x},{p.main.y},{p.main.w}×{p.main.h})
+                  icon ({p.icon.x},{p.icon.y},{p.icon.w}×{p.icon.h}) /{" "}
+                  {p.main
+                    ? `main (${p.main.x},${p.main.y},${p.main.w}×${p.main.h})`
+                    : "main 無し"}
                 </div>
               </div>
               <Link

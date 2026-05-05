@@ -272,6 +272,80 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.16.1 アイテム重複登録の検知 + マージ。/register で同名アイテム
+ *        を検知したら、価格を「追加 (別期間)」または「更新 (同じ
+ *        yearMonth)」の確認モーダルを出し、「✅ メイン画像を更新する」
+ *        チェック (デフォルト ON は新期間が既存より新しい時のみ) で
+ *        メイン画像差し替えも選べるようにした。/register/bulk では
+ *        サイレントにマージ — 新期間がそのアイテム内で最新なら main
+ *        画像も自動で差し替え、そうでなければ既存画像を保持。
+ *        repo.mergeItemPriceEntry が同一 yearMonth の priceEntry を
+ *        新しい方で置き換える「1 件扱い」を提供し、メイン画像差し替
+ *        えはトランザクション外でアップロード → 内側で doc 書き込み
+ *        の updateItem パターンを踏襲。
+ * 0.16.0 タグ周りの拡張: TagType を 7 種に — ナッツ (warm dusty
+ *        lavender) と コラボショップ (muted olive) を新設。
+ *        SEED_TAGS 定数 (58 件) を src/lib/seedTags.ts に同梱し、
+ *        repo.seedTagsIfMissing() が既存タグ名と突き合わせて未登録分
+ *        だけを 1 つの writeBatch で書き込む idempotent な実装。
+ *        /tags ページに「シード読み込み」ボタンを追加 — 確認ダイア
+ *        ログ後にバッチ書き込みし、結果バナーに「新規 N 件 / skip M
+ *        件」を出す。ホームのタグフィルタ列を TagType ごとのセクシ
+ *        ョンに分割し、各セクションに Atelier --font-label の小見出
+ *        し (tracked-out uppercase) を載せた。register / item edit の
+ *        type select にも nuts / collab の option を追加。
+ * 0.15.3 詳細ページ上部の EDIT ボタンを横幅いっぱいに拡張し、
+ *        タップしやすい一次アクションとして強調。
+ * 0.15.2 normalizeTagType の旧 'shop' → 'gradely' 自動置換コードを
+ *        削除。ユーザーが旧 shop タグを完全に整理し終えたので、
+ *        移行用パスを残す必要がなくなった。未知の type 値は引き続き
+ *        'other' にフォールバックする。
+ * 0.15.1 詳細ページの EDIT ボタンを上部右寄せに移動。タイトル
+ *        ブロックに到達する前にすぐ編集に飛べるようにし、ページ
+ *        下部のアクション行は DELETE のみに整理。
+ * 0.15.0 タグ周りの整理 + まとめて登録の改善。TagType を 5 種に
+ *        再分割: ガチャ/バザール/ショップ/その他 → 通常ガチャ
+ *        (青系) / バザール (黄系) / グレデリーショップ (緑系) /
+ *        リヴリークリエイターズウィーク (ローズ系) / その他 (warm
+ *        gray)。Atelier-tinted の desaturated 5 色を新たに導入し、
+ *        旧 --color-pink/mint/sky/lavender トークンは削除。共通モ
+ *        ジュール src/lib/tagTypes.ts に TYPE_LABEL / TYPE_ORDER /
+ *        TYPE_COLORS / normalizeTagType を集約。既存 'shop' タグは
+ *        読み込み時に 'gradely' に自動置換 (CreatorsWeek 用は /tags
+ *        で個別に再分類)。
+ *        Tag に displayOrder?: number を追加し、@dnd-kit/* を入れて
+ *        /tags ページにグループ内ドラッグ並び替えを実装 — 各 drop
+ *        は reorderTags の writeBatch で全件分の displayOrder を一気
+ *        に書き換える。useTags は (TYPE_ORDER, displayOrder asc nulls
+ *        last, createdAt asc) の安定ソート。
+ *        まとめて登録のリスト行で tagIds が空の時に「タグ未設定」
+ *        の dashed バッジを期間バッジの隣に出して取りこぼしを防ぐ。
+ *        /register でクロップ結果からプリセットを作成したとき、
+ *        bulk-edit モードでは現在の bulk エントリを新プリセットに
+ *        snap (presetId / iconRect / mainRect / iconCrop / mainCrop /
+ *        iconThumbDataUrl すべて更新) — 一覧に戻った時に dropdown
+ *        が古い名前のまま残るバグを修正。
+ * 0.14.0 まとめて登録モード。FAB をタップするとポップオーバーで
+ *        登録 / まとめて登録 を選べ、Drawer の新規登録もインデント
+ *        されたサブメニューに展開。新規ルート /register/bulk で
+ *        スクショを複数選択 → 順次 EXIF + プリセット判定 + OCR を
+ *        走らせ、行毎にチェックボックス + アイコンサムネ +
+ *        参考/最低価格 + 期間バッジ + プリセット選択を表示する
+ *        レビュー画面に並べる。プリセットを切り替えるとサムネが
+ *        その場で再クロップされる。必須欠落の行はチェック不可で
+ *        警告を表示し、行タップで /register?bulkIndex=N に遷移して
+ *        既存の登録フォーム + クロップ UI でそのまま編集できる
+ *        (BulkDraftProvider は app/register/layout.tsx に置き、
+ *        ソース Blob は in-memory map で保持。リロード時はドラフト
+ *        ごと破棄)。/register に「クロップ結果をプリセットに登録」
+ *        ボタンを追加 — 現在のクロップ矩形と元画像左上ピクセルの
+ *        HEX をプリフィルした PresetForm をモーダルで開いて新規
+ *        プリセットを作成できる。CropPreset.main は optional に
+ *        なり、PresetForm に「メイン画像を切り抜く」チェックを
+ *        追加 — オフでメイン画像なしのプリセット (まとめて登録時
+ *        にもメイン画像を保存しない) が作れる。settingsToFs は
+ *        cropPresets 配列の各 preset を compact() に通すよう修正
+ *        (undefined main を Firestore に書こうとして弾かれた)。
  * 0.13.0 Phase 2: Dexie is gone. Reads come from Firestore via
  *        useItems / useItem / useTags / useSettings (snapshot-driven,
  *        same "undefined while loading" contract as useLiveQuery).
@@ -296,4 +370,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.13.0";
+export const APP_VERSION = "0.16.1";

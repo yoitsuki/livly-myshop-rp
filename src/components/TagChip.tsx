@@ -1,13 +1,7 @@
-import type { Tag, TagType } from "@/lib/firebase/types";
+import type { Tag } from "@/lib/firebase/types";
+import { TYPE_COLORS } from "@/lib/tagTypes";
 
-/** Atelier: flat rectangular pills with warm tinted backgrounds. */
-const TYPE_BG: Record<TagType, string> = {
-  gacha: "var(--color-pink)",        /* #f5ede2 */
-  bazaar: "var(--color-lavender)",   /* #f2ebe2 */
-  shop: "var(--color-mint)",         /* #f1eadd */
-  other: "var(--color-sky)",         /* #e4eeed */
-};
-
+/** Atelier: flat rectangular pills with desaturated tinted backgrounds. */
 export default function TagChip({
   tag,
   onRemove,
@@ -15,12 +9,14 @@ export default function TagChip({
   tag: Pick<Tag, "name" | "type" | "color">;
   onRemove?: () => void;
 }) {
+  const palette = TYPE_COLORS[tag.type];
   return (
     <span
-      className="inline-flex items-center text-[var(--color-text)]"
+      className="inline-flex items-center"
       style={{
         padding: "2px 8px",
-        background: tag.color ?? TYPE_BG[tag.type],
+        background: tag.color ?? palette.bg,
+        color: palette.fg,
         border: "0.5px solid var(--color-line)",
         borderRadius: 0,
         fontFamily: "var(--font-body)",
@@ -37,7 +33,7 @@ export default function TagChip({
             e.preventDefault();
             onRemove();
           }}
-          className="ml-1 -mr-1 px-1 leading-none text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          className="ml-1 -mr-1 px-1 leading-none opacity-60 hover:opacity-100"
           aria-label="削除"
         >
           ×
