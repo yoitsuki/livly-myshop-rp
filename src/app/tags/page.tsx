@@ -38,6 +38,7 @@ export default function TagsPage() {
   const items = useItems() ?? [];
   const [name, setName] = useState("");
   const [type, setType] = useState<TagType>("other");
+  const [addError, setAddError] = useState<string | undefined>();
 
   const usageCount = useMemo(() => {
     const map = new Map<string, number>();
@@ -55,11 +56,25 @@ export default function TagsPage() {
   }, [tags]);
 
   const onAdd = async () => {
+    setAddError(undefined);
     const trimmed = name.trim();
-    if (!trimmed) return;
-    if (tags.some((t) => t.name === trimmed)) return;
-    await createTag({ name: trimmed, type });
-    setName("");
+    if (!trimmed) {
+      setAddError("タグ名を入力してください");
+      return;
+    }
+    const existing = tags.find((t) => t.name === trimmed);
+    if (existing) {
+      setAddError(
+        `同じ名前のタグが既にあります (${TYPE_LABEL[existing.type]} に登録済み)。先に削除してから追加してください`,
+      );
+      return;
+    }
+    try {
+      await createTag({ name: trimmed, type });
+      setName("");
+    } catch (e) {
+      setAddError(e instanceof Error ? e.message : "タグの追加に失敗しました");
+    }
   };
 
   const onDelete = async (t: Tag) => {
@@ -111,6 +126,11 @@ export default function TagsPage() {
             追加
           </Button>
         </div>
+        {addError && (
+          <div className="mt-2 bg-[var(--color-danger-soft)] border border-[var(--color-danger)] px-3 py-2 text-[12.5px] text-text leading-relaxed">
+            {addError}
+          </div>
+        )}
       </Field>
 
       <div className="space-y-5">
