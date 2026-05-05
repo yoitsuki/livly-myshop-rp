@@ -54,8 +54,22 @@ export default function PresetForm({
   const [error, setError] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
 
-  const setRect = (which: "icon" | "main", patch: Partial<CropRect>) => {
-    setDraft({ ...draft, [which]: { ...draft[which], ...patch } });
+  const setIconRect = (patch: Partial<CropRect>) => {
+    setDraft({ ...draft, icon: { ...draft.icon, ...patch } });
+  };
+  const setMainRect = (patch: Partial<CropRect>) => {
+    if (!draft.main) return;
+    setDraft({ ...draft, main: { ...draft.main, ...patch } });
+  };
+  const toggleMain = (enabled: boolean) => {
+    if (enabled) {
+      setDraft({
+        ...draft,
+        main: draft.main ?? { ...SEED_PRESETS[0].main! },
+      });
+    } else {
+      setDraft({ ...draft, main: undefined });
+    }
   };
 
   const onSave = async () => {
@@ -94,7 +108,7 @@ export default function PresetForm({
       topLeftHex: seed.topLeftHex,
       colorTolerance: seed.colorTolerance ?? DEFAULT_COLOR_TOLERANCE,
       icon: { ...seed.icon },
-      main: { ...seed.main },
+      main: seed.main ? { ...seed.main } : undefined,
     });
   };
 
@@ -197,13 +211,30 @@ export default function PresetForm({
       <RectFieldset
         legend="アイコン (icon)"
         rect={draft.icon}
-        onChange={(p) => setRect("icon", p)}
+        onChange={setIconRect}
       />
-      <RectFieldset
-        legend="メイン (main)"
-        rect={draft.main}
-        onChange={(p) => setRect("main", p)}
-      />
+
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={!!draft.main}
+            onChange={(e) => toggleMain(e.target.checked)}
+            className="accent-[var(--color-gold-deep)]"
+          />
+          <span className="text-[12px] text-text">メイン画像を切り抜く</span>
+          <span className="text-[10.5px] text-muted">
+            (オフ: メイン画像なしで登録)
+          </span>
+        </label>
+        {draft.main && (
+          <RectFieldset
+            legend="メイン (main)"
+            rect={draft.main}
+            onChange={setMainRect}
+          />
+        )}
+      </div>
 
       <button
         type="button"

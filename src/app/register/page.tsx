@@ -80,7 +80,7 @@ export default function RegisterPage() {
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
   const [cropping, setCropping] = useState<CropTarget>(null);
-  const [presets, setPresets] = useState<{ icon: CropRect; main: CropRect } | null>(
+  const [presets, setPresets] = useState<{ icon: CropRect; main?: CropRect } | null>(
     null
   );
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");

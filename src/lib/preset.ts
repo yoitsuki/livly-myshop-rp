@@ -22,7 +22,8 @@ export interface CropPreset {
    */
   colorTolerance?: number;
   icon: CropRect;
-  main: CropRect;
+  /** Optional: presets without a main rect skip main-image registration. */
+  main?: CropRect;
 }
 
 /** Seed presets — newest first. */
@@ -105,7 +106,7 @@ function hsvMaxDelta(a: HSV, b: HSV): number {
 export async function findMatchingPreset(
   source: Blob,
   presets: CropPreset[]
-): Promise<{ preset: CropPreset; icon: CropRect; main: CropRect } | null> {
+): Promise<{ preset: CropPreset; icon: CropRect; main?: CropRect } | null> {
   if (presets.length === 0) return null;
   const bitmap = await createImageBitmap(source);
   let topLeftHsv: HSV | null = null;
@@ -141,8 +142,9 @@ export async function findMatchingPreset(
 }
 
 export function describePreset(p: CropPreset): string {
+  const mainNote = p.main ? "" : " ・ メイン無し";
   if (p.colorMode === "none") {
-    return `${p.width}×${p.height} ・ 色条件なし`;
+    return `${p.width}×${p.height} ・ 色条件なし${mainNote}`;
   }
   const tol = p.colorTolerance ?? DEFAULT_COLOR_TOLERANCE;
   const tolText = ` (HSV±${tol})`;
@@ -150,7 +152,7 @@ export function describePreset(p: CropPreset): string {
     p.colorMode === "match"
       ? `左上が ${p.topLeftHex ?? "?"} の時のみ${tolText}`
       : `左上が ${p.topLeftHex ?? "?"} 以外の時のみ${tolText}`;
-  return `${p.width}×${p.height} ・ ${cond}`;
+  return `${p.width}×${p.height} ・ ${cond}${mainNote}`;
 }
 
 export function newPresetId(): string {
