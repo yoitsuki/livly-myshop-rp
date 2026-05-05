@@ -46,7 +46,7 @@ import {
 } from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import { useBulkDraft } from "@/lib/bulk/context";
-import { renderIconThumb } from "@/lib/bulk/process";
+import { applyPresetRects, renderIconThumb } from "@/lib/bulk/process";
 import {
   bulkEntryMissingFields,
   type BulkEntry,
@@ -859,6 +859,35 @@ function RegisterPageInner() {
                   const settings = await getSettings();
                   const list = settings.cropPresets ?? [];
                   await patchSettings({ cropPresets: [...list, next] });
+                  // In bulk-edit mode, snap the row onto the new preset so
+                  // the dropdown shows it when the user returns to the list.
+                  // We rebuild iconCrop/mainCrop too — the user might tweak
+                  // the rects inside the modal, and bulk-save reads the
+                  // entry's crop records (not the in-page state).
+                  if (isBulk && bulkEntry) {
+                    const sourceMeta = {
+                      width: bulkEntry.sourceWidth ?? 0,
+                      height: bulkEntry.sourceHeight ?? 0,
+                    };
+                    const patch = applyPresetRects(
+                      next.id,
+                      next.icon,
+                      next.main,
+                      sourceMeta,
+                    );
+                    bulk.updateEntry(bulkEntry.id, patch);
+                    const blob = bulk.getSourceBlob(bulkEntry.id);
+                    if (blob) {
+                      try {
+                        const thumb = await renderIconThumb(blob, next.icon);
+                        bulk.updateEntry(bulkEntry.id, {
+                          iconThumbDataUrl: thumb,
+                        });
+                      } catch {
+                        /* keep stale thumb if regen fails */
+                      }
+                    }
+                  }
                 }}
                 onSubmitted={() => setPresetModalInitial(null)}
               />

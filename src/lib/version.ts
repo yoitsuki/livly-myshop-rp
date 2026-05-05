@@ -272,6 +272,28 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.15.0 タグ周りの整理 + まとめて登録の改善。TagType を 5 種に
+ *        再分割: ガチャ/バザール/ショップ/その他 → 通常ガチャ
+ *        (青系) / バザール (黄系) / グレデリーショップ (緑系) /
+ *        リヴリークリエイターズウィーク (ローズ系) / その他 (warm
+ *        gray)。Atelier-tinted の desaturated 5 色を新たに導入し、
+ *        旧 --color-pink/mint/sky/lavender トークンは削除。共通モ
+ *        ジュール src/lib/tagTypes.ts に TYPE_LABEL / TYPE_ORDER /
+ *        TYPE_COLORS / normalizeTagType を集約。既存 'shop' タグは
+ *        読み込み時に 'gradely' に自動置換 (CreatorsWeek 用は /tags
+ *        で個別に再分類)。
+ *        Tag に displayOrder?: number を追加し、@dnd-kit/* を入れて
+ *        /tags ページにグループ内ドラッグ並び替えを実装 — 各 drop
+ *        は reorderTags の writeBatch で全件分の displayOrder を一気
+ *        に書き換える。useTags は (TYPE_ORDER, displayOrder asc nulls
+ *        last, createdAt asc) の安定ソート。
+ *        まとめて登録のリスト行で tagIds が空の時に「タグ未設定」
+ *        の dashed バッジを期間バッジの隣に出して取りこぼしを防ぐ。
+ *        /register でクロップ結果からプリセットを作成したとき、
+ *        bulk-edit モードでは現在の bulk エントリを新プリセットに
+ *        snap (presetId / iconRect / mainRect / iconCrop / mainCrop /
+ *        iconThumbDataUrl すべて更新) — 一覧に戻った時に dropdown
+ *        が古い名前のまま残るバグを修正。
  * 0.14.0 まとめて登録モード。FAB をタップするとポップオーバーで
  *        登録 / まとめて登録 を選べ、Drawer の新規登録もインデント
  *        されたサブメニューに展開。新規ルート /register/bulk で
@@ -317,4 +339,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.14.0";
+export const APP_VERSION = "0.15.0";
