@@ -85,7 +85,49 @@ export async function signInGoogle(): Promise<void> {
   // *.firebaseapp.com — auth completes but the credential never propagates
   // back to the app. Popups inherit the user-gesture context and avoid this.
   const provider = new GoogleAuthProvider();
-  await signInWithPopup(firebaseAuth(), provider);
+  const auth = firebaseAuth();
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    const code =
+      e && typeof e === "object" && "code" in e
+        ? String((e as { code?: unknown }).code)
+        : "";
+    // iOS Safari + cross-domain popup often delivers the credential to the
+    // app's IndexedDB but fails to postMessage it back to the parent in
+    // time, surfacing as auth/popup-closed-by-user despite a successful
+    // sign-in. Watch onAuthStateChanged briefly and treat that as success.
+    if (
+      code === "auth/popup-closed-by-user" ||
+      code === "auth/cancelled-popup-request"
+    ) {
+      const recovered = await waitForUser(2000);
+      if (recovered) return;
+    }
+    throw e;
+  }
+}
+
+function waitForUser(timeoutMs: number): Promise<User | null> {
+  return new Promise((resolve) => {
+    const auth = firebaseAuth();
+    if (auth.currentUser) {
+      resolve(auth.currentUser);
+      return;
+    }
+    let done = false;
+    const finish = (user: User | null) => {
+      if (done) return;
+      done = true;
+      unsub();
+      clearTimeout(timer);
+      resolve(user);
+    };
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) finish(user);
+    });
+    const timer = setTimeout(() => finish(auth.currentUser), timeoutMs);
+  });
 }
 
 export async function signOutCurrent(): Promise<void> {
