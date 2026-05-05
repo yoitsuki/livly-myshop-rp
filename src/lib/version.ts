@@ -272,6 +272,10 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.15.2 normalizeTagType の旧 'shop' → 'gradely' 自動置換コードを
+ *        削除。ユーザーが旧 shop タグを完全に整理し終えたので、
+ *        移行用パスを残す必要がなくなった。未知の type 値は引き続き
+ *        'other' にフォールバックする。
  * 0.15.1 詳細ページの EDIT ボタンを上部右寄せに移動。タイトル
  *        ブロックに到達する前にすぐ編集に飛べるようにし、ページ
  *        下部のアクション行は DELETE のみに整理。
@@ -342,4 +346,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.15.1";
+export const APP_VERSION = "0.15.2";

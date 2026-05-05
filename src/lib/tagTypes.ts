@@ -32,7 +32,6 @@ export const TYPE_COLORS: Record<TagType, { bg: string; fg: string }> = {
 
 /** Coerce arbitrary Firestore tag.type values to the current TagType union. */
 export function normalizeTagType(raw: unknown): TagType {
-  if (raw === "shop") return "gradely"; // 0.15.0 split: shop → gradely (legacy bulk-migrate)
   if (
     raw === "gacha" ||
     raw === "bazaar" ||
