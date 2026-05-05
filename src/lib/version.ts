@@ -272,6 +272,9 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.15.1 詳細ページの EDIT ボタンを上部右寄せに移動。タイトル
+ *        ブロックに到達する前にすぐ編集に飛べるようにし、ページ
+ *        下部のアクション行は DELETE のみに整理。
  * 0.15.0 タグ周りの整理 + まとめて登録の改善。TagType を 5 種に
  *        再分割: ガチャ/バザール/ショップ/その他 → 通常ガチャ
  *        (青系) / バザール (黄系) / グレデリーショップ (緑系) /
@@ -339,4 +342,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.15.0";
+export const APP_VERSION = "0.15.1";

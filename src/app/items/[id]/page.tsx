@@ -153,6 +153,23 @@ export default function ItemDetailPage({
   return (
     <div className="pb-8">
 
+      {/* ── Top action: EDIT (right-aligned) ─────────────────────── */}
+      <div className="flex justify-end pt-3">
+        <Link
+          href={`/items/${i.id}/edit`}
+          className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-gold-deep)] text-white hover:bg-gold transition-colors"
+          style={{
+            fontFamily: "var(--font-label)",
+            fontSize: 10,
+            letterSpacing: "0.24em",
+            borderRadius: 0,
+          }}
+        >
+          <Pencil size={13} strokeWidth={1.8} />
+          EDIT
+        </Link>
+      </div>
+
       {/* ── Title block ──────────────────────────────────────────── */}
       <div className="pt-4 pb-3">
         {/* category — right-aligned, no rule */}
@@ -271,8 +288,8 @@ export default function ItemDetailPage({
         )}
       </div>
 
-      {/* ── Action buttons ───────────────────────────────────────── */}
-      <div className="flex gap-2 mt-4">
+      {/* ── Bottom action: DELETE only ───────────────────────────── */}
+      <div className="flex mt-4">
         <button
           type="button"
           onClick={onDelete}
@@ -287,19 +304,6 @@ export default function ItemDetailPage({
           <Trash2 size={13} strokeWidth={1.8} />
           DELETE
         </button>
-        <Link
-          href={`/items/${i.id}/edit`}
-          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[var(--color-gold-deep)] text-white hover:bg-gold transition-colors"
-          style={{
-            fontFamily: "var(--font-label)",
-            fontSize: 10,
-            letterSpacing: "0.24em",
-            borderRadius: 0,
-          }}
-        >
-          <Pencil size={13} strokeWidth={1.8} />
-          EDIT
-        </Link>
       </div>
 
       <ConfirmDialog
