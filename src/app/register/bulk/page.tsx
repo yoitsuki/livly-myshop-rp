@@ -452,6 +452,24 @@ function BulkRow({
                   tier={periodTier <= 0 ? 0 : periodTier === 1 ? 1 : 2}
                 />
               )}
+              {entry.status === "ready" && entry.tagIds.length === 0 && (
+                <span
+                  className="shrink-0 inline-flex items-center leading-none whitespace-nowrap"
+                  style={{
+                    fontFamily: "var(--font-label)",
+                    fontSize: 8.5,
+                    fontWeight: 500,
+                    letterSpacing: "0.14em",
+                    padding: "2px 6px",
+                    borderRadius: 0,
+                    background: "transparent",
+                    color: "var(--color-muted)",
+                    border: "1px dashed var(--color-muted)",
+                  }}
+                >
+                  タグ未設定
+                </span>
+              )}
             </div>
 
             <div
