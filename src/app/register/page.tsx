@@ -83,7 +83,6 @@ export default function RegisterPage() {
   const [presets, setPresets] = useState<{ icon: CropRect; main: CropRect } | null>(
     null
   );
-  const [presetDebug, setPresetDebug] = useState<string | null>(null);
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [error, setError] = useState<string | undefined>();
@@ -160,15 +159,7 @@ export default function RegisterPage() {
             : SEED_PRESETS;
         const matched = await findMatchingPreset(file, list);
         setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
-        setPresetDebug(
-          matched
-            ? `preset: ${matched.preset.name} (${list.length} 件中)`
-            : `preset: 一致なし (${list.length} 件チェック)`,
-        );
       } catch (e) {
-        setPresetDebug(
-          `preset 判定エラー: ${e instanceof Error ? e.message : String(e)}`,
-        );
         setError(
           `プリセット判定に失敗: ${e instanceof Error ? e.message : String(e)}`,
         );
@@ -405,12 +396,6 @@ export default function RegisterPage() {
             {busy === "ocr" &&
               `テキストを読み取り中… ${Math.round(ocrProgress * 100)}%`}
           </span>
-        </div>
-      )}
-
-      {presetDebug && (
-        <div className="text-[11px] text-muted px-1 font-mono break-all">
-          {presetDebug}
         </div>
       )}
 
