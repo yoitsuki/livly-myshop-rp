@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db, latestPriceEntry, type Item } from "@/lib/db";
+import { useItems, useTags } from "@/lib/firebase/hooks";
+import { latestPriceEntry } from "@/lib/firebase/repo";
 import SearchBar from "@/components/SearchBar";
 import ItemCard from "@/components/ItemCard";
 import Fab from "@/components/Fab";
@@ -18,8 +18,8 @@ export default function Home() {
   const [activeTagIds, setActiveTagIds] = useState<string[]>([]);
   const [sort, setSort] = useState<SortKey>("checkedAt");
 
-  const items = useLiveQuery(() => db().items.toArray(), [], [] as Item[]);
-  const tags = useLiveQuery(() => db().tags.toArray(), [], []);
+  const items = useItems();
+  const tags = useTags();
 
   const categories = useMemo(() => {
     const set = new Set<string>();

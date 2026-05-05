@@ -7,6 +7,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import { AuthProvider } from "@/lib/firebase/auth";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -70,7 +71,9 @@ export default function RootLayout({
       className={`${cormorant.variable} ${inter.variable} ${notoJp.variable} ${notoSerifJp.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-cream text-text">
-        <AppShell>{children}</AppShell>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { ImageIcon } from "lucide-react";
-import { latestPriceEntry, type Item, type Tag } from "@/lib/db";
+import { latestPriceEntry, type Item, type Tag } from "@/lib/firebase/repo";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
@@ -89,18 +88,7 @@ export default function ItemCard({
   tags: Tag[];
 }) {
   const itemTags = tags.filter((t) => item.tagIds.includes(t.id));
-  const thumbSource = item.iconBlob ?? item.mainImageBlob;
-  const [thumbUrl, setThumbUrl] = useState<string | undefined>(
-    item.driveThumbnailUrl
-  );
-
-  useEffect(() => {
-    if (!thumbSource) return;
-    const url = URL.createObjectURL(thumbSource);
-    setThumbUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [thumbSource]);
-
+  const thumbUrl = item.iconUrl ?? item.mainImageUrl;
   const latest = latestPriceEntry(item);
 
   return (

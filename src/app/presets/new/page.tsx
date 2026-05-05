@@ -1,6 +1,6 @@
 "use client";
 
-import { getSettings, patchSettings } from "@/lib/db";
+import { getSettings, patchSettings } from "@/lib/firebase/repo";
 import { type CropPreset } from "@/lib/preset";
 import PresetForm from "@/components/PresetForm";
 

@@ -3,14 +3,13 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useItem } from "@/lib/firebase/hooks";
 import {
-  db,
   updatePriceEntry,
   type Item,
   type PriceEntryInput,
   type ShopPeriodRecord,
-} from "@/lib/db";
+} from "@/lib/firebase/repo";
 import { fromLocalInput, toLocalInput } from "@/lib/utils/date";
 import PriceEntryForm, {
   EMPTY_PRICE_ENTRY_FORM,
@@ -25,7 +24,7 @@ export default function EditPriceEntryPage({
 }) {
   const { id, entryId } = use(params);
   const router = useRouter();
-  const item = useLiveQuery(() => db().items.get(id), [id]);
+  const item = useItem(id);
 
   const [form, setForm] = useState<PriceEntryFormValue | undefined>();
   const [busy, setBusy] = useState(false);
@@ -76,7 +75,7 @@ export default function EditPriceEntryPage({
   }
 
   const i = item as Item;
-  const hasMain = !!i.mainImageBlob;
+  const hasMain = !!i.mainImageUrl;
 
   const onSave = async () => {
     setError(undefined);

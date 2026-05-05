@@ -4,6 +4,8 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import AppHeader from "./AppHeader";
 import DrawerNav from "./DrawerNav";
+import LoginScreen from "./LoginScreen";
+import { useAuth } from "@/lib/firebase/auth";
 
 /**
  * Resolves the "parent" path for the back button. We avoid router.back()
@@ -24,6 +26,14 @@ function parentHref(pathname: string): string | null {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
+  const { user, isAdmin, loading, redirectError } = useAuth();
+
+  if (loading) {
+    return <div className="min-h-dvh" aria-hidden />;
+  }
+  if (!user || !isAdmin) {
+    return <LoginScreen user={user} redirectError={redirectError} />;
+  }
 
   const backHref = parentHref(pathname);
 

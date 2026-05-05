@@ -263,5 +263,37 @@
  *        detailLabel prop) above the name, and the MIN PRICE bar's
  *        top border below the tags. The header now ends at its single
  *        bottom hairline; MIN PRICE sits as a flat row.
+ * 0.12.0 Phase 1 of the Firebase migration: Firebase Auth (Google) +
+ *        AuthProvider context wraps the app, and AppShell gates its
+ *        children behind a LoginScreen. Three render states: loading
+ *        (blank), unauthenticated (Google sign-in button), and
+ *        authenticated-but-not-admin (shows the user's UID for copy
+ *        into NEXT_PUBLIC_ADMIN_UID, with a sign-out fallback). Touch
+ *        devices use signInWithRedirect to dodge mobile-Safari popup
+ *        blocks; desktop uses signInWithPopup. Existing Dexie data and
+ *        write paths are untouched in this phase.
+ * 0.13.0 Phase 2: Dexie is gone. Reads come from Firestore via
+ *        useItems / useItem / useTags / useSettings (snapshot-driven,
+ *        same "undefined while loading" contract as useLiveQuery).
+ *        Writes go through src/lib/firebase/repo.ts: createItem and
+ *        updateItem upload icon/main blobs to Storage at a stable
+ *        items/{id}/{kind}.jpg path before writing the doc, with the
+ *        item update wrapped in runTransaction so concurrent edits
+ *        retry rather than overwrite. priceEntries stays embedded as
+ *        an array on the item doc; addPriceEntry / updatePriceEntry /
+ *        deletePriceEntry mutate it via runTransaction. deleteTag's
+ *        cascade rewrites every affected item's tagIds in a single
+ *        writeBatch. /api/claude-ocr now requires Authorization:
+ *        Bearer <id_token> and verifies it against ADMIN_UID via
+ *        firebase-admin; src/lib/ocr/claude.ts attaches the current
+ *        user's ID token automatically. The Item type drops its
+ *        Blob/iconBlob/mainImageBlob fields in favour of
+ *        iconUrl/iconStoragePath/mainImageUrl/mainImageStoragePath.
+ *        Settings doc is the same shape minus the unused drive*
+ *        fields. The settings page's storage estimate continues to
+ *        reflect the device's IndexedDB+Cache footprint, which now
+ *        only holds Firebase's local cache (and is harmless to keep
+ *        as a soft indicator). src/lib/db.ts is deleted and the
+ *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.11.2";
+export const APP_VERSION = "0.13.0";

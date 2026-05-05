@@ -2,20 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Crop, ImagePlus, Loader2, ScanText, Sparkles, X } from "lucide-react";
+import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
 import {
   createItem,
   createTag,
-  db,
-  getSettings,
   uid,
   type ItemCropRecord,
   type PriceEntry,
   type ShopPeriodRecord,
   type Tag,
   type TagType,
-} from "@/lib/db";
+} from "@/lib/firebase/repo";
+import { getLocalSettings, useLocalSettings } from "@/lib/localSettings";
 import { compressImage, type CropRect } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
@@ -90,8 +89,9 @@ export default function RegisterPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
 
-  const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
-  const settings = useLiveQuery(() => db().settings.get("singleton"), []);
+  const tags = useTags() ?? [];
+  const cloudSettings = useSettings();
+  const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
 
   useEffect(() => {
@@ -138,8 +138,6 @@ export default function RegisterPage() {
 
     setBusy("load");
     try {
-      const s = await getSettings();
-
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
@@ -155,11 +153,16 @@ export default function RegisterPage() {
       }
 
       try {
-        const list = s.cropPresets ?? SEED_PRESETS;
+        const list =
+          cloudSettings?.cropPresets && cloudSettings.cropPresets.length > 0
+            ? cloudSettings.cropPresets
+            : SEED_PRESETS;
         const matched = await findMatchingPreset(file, list);
         setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
-      } catch {
-        // fall back to default crop rect
+      } catch (e) {
+        setError(
+          `プリセット判定に失敗: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
@@ -174,18 +177,18 @@ export default function RegisterPage() {
     setBusy("ocr");
     setOcrProgress(0);
     try {
-      const s = await getSettings();
+      const ocr = getLocalSettings();
       const downscaled = await compressImage(sourceBlob, {
         maxWidth: 1600,
         quality: 0.8,
       });
       let extracted: ExtractedFields = {};
       try {
-        if (s.ocrProvider === "claude" && s.claudeApiKey) {
+        if (ocr.ocrProvider === "claude" && ocr.claudeApiKey) {
           extracted = await recognizeWithClaude(
             downscaled,
-            s.claudeApiKey,
-            s.claudeModel
+            ocr.claudeApiKey,
+            ocr.claudeModel
           );
         } else {
           const text = await recognizeJapanese(downscaled, (p) =>
@@ -269,6 +272,7 @@ export default function RegisterPage() {
         minPrice: Number(form.minPrice) || 0,
         priceEntries: [initialEntry],
       });
+
       router.push("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
@@ -376,8 +380,8 @@ export default function RegisterPage() {
           {ocrDone ? "OCR を再実行" : "OCR で自動入力"}
           <span className="text-[11px] text-muted font-normal">
             (
-            {settings?.ocrProvider === "claude" && settings?.claudeApiKey
-              ? `Claude API・${settings.claudeModel ?? "claude-sonnet-4-6"}`
+            {local.ocrProvider === "claude" && local.claudeApiKey
+              ? `Claude API・${local.claudeModel ?? "claude-sonnet-4-6"}`
               : "Tesseract (端末内)"}
             )
           </span>
@@ -708,7 +712,7 @@ function ShopPeriodField({
 }
 
 function CategorySuggestions() {
-  const items = useLiveQuery(() => db().items.toArray(), [], []);
+  const items = useItems();
   const categories = useMemo(() => {
     const set = new Set<string>();
     items?.forEach((i) => i.category && set.add(i.category));

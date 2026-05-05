@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,18 @@ const SYSTEM_PROMPT = `リヴリーアイランドのマイショップ出品画
 - 余計な文章やコードフェンスは含めず、JSON だけを返答してください。`;
 
 export async function POST(req: Request) {
+  try {
+    await requireAdmin(req);
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e
+        ? Number((e as { status?: number }).status) || 401
+        : 401;
+    const message =
+      e instanceof Error ? e.message : "unauthorized";
+    return NextResponse.json({ error: message }, { status });
+  }
+
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;

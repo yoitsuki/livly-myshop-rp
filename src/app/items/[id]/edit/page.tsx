@@ -3,16 +3,16 @@
 import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLiveQuery } from "dexie-react-hooks";
 import { Crop, RefreshCw, X } from "lucide-react";
+import { useItem, useItems, useTags } from "@/lib/firebase/hooks";
 import {
   createTag,
-  db,
+  updateItem,
   type Item,
   type ItemCropRecord,
   type Tag,
   type TagType,
-} from "@/lib/db";
+} from "@/lib/firebase/repo";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 import { Button, Field, inputClass } from "@/components/ui";
@@ -33,8 +33,8 @@ export default function EditItemPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const item = useLiveQuery(() => db().items.get(id), [id]);
-  const tags = useLiveQuery(() => db().tags.toArray(), [], [] as Tag[]);
+  const item = useItem(id);
+  const tags = useTags() ?? [];
   const iconFileInput = useRef<HTMLInputElement>(null);
   const mainFileInput = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState | undefined>();
@@ -52,11 +52,10 @@ export default function EditItemPage({
   const [pendingClearMain, setPendingClearMain] = useState(false);
   const [cropping, setCropping] = useState<CropTarget>(null);
 
-  const savedIcon = item?.iconBlob;
-  const savedMain = item?.mainImageBlob;
-  const displayIcon = pendingIcon?.blob ?? savedIcon;
-  const displayMain = pendingMain?.blob
-    ?? (pendingClearMain ? undefined : savedMain);
+  const savedIconUrl = item?.iconUrl;
+  const savedMainUrl = item?.mainImageUrl;
+  const pendingIconBlob = pendingIcon?.blob;
+  const pendingMainBlob = pendingMain?.blob;
   const [iconUrl, setIconUrl] = useState<string | undefined>();
   const [mainUrl, setMainUrl] = useState<string | undefined>();
 
@@ -71,18 +70,23 @@ export default function EditItemPage({
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!displayIcon) return setIconUrl(undefined);
-    const url = URL.createObjectURL(displayIcon);
-    setIconUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [displayIcon]);
+    if (pendingIconBlob) {
+      const url = URL.createObjectURL(pendingIconBlob);
+      setIconUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setIconUrl(savedIconUrl);
+  }, [pendingIconBlob, savedIconUrl]);
 
   useEffect(() => {
-    if (!displayMain) return setMainUrl(undefined);
-    const url = URL.createObjectURL(displayMain);
-    setMainUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [displayMain]);
+    const showSaved = !pendingMainBlob && !pendingClearMain;
+    if (pendingMainBlob) {
+      const url = URL.createObjectURL(pendingMainBlob);
+      setMainUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setMainUrl(showSaved ? savedMainUrl : undefined);
+  }, [pendingMainBlob, pendingClearMain, savedMainUrl]);
 
   if (item === undefined || !form) {
     return <div className="pt-6 text-center text-muted">読み込み中…</div>;
@@ -118,29 +122,49 @@ export default function EditItemPage({
     setCropping("main");
   };
 
-  const startCrop = (target: "icon" | "main") => {
-    const mainSavedIfNotCleared = pendingClearMain ? undefined : savedMain;
-    const sources = target === "icon"
-      ? [pendingIcon?.blob, iconSource, savedIcon]
-      : [pendingMain?.blob, mainSource, mainSavedIfNotCleared];
-    const src = sources.find((b): b is Blob => !!b);
+  const startCrop = async (target: "icon" | "main") => {
+    setError(undefined);
+    let src: Blob | undefined =
+      target === "icon"
+        ? pendingIcon?.blob ?? iconSource
+        : pendingMain?.blob ?? mainSource;
+    if (!src) {
+      const url =
+        target === "icon"
+          ? savedIconUrl
+          : pendingClearMain
+            ? undefined
+            : savedMainUrl;
+      if (url) {
+        try {
+          src = await fetchAsBlob(url);
+          if (target === "icon") setIconSource(src);
+          else setMainSource(src);
+        } catch (e) {
+          setError(
+            e instanceof Error ? e.message : "保存済み画像の取得に失敗しました",
+          );
+          return;
+        }
+      }
+    }
     if (!src) {
       setError(
         target === "icon"
           ? "アイコン画像が登録されていません。先に「ファイル」から画像を選んでください"
-          : "メイン画像が登録されていません。先に「ファイル」から画像を選んでください"
+          : "メイン画像が登録されていません。先に「ファイル」から画像を選んでください",
       );
       return;
     }
-    setError(undefined);
     setCropping(target);
   };
 
-  const cropperSource: Blob | null = cropping === "icon"
-    ? pendingIcon?.blob ?? iconSource ?? savedIcon ?? null
-    : cropping === "main"
-      ? pendingMain?.blob ?? mainSource ?? (pendingClearMain ? null : savedMain ?? null)
-      : null;
+  const cropperSource: Blob | null =
+    cropping === "icon"
+      ? pendingIcon?.blob ?? iconSource ?? null
+      : cropping === "main"
+        ? pendingMain?.blob ?? mainSource ?? null
+        : null;
 
   const onSave = async () => {
     if (!form.name.trim()) {
@@ -150,30 +174,16 @@ export default function EditItemPage({
     setError(undefined);
     setBusy("save");
     try {
-      await db().transaction("rw", db().items, async () => {
-        const current = await db().items.get(i.id);
-        if (!current) throw new Error("アイテムが見つかりませんでした");
-        const next: Item = { ...current };
-
-        if (pendingIcon) {
-          next.iconBlob = pendingIcon.blob;
-          next.iconCrop = pendingIcon.crop;
-        }
-        if (pendingClearMain) {
-          delete next.mainImageBlob;
-          delete next.mainCrop;
-        } else if (pendingMain) {
-          next.mainImageBlob = pendingMain.blob;
-          next.mainCrop = pendingMain.crop;
-        }
-
-        next.name = form.name.trim();
-        next.category = form.category.trim();
-        next.tagIds = form.tagIds;
-        next.minPrice = Number(form.minPrice) || 0;
-        next.updatedAt = Date.now();
-
-        await db().items.put(next);
+      await updateItem(i.id, {
+        name: form.name.trim(),
+        category: form.category.trim(),
+        tagIds: form.tagIds,
+        minPrice: Number(form.minPrice) || 0,
+        iconBlob: pendingIcon?.blob,
+        iconCrop: pendingIcon?.crop,
+        mainImageBlob: !pendingClearMain ? pendingMain?.blob : undefined,
+        mainCrop: !pendingClearMain ? pendingMain?.crop : undefined,
+        clearMain: pendingClearMain,
       });
       router.replace(`/items/${i.id}`);
     } catch (e) {
@@ -232,7 +242,7 @@ export default function EditItemPage({
           onClickCrop={() => startCrop("main")}
           onPick={onPickMainFile}
           onClear={
-            !pendingClearMain && (pendingMain || savedMain)
+            !pendingClearMain && (pendingMain || savedMainUrl)
               ? onClearMain
               : undefined
           }
@@ -397,8 +407,16 @@ function SlotPreview({
   );
 }
 
+async function fetchAsBlob(url: string): Promise<Blob> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`画像取得に失敗しました (${res.status})`);
+  }
+  return res.blob();
+}
+
 function CategorySuggestions() {
-  const items = useLiveQuery(() => db().items.toArray(), [], []);
+  const items = useItems();
   const categories = useMemo(() => {
     const set = new Set<string>();
     items?.forEach((i) => i.category && set.add(i.category));
