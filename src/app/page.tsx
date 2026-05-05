@@ -143,7 +143,7 @@ export default function Home() {
         </ul>
       )}
 
-      <Fab href="/register" />
+      <Fab />
     </div>
   );
 }
