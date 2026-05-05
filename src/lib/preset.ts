@@ -155,6 +155,23 @@ export function describePreset(p: CropPreset): string {
   return `${p.width}×${p.height} ・ ${cond}${mainNote}`;
 }
 
+/** Sample the source image's top-left pixel as a #rrggbb string. */
+export async function sampleTopLeftHex(source: Blob): Promise<string | null> {
+  const bitmap = await createImageBitmap(source);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, 1, 1, 0, 0, 1, 1);
+    const px = ctx.getImageData(0, 0, 1, 1).data;
+    return rgbToHex(px[0], px[1], px[2]);
+  } finally {
+    bitmap.close();
+  }
+}
+
 export function newPresetId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();

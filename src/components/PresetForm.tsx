@@ -26,8 +26,16 @@ interface Props {
   onSubmit: (next: CropPreset) => Promise<void> | void;
   /** Optional delete action shown in edit mode. */
   onDelete?: () => Promise<void> | void;
-  cancelHref: string;
+  /** Used for the cancel link when onCancel isn't supplied. */
+  cancelHref?: string;
+  /** When given, renders cancel as a button instead of a Link (modal usage). */
+  onCancel?: () => void;
   submitLabel: string;
+  /**
+   * Override post-submit behavior. Default: navigate to /presets. Pass a
+   * no-op (or modal-close) when used inside a dialog.
+   */
+  onSubmitted?: () => void;
 }
 
 export default function PresetForm({
@@ -35,7 +43,9 @@ export default function PresetForm({
   onSubmit,
   onDelete,
   cancelHref,
+  onCancel,
   submitLabel,
+  onSubmitted,
 }: Props) {
   const router = useRouter();
   const [draft, setDraft] = useState<CropPreset>(
@@ -91,7 +101,8 @@ export default function PresetForm({
           ? draft.topLeftHex.trim().toLowerCase()
           : undefined,
       });
-      router.push("/presets");
+      if (onSubmitted) onSubmitted();
+      else router.push("/presets");
     } catch (e) {
       setError(e instanceof Error ? e.message : "保存に失敗しました");
       setSaving(false);
@@ -252,11 +263,25 @@ export default function PresetForm({
       )}
 
       <div className="flex gap-2 pt-2">
-        <Link href={cancelHref} className="flex-1">
-          <Button variant="secondary" size="lg" fullWidth>
-            キャンセル
-          </Button>
-        </Link>
+        {onCancel ? (
+          <div className="flex-1">
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={onCancel}
+              type="button"
+            >
+              キャンセル
+            </Button>
+          </div>
+        ) : (
+          <Link href={cancelHref ?? "/presets"} className="flex-1">
+            <Button variant="secondary" size="lg" fullWidth>
+              キャンセル
+            </Button>
+          </Link>
+        )}
         <div className="flex-[2]">
           <Button
             variant="primary"

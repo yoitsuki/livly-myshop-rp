@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Crop, ImagePlus, Loader2, ScanText, Sparkles, X } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  BookmarkPlus,
+  Crop,
+  ImagePlus,
+  Loader2,
+  ScanText,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
 import {
   createItem,
   createTag,
+  getSettings,
+  patchSettings,
   uid,
   type ItemCropRecord,
   type PriceEntry,
@@ -15,7 +25,7 @@ import {
   type TagType,
 } from "@/lib/firebase/repo";
 import { getLocalSettings, useLocalSettings } from "@/lib/localSettings";
-import { compressImage, type CropRect } from "@/lib/image";
+import { compressImage, cropAndEncode, type CropRect } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
 import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
@@ -26,10 +36,24 @@ import {
   SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
-import { findMatchingPreset, SEED_PRESETS } from "@/lib/preset";
+import {
+  DEFAULT_COLOR_TOLERANCE,
+  findMatchingPreset,
+  newPresetId,
+  sampleTopLeftHex,
+  SEED_PRESETS,
+  type CropPreset,
+} from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
+import { useBulkDraft } from "@/lib/bulk/context";
+import { renderIconThumb } from "@/lib/bulk/process";
+import {
+  bulkEntryMissingFields,
+  type BulkEntry,
+} from "@/lib/bulk/types";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
+import PresetForm from "@/components/PresetForm";
 import { Button, Field, inputClass } from "@/components/ui";
 
 interface FormState {
@@ -69,7 +93,26 @@ const EMPTY_FORM: FormState = {
 type CropTarget = "icon" | "main" | null;
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[40vh]" aria-hidden />}>
+      <RegisterPageInner />
+    </Suspense>
+  );
+}
+
+function RegisterPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const bulkIndexRaw = searchParams?.get("bulkIndex") ?? null;
+  const bulkIdx =
+    bulkIndexRaw !== null && bulkIndexRaw !== ""
+      ? Number(bulkIndexRaw)
+      : null;
+  const bulk = useBulkDraft();
+  const bulkEntry =
+    bulkIdx !== null && Number.isInteger(bulkIdx) ? bulk.entries[bulkIdx] : undefined;
+  const isBulk = bulkEntry !== undefined;
+
   const fileInput = useRef<HTMLInputElement>(null);
   const [sourceBlob, setSourceBlob] = useState<Blob | undefined>();
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
@@ -93,6 +136,9 @@ export default function RegisterPage() {
   const cloudSettings = useSettings();
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
+  const [presetModalInitial, setPresetModalInitial] =
+    useState<CropPreset | null>(null);
+  const bulkPopulatedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!previewUrl) return;
@@ -118,6 +164,74 @@ export default function RegisterPage() {
     setMainUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [mainBlob]);
+
+  // Bulk-edit init: when /register?bulkIndex=N has a corresponding draft
+  // entry whose source Blob is still in memory, hydrate the form from it.
+  // Runs once per entry id (guarded by bulkPopulatedRef).
+  useEffect(() => {
+    if (!bulkEntry) return;
+    if (bulkPopulatedRef.current === bulkEntry.id) return;
+    const source = bulk.getSourceBlob(bulkEntry.id);
+    if (!source) {
+      // Browser refresh dropped the blob — return to bulk page.
+      router.replace("/register/bulk");
+      return;
+    }
+    bulkPopulatedRef.current = bulkEntry.id;
+    let cancelled = false;
+
+    setSourceBlob(source);
+    setPreviewUrl(URL.createObjectURL(source));
+    if (bulkEntry.iconRect) {
+      setPresets({ icon: bulkEntry.iconRect, main: bulkEntry.mainRect });
+    }
+    if (bulkEntry.iconCrop) setIconCrop(bulkEntry.iconCrop);
+    if (bulkEntry.mainCrop) setMainCrop(bulkEntry.mainCrop);
+
+    setForm({
+      name: bulkEntry.name,
+      category: bulkEntry.category,
+      minPrice: bulkEntry.minPrice ? String(bulkEntry.minPrice) : "",
+      refPriceMin: bulkEntry.refPriceMin ? String(bulkEntry.refPriceMin) : "",
+      refPriceMax: bulkEntry.refPriceMax ? String(bulkEntry.refPriceMax) : "",
+      checkedAt: toLocalInput(bulkEntry.checkedAt || Date.now()),
+      tagIds: bulkEntry.tagIds,
+      shopYearMonth: bulkEntry.shopPeriod?.yearMonth ?? "",
+      shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
+      shopAuto: bulkEntry.shopPeriod?.auto ?? false,
+      priceSource: bulkEntry.priceSource ?? "",
+    });
+    setOcrDone(true); // fields are filled — the OCR button becomes 'rerun'
+
+    (async () => {
+      if (bulkEntry.iconRect) {
+        try {
+          const blob = await cropAndEncode(source, bulkEntry.iconRect, {
+            maxWidth: 320,
+            quality: 0.85,
+          });
+          if (!cancelled) setIconBlob(blob);
+        } catch {
+          /* ignore — user can re-crop */
+        }
+      }
+      if (bulkEntry.mainRect) {
+        try {
+          const blob = await cropAndEncode(source, bulkEntry.mainRect, {
+            maxWidth: 1200,
+            quality: 0.85,
+          });
+          if (!cancelled) setMainBlob(blob);
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bulkEntry, bulk, router]);
 
   const onPick = () => fileInput.current?.click();
 
@@ -232,6 +346,65 @@ export default function RegisterPage() {
   };
 
   const onSave = async () => {
+    if (isBulk && bulkEntry) {
+      if (!form.name.trim()) {
+        setError("アイテム名は必須です");
+        return;
+      }
+      if (!iconBlob && !mainBlob) {
+        setError("アイコンかメイン画像のどちらかを切り抜いてください");
+        return;
+      }
+      setError(undefined);
+      setBusy("save");
+      try {
+        const shopPeriod: ShopPeriodRecord | undefined = form.shopYearMonth
+          ? {
+              yearMonth: form.shopYearMonth,
+              phase: form.shopPhase,
+              auto: form.shopAuto,
+            }
+          : undefined;
+        const updates: Partial<BulkEntry> = {
+          name: form.name.trim(),
+          category: form.category.trim(),
+          tagIds: form.tagIds,
+          minPrice: Number(form.minPrice) || 0,
+          refPriceMin: Number(form.refPriceMin) || 0,
+          refPriceMax: Number(form.refPriceMax) || 0,
+          priceSource: form.priceSource.trim() || undefined,
+          checkedAt: fromLocalInput(form.checkedAt),
+          shopPeriod,
+          iconCrop,
+          mainCrop,
+          iconRect: iconCrop?.rect,
+          mainRect: mainCrop?.rect,
+        };
+        const source = bulk.getSourceBlob(bulkEntry.id);
+        if (source && iconCrop?.rect) {
+          try {
+            updates.iconThumbDataUrl = await renderIconThumb(
+              source,
+              iconCrop.rect,
+            );
+          } catch {
+            /* keep existing thumb if regen fails */
+          }
+        }
+        const merged = { ...bulkEntry, ...updates };
+        const valid = bulkEntryMissingFields(merged).length === 0;
+        bulk.updateEntry(bulkEntry.id, {
+          ...updates,
+          checked: valid ? true : bulkEntry.checked,
+        });
+        router.replace("/register/bulk");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "保存に失敗しました");
+        setBusy("idle");
+      }
+      return;
+    }
+
     if (!iconBlob && !mainBlob) {
       setError("アイコンかメイン画像のどちらかを切り抜いてください");
       return;
@@ -280,6 +453,32 @@ export default function RegisterPage() {
     }
   };
 
+  const openPresetFromCrop = async () => {
+    if (!sourceBlob || !iconCrop) {
+      setError("先にアイコンを切り抜いてください");
+      return;
+    }
+    try {
+      const hex = await sampleTopLeftHex(sourceBlob);
+      const initial: CropPreset = {
+        id: newPresetId(),
+        name: "",
+        width: iconCrop.source.width,
+        height: iconCrop.source.height,
+        colorMode: hex ? "match" : "none",
+        topLeftHex: hex ?? undefined,
+        colorTolerance: DEFAULT_COLOR_TOLERANCE,
+        icon: { ...iconCrop.rect },
+        main: mainCrop ? { ...mainCrop.rect } : undefined,
+      };
+      setPresetModalInitial(initial);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "プリセット初期値の取得に失敗",
+      );
+    }
+  };
+
   const isAuto = (k: keyof FormState) => autoFilled.has(k);
   const autoBadge = (
     <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
@@ -290,6 +489,20 @@ export default function RegisterPage() {
 
   return (
     <div className="space-y-5 pt-3 pb-8">
+      {isBulk && bulkEntry && bulkIdx !== null && (
+        <div
+          className="border border-[var(--color-line)] bg-[var(--color-line-soft)] px-3 py-2 flex items-center gap-2"
+          style={{ fontFamily: "var(--font-label)" }}
+        >
+          <span className="text-[10px] tracking-[0.18em] uppercase text-[var(--color-gold-deep)]">
+            BULK ・ {bulkIdx + 1}/{bulk.entries.length}
+          </span>
+          <span className="text-[11px] text-[var(--color-muted)] truncate flex-1">
+            {bulkEntry.fileName}
+          </span>
+        </div>
+      )}
+
       <input
         ref={fileInput}
         type="file"
@@ -327,12 +540,14 @@ export default function RegisterPage() {
               alt="プレビュー"
               className="w-full max-h-72 object-contain border border-[var(--color-line)] bg-white"
             />
-            <button
-              onClick={onPick}
-              className="absolute bottom-2 right-2 px-3 h-8 bg-white/95 border border-[var(--color-line)] text-[12px] text-text/80"
-            >
-              画像を変更
-            </button>
+            {!isBulk && (
+              <button
+                onClick={onPick}
+                className="absolute bottom-2 right-2 px-3 h-8 bg-white/95 border border-[var(--color-line)] text-[12px] text-text/80"
+              >
+                画像を変更
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -363,6 +578,18 @@ export default function RegisterPage() {
               }
             />
           </div>
+
+          {iconCrop && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon={<BookmarkPlus size={14} />}
+              onClick={openPresetFromCrop}
+            >
+              クロップ結果をプリセットに登録
+            </Button>
+          )}
         </div>
       )}
 
@@ -535,10 +762,12 @@ export default function RegisterPage() {
         <Button
           variant="secondary"
           size="lg"
-          onClick={() => router.back()}
+          onClick={() =>
+            isBulk ? router.replace("/register/bulk") : router.back()
+          }
           className="flex-1"
         >
-          キャンセル
+          {isBulk ? "リストに戻る" : "キャンセル"}
         </Button>
         <div className="flex-[2]">
           <Button
@@ -549,7 +778,11 @@ export default function RegisterPage() {
             loading={busy === "save"}
             disabled={busy === "save" || (!iconBlob && !mainBlob)}
           >
-            {busy === "save" ? "保存中…" : "保存"}
+            {busy === "save"
+              ? "保存中…"
+              : isBulk
+                ? "ドラフトに反映"
+                : "保存"}
           </Button>
         </div>
       </div>
@@ -588,6 +821,51 @@ export default function RegisterPage() {
           setCropping(null);
         }}
       />
+
+      {presetModalInitial && (
+        <div
+          className="fixed inset-0 z-40 flex items-start justify-center px-4 py-6 overflow-y-auto"
+          style={{ background: "rgba(20,40,38,0.55)" }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPresetModalInitial(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-[var(--color-cream)] border border-[var(--color-line-strong)]"
+            style={{ borderRadius: 0 }}
+          >
+            <div className="px-4 pt-3 pb-2 border-b border-[var(--color-line)] flex items-center gap-2">
+              <h2
+                className="text-[16px] flex-1 text-[var(--color-gold-deep)]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                クロップをプリセットに登録
+              </h2>
+              <button
+                type="button"
+                aria-label="閉じる"
+                onClick={() => setPresetModalInitial(null)}
+                className="w-8 h-8 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-4 pb-4">
+              <PresetForm
+                initial={presetModalInitial}
+                submitLabel="プリセットを追加"
+                onCancel={() => setPresetModalInitial(null)}
+                onSubmit={async (next) => {
+                  const settings = await getSettings();
+                  const list = settings.cropPresets ?? [];
+                  await patchSettings({ cropPresets: [...list, next] });
+                }}
+                onSubmitted={() => setPresetModalInitial(null)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
