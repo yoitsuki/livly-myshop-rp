@@ -272,6 +272,27 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.14.0 まとめて登録モード。FAB をタップするとポップオーバーで
+ *        登録 / まとめて登録 を選べ、Drawer の新規登録もインデント
+ *        されたサブメニューに展開。新規ルート /register/bulk で
+ *        スクショを複数選択 → 順次 EXIF + プリセット判定 + OCR を
+ *        走らせ、行毎にチェックボックス + アイコンサムネ +
+ *        参考/最低価格 + 期間バッジ + プリセット選択を表示する
+ *        レビュー画面に並べる。プリセットを切り替えるとサムネが
+ *        その場で再クロップされる。必須欠落の行はチェック不可で
+ *        警告を表示し、行タップで /register?bulkIndex=N に遷移して
+ *        既存の登録フォーム + クロップ UI でそのまま編集できる
+ *        (BulkDraftProvider は app/register/layout.tsx に置き、
+ *        ソース Blob は in-memory map で保持。リロード時はドラフト
+ *        ごと破棄)。/register に「クロップ結果をプリセットに登録」
+ *        ボタンを追加 — 現在のクロップ矩形と元画像左上ピクセルの
+ *        HEX をプリフィルした PresetForm をモーダルで開いて新規
+ *        プリセットを作成できる。CropPreset.main は optional に
+ *        なり、PresetForm に「メイン画像を切り抜く」チェックを
+ *        追加 — オフでメイン画像なしのプリセット (まとめて登録時
+ *        にもメイン画像を保存しない) が作れる。settingsToFs は
+ *        cropPresets 配列の各 preset を compact() に通すよう修正
+ *        (undefined main を Firestore に書こうとして弾かれた)。
  * 0.13.0 Phase 2: Dexie is gone. Reads come from Firestore via
  *        useItems / useItem / useTags / useSettings (snapshot-driven,
  *        same "undefined while loading" contract as useLiveQuery).
@@ -296,4 +317,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.13.0";
+export const APP_VERSION = "0.14.0";

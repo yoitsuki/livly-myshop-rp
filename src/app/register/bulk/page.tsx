@@ -12,7 +12,8 @@ import {
   X,
 } from "lucide-react";
 import { useSettings } from "@/lib/firebase/hooks";
-import { uid } from "@/lib/firebase/repo";
+import { createItem, uid, type PriceEntry } from "@/lib/firebase/repo";
+import { cropAndEncode } from "@/lib/image";
 import { useBulkDraft } from "@/lib/bulk/context";
 import {
   bulkEntryMissingFields,
@@ -154,6 +155,73 @@ export default function BulkRegisterPage() {
     updateEntry(entry.id, { checked: next });
   };
 
+  const onBulkSave = async () => {
+    const targets = entries.filter((e) => e.checked);
+    if (targets.length === 0) return;
+    setError(undefined);
+    setBusy(true);
+    let succeeded = 0;
+    let failed = 0;
+    for (const entry of targets) {
+      try {
+        const source = getSourceBlob(entry.id);
+        if (!source) throw new Error("元画像が見つかりません");
+        if (!entry.iconRect) throw new Error("アイコンの矩形が未設定です");
+
+        const iconBlob = await cropAndEncode(source, entry.iconRect, {
+          maxWidth: 320,
+          quality: 0.85,
+        });
+        const mainBlob = entry.mainRect
+          ? await cropAndEncode(source, entry.mainRect, {
+              maxWidth: 1200,
+              quality: 0.85,
+            })
+          : undefined;
+
+        const initialEntry: PriceEntry = {
+          id: uid(),
+          shopPeriod: entry.shopPeriod,
+          refPriceMin: entry.refPriceMin,
+          refPriceMax: entry.refPriceMax || entry.refPriceMin,
+          checkedAt: entry.checkedAt,
+          priceSource:
+            !mainBlob && entry.priceSource ? entry.priceSource : undefined,
+          createdAt: Date.now(),
+        };
+
+        await createItem({
+          iconBlob,
+          mainImageBlob: mainBlob,
+          iconCrop: entry.iconCrop,
+          mainCrop: entry.mainCrop,
+          name: entry.name.trim(),
+          category: entry.category.trim(),
+          tagIds: entry.tagIds,
+          minPrice: entry.minPrice,
+          priceEntries: [initialEntry],
+        });
+        removeEntry(entry.id);
+        succeeded++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "保存に失敗しました";
+        updateEntry(entry.id, {
+          error: `保存失敗: ${msg}`,
+          checked: false,
+        });
+        failed++;
+      }
+    }
+    setBusy(false);
+    if (failed === 0) {
+      router.push("/");
+      return;
+    }
+    setError(
+      `${succeeded} 件保存・${failed} 件失敗。失敗行を編集して再試行してください`,
+    );
+  };
+
   const ocrLabel =
     local.ocrProvider === "claude" && local.claudeApiKey
       ? `Claude (${local.claudeModel || "default"})`
@@ -249,13 +317,14 @@ export default function BulkRegisterPage() {
                 size="lg"
                 fullWidth
                 disabled={checkedCount === 0 || busy}
-                onClick={() => {
-                  setError("登録ボタンは次のステップで実装されます");
-                }}
+                loading={busy}
+                onClick={() => void onBulkSave()}
               >
-                {checkedCount > 0
-                  ? `登録 (${checkedCount} 件)`
-                  : "登録するアイテムを選択"}
+                {busy
+                  ? "保存中…"
+                  : checkedCount > 0
+                    ? `登録 (${checkedCount} 件)`
+                    : "登録するアイテムを選択"}
               </Button>
             </div>
           </div>
