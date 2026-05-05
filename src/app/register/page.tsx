@@ -3,11 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Crop, ImagePlus, Loader2, ScanText, Sparkles, X } from "lucide-react";
-import { useItems, useTags } from "@/lib/firebase/hooks";
+import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
 import {
   createItem,
   createTag,
-  getSettings,
   uid,
   type ItemCropRecord,
   type PriceEntry,
@@ -84,6 +83,7 @@ export default function RegisterPage() {
   const [presets, setPresets] = useState<{ icon: CropRect; main: CropRect } | null>(
     null
   );
+  const [presetDebug, setPresetDebug] = useState<string | null>(null);
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [error, setError] = useState<string | undefined>();
@@ -91,6 +91,7 @@ export default function RegisterPage() {
   const [autoFilled, setAutoFilled] = useState<Set<keyof FormState>>(new Set());
 
   const tags = useTags() ?? [];
+  const cloudSettings = useSettings();
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
 
@@ -138,8 +139,6 @@ export default function RegisterPage() {
 
     setBusy("load");
     try {
-      const s = await getSettings();
-
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
@@ -155,11 +154,24 @@ export default function RegisterPage() {
       }
 
       try {
-        const list = s.cropPresets ?? SEED_PRESETS;
+        const list =
+          cloudSettings?.cropPresets && cloudSettings.cropPresets.length > 0
+            ? cloudSettings.cropPresets
+            : SEED_PRESETS;
         const matched = await findMatchingPreset(file, list);
         setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
-      } catch {
-        // fall back to default crop rect
+        setPresetDebug(
+          matched
+            ? `preset: ${matched.preset.name} (${list.length} 件中)`
+            : `preset: 一致なし (${list.length} 件チェック)`,
+        );
+      } catch (e) {
+        setPresetDebug(
+          `preset 判定エラー: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        setError(
+          `プリセット判定に失敗: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "画像の読み込みに失敗しました");
@@ -393,6 +405,12 @@ export default function RegisterPage() {
             {busy === "ocr" &&
               `テキストを読み取り中… ${Math.round(ocrProgress * 100)}%`}
           </span>
+        </div>
+      )}
+
+      {presetDebug && (
+        <div className="text-[11px] text-muted px-1 font-mono break-all">
+          {presetDebug}
         </div>
       )}
 
