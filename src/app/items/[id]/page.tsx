@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
+  ImageIcon,
   Pencil,
   Plus,
   Trash2,
@@ -51,6 +52,37 @@ function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string })
     >
       {label}
     </span>
+  );
+}
+
+/** Small Atelier corner-tick thumb for the title block (viewer parity). */
+function AtelierThumb({
+  src,
+  alt,
+  size,
+}: {
+  src?: string;
+  alt: string;
+  size: number;
+}) {
+  return (
+    <div
+      className="atelier-thumb shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <div className="atelier-thumb-inner w-full h-full flex items-center justify-center text-[var(--color-muted)]">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={alt} className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon size={size > 60 ? 22 : 18} strokeWidth={1.4} />
+        )}
+      </div>
+      <span className="atelier-tick atelier-tick--tl" aria-hidden />
+      <span className="atelier-tick atelier-tick--tr" aria-hidden />
+      <span className="atelier-tick atelier-tick--bl" aria-hidden />
+      <span className="atelier-tick atelier-tick--br" aria-hidden />
+    </div>
   );
 }
 
@@ -172,51 +204,54 @@ export default function ItemDetailPage({
       </div>
 
       {/* ── Title block ──────────────────────────────────────────── */}
-      <div className="pt-4 pb-3">
-        {/* category + (optional) REPLICA badge — right-aligned, no rule */}
-        {(i.category || i.isReplica) && (
-          <div className="flex justify-end items-center gap-2 mb-2">
-            {i.isReplica && (
-              <span
-                className="inline-flex items-center"
-                style={{
-                  fontFamily: "var(--font-label)",
-                  fontSize: 9.5,
-                  fontWeight: 500,
-                  letterSpacing: "0.22em",
-                  padding: "2px 7px",
-                  borderRadius: 0,
-                  background: "transparent",
-                  color: "var(--color-gold-deep)",
-                  border: "1px solid var(--color-gold-deep)",
-                }}
-              >
-                REPLICA
-              </span>
-            )}
-            {i.category && (
-              <span
-                className="text-[var(--color-muted)]"
-                style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
-              >
-                {i.category}
-              </span>
-            )}
-          </div>
-        )}
-        {/* item name */}
-        <h2
-          className="text-[var(--color-text)] leading-snug break-words"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 28,
-            fontWeight: 400,
-            letterSpacing: "0.02em",
-            margin: 0,
-          }}
-        >
-          {i.name}
-        </h2>
+      <div className="pt-4 pb-3 flex gap-3.5">
+        <AtelierThumb src={i.iconUrl} alt={i.name} size={64} />
+        <div className="flex-1 min-w-0">
+          {/* category + (optional) REPLICA badge — right-aligned, no rule */}
+          {(i.category || i.isReplica) && (
+            <div className="flex justify-end items-center gap-2 mb-2">
+              {i.isReplica && (
+                <span
+                  className="inline-flex items-center"
+                  style={{
+                    fontFamily: "var(--font-label)",
+                    fontSize: 9.5,
+                    fontWeight: 500,
+                    letterSpacing: "0.22em",
+                    padding: "2px 7px",
+                    borderRadius: 0,
+                    background: "transparent",
+                    color: "var(--color-gold-deep)",
+                    border: "1px solid var(--color-gold-deep)",
+                  }}
+                >
+                  REPLICA
+                </span>
+              )}
+              {i.category && (
+                <span
+                  className="text-[var(--color-muted)]"
+                  style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+                >
+                  {i.category}
+                </span>
+              )}
+            </div>
+          )}
+          {/* item name */}
+          <h2
+            className="text-[var(--color-text)] leading-snug break-words"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 28,
+              fontWeight: 400,
+              letterSpacing: "0.02em",
+              margin: 0,
+            }}
+          >
+            {i.name}
+          </h2>
+        </div>
       </div>
 
       {/* ── Tags ─────────────────────────────────────────────────── */}
