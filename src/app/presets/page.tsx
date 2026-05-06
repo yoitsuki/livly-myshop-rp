@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Home, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useSettings } from "@/lib/firebase/hooks";
@@ -9,24 +10,41 @@ import {
   SEED_PRESETS,
   type CropPreset,
 } from "@/lib/preset";
-import { Button, IconButton } from "@/components/ui";
+import { Button, ConfirmDialog, IconButton } from "@/components/ui";
 
 export default function PresetsPage() {
   const stored = useSettings();
   const presets: CropPreset[] = stored?.cropPresets ?? [];
 
-  const onDelete = async (id: string) => {
+  const [confirmDialog, setConfirmDialog] = useState<{
+    message: string;
+    onConfirm: () => Promise<void> | void;
+    variant?: "danger" | "primary";
+    confirmLabel?: string;
+  } | null>(null);
+
+  const onDelete = (id: string) => {
     const target = presets.find((p) => p.id === id);
     if (!target) return;
-    if (!confirm(`プリセット「${target.name}」を削除しますか？`)) return;
-    const settings = await getSettings();
-    const next = (settings.cropPresets ?? []).filter((p) => p.id !== id);
-    await patchSettings({ cropPresets: next });
+    setConfirmDialog({
+      message: `プリセット「${target.name}」を削除しますか？`,
+      onConfirm: async () => {
+        const settings = await getSettings();
+        const next = (settings.cropPresets ?? []).filter((p) => p.id !== id);
+        await patchSettings({ cropPresets: next });
+      },
+    });
   };
 
-  const onResetSeeds = async () => {
-    if (!confirm("プリセット一覧を初期状態に戻します。よろしいですか？")) return;
-    await patchSettings({ cropPresets: SEED_PRESETS });
+  const onResetSeeds = () => {
+    setConfirmDialog({
+      message: "プリセット一覧を初期状態に戻します。\nよろしいですか？",
+      variant: "primary",
+      confirmLabel: "RESET",
+      onConfirm: async () => {
+        await patchSettings({ cropPresets: SEED_PRESETS });
+      },
+    });
   };
 
   return (
@@ -115,6 +133,18 @@ export default function PresetsPage() {
           ホームに戻る
         </Button>
       </Link>
+
+      <ConfirmDialog
+        open={confirmDialog !== null}
+        message={confirmDialog?.message ?? ""}
+        variant={confirmDialog?.variant ?? "danger"}
+        confirmLabel={confirmDialog?.confirmLabel}
+        onConfirm={async () => {
+          await confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

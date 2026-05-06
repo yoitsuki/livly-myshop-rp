@@ -33,7 +33,7 @@ import {
 } from "@/lib/firebase/repo";
 import { SEED_TAGS } from "@/lib/seedTags";
 import { TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
-import { Button, Field, inputClass, IconButton } from "@/components/ui";
+import { Button, ConfirmDialog, Field, inputClass, IconButton } from "@/components/ui";
 
 export default function TagsPage() {
   const tags = useTags() ?? [];
@@ -44,6 +44,12 @@ export default function TagsPage() {
     { kind: "error" | "ok"; text: string } | undefined
   >();
   const [seeding, setSeeding] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    message: string;
+    onConfirm: () => Promise<void> | void;
+    variant?: "danger" | "primary";
+    confirmLabel?: string;
+  } | null>(null);
 
   const usageCount = useMemo(() => {
     const map = new Map<string, number>();
@@ -97,47 +103,51 @@ export default function TagsPage() {
     }
   };
 
-  const onSeed = async () => {
-    if (
-      !confirm(
-        `シードタグ ${SEED_TAGS.length} 件を読み込みます。同名のタグは skip されます。続行しますか？`,
-      )
-    )
-      return;
-    setSeeding(true);
-    setAddStatus(undefined);
-    try {
-      const { created, skipped } = await seedTagsIfMissing();
-      setAddStatus({
-        kind: "ok",
-        text: `シード読み込み完了 — 新規 ${created} 件 / 既存 ${skipped} 件は skip`,
-      });
-    } catch (e) {
-      setAddStatus({
-        kind: "error",
-        text: e instanceof Error ? e.message : "シード読み込みに失敗しました",
-      });
-    } finally {
-      setSeeding(false);
-    }
+  const onSeed = () => {
+    setConfirmDialog({
+      message: `シードタグ ${SEED_TAGS.length} 件を読み込みます。\n同名のタグは skip されます。`,
+      variant: "primary",
+      confirmLabel: "READ",
+      onConfirm: async () => {
+        setSeeding(true);
+        setAddStatus(undefined);
+        try {
+          const { created, skipped } = await seedTagsIfMissing();
+          setAddStatus({
+            kind: "ok",
+            text: `シード読み込み完了 — 新規 ${created} 件 / 既存 ${skipped} 件は skip`,
+          });
+        } catch (e) {
+          setAddStatus({
+            kind: "error",
+            text:
+              e instanceof Error ? e.message : "シード読み込みに失敗しました",
+          });
+        } finally {
+          setSeeding(false);
+        }
+      },
+    });
   };
 
-  const onDelete = async (t: Tag) => {
+  const onDelete = (t: Tag) => {
     const usage = usageCount.get(t.id) ?? 0;
-    if (
-      !confirm(
+    setConfirmDialog({
+      message:
         usage > 0
-          ? `タグ「${t.name}」は ${usage} 件のアイテムで使われています。削除すると外れます。続行しますか？`
-          : `タグ「${t.name}」を削除しますか？`
-      )
-    )
-      return;
-    if (usage > 0) {
-      const affected = items.filter((it) => it.tagIds.includes(t.id)).map((it) => it.id);
-      await deleteTagWithCascade(t.id, affected);
-    } else {
-      await deleteTag(t.id);
-    }
+          ? `タグ「${t.name}」は ${usage} 件のアイテムで使われています。\n削除すると外れます。`
+          : `タグ「${t.name}」を削除しますか？`,
+      onConfirm: async () => {
+        if (usage > 0) {
+          const affected = items
+            .filter((it) => it.tagIds.includes(t.id))
+            .map((it) => it.id);
+          await deleteTagWithCascade(t.id, affected);
+        } else {
+          await deleteTag(t.id);
+        }
+      },
+    });
   };
 
   return (
@@ -230,6 +240,18 @@ export default function TagsPage() {
           ホームに戻る
         </Button>
       </Link>
+
+      <ConfirmDialog
+        open={confirmDialog !== null}
+        message={confirmDialog?.message ?? ""}
+        variant={confirmDialog?.variant ?? "danger"}
+        confirmLabel={confirmDialog?.confirmLabel}
+        onConfirm={async () => {
+          await confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
+import { ConfirmDialog } from "@/components/ui";
 
 /** Atelier period badge */
 function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
@@ -307,72 +308,14 @@ export default function ItemDetailPage({
       </div>
 
       <ConfirmDialog
-        dialog={confirmDialog}
-        onClose={() => setConfirmDialog(null)}
+        open={confirmDialog !== null}
+        message={confirmDialog?.message ?? ""}
+        onConfirm={async () => {
+          await confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+        onCancel={() => setConfirmDialog(null)}
       />
-    </div>
-  );
-}
-
-function ConfirmDialog({
-  dialog,
-  onClose,
-}: {
-  dialog: { message: string; onConfirm: () => Promise<void> | void } | null;
-  onClose: () => void;
-}) {
-  if (!dialog) return null;
-  const handleConfirm = async () => {
-    await dialog.onConfirm();
-    onClose();
-  };
-  return (
-    <div
-      className="fixed inset-0 z-[70] bg-[var(--color-text)]/40 flex items-center justify-center p-5"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="bg-white border border-[var(--color-line)] max-w-sm w-full p-5"
-        style={{ borderRadius: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          className="text-[var(--color-text)] leading-relaxed mb-5 whitespace-pre-line"
-          style={{ fontFamily: "var(--font-body)", fontSize: 14 }}
-        >
-          {dialog.message}
-        </div>
-        <div className="flex gap-2 justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors"
-            style={{
-              fontFamily: "var(--font-label)",
-              fontSize: 10,
-              letterSpacing: "0.24em",
-              borderRadius: 0,
-            }}
-          >
-            CANCEL
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="px-4 py-2 bg-[var(--color-danger)] text-white hover:opacity-90 transition-opacity"
-            style={{
-              fontFamily: "var(--font-label)",
-              fontSize: 10,
-              letterSpacing: "0.24em",
-              borderRadius: 0,
-            }}
-          >
-            DELETE
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -272,6 +272,14 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.16.2 削除確認ダイアログを共通化 + bulk × に確認を追加。
+ *        src/components/ui/ConfirmDialog.tsx を primitives として
+ *        切り出し、/register/bulk 行の × ボタン、/tags と
+ *        /presets の「 window.confirm 」をこれに統一。bulk 行は
+ *        以前は誤タップで黙って消えていたので、「登録対象から
+ *        外すだけならチェックを外せばよい」とフォローも記載。
+ *        items/[id] も同 primitive にスワップし、同型のダイアログ
+ *        が 4 ページで同じ見た目・同じ振る舞いで出るようになった。
  * 0.16.1 アイテム重複登録の検知 + マージ。/register で同名アイテム
  *        を検知したら、価格を「追加 (別期間)」または「更新 (同じ
  *        yearMonth)」の確認モーダルを出し、「✅ メイン画像を更新する」
@@ -370,4 +378,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.16.1";
+export const APP_VERSION = "0.16.2";

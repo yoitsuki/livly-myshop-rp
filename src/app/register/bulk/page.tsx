@@ -34,7 +34,7 @@ import { SEED_PRESETS, type CropPreset } from "@/lib/preset";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { useLocalSettings } from "@/lib/localSettings";
-import { Button, IconButton } from "@/components/ui";
+import { Button, ConfirmDialog, IconButton } from "@/components/ui";
 
 export default function BulkRegisterPage() {
   const router = useRouter();
@@ -60,6 +60,10 @@ export default function BulkRegisterPage() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  const [confirmRemove, setConfirmRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // If we land here with stale entries whose source Blobs are gone (browser
@@ -327,12 +331,31 @@ export default function BulkRegisterPage() {
                 presets={presets}
                 onToggleCheck={(next) => onToggleCheck(e, next)}
                 onChangePreset={(pid) => void onChangePreset(e.id, pid)}
-                onRemove={() => removeEntry(e.id)}
+                onRemove={() =>
+                  setConfirmRemove({
+                    id: e.id,
+                    name: e.name || e.fileName || "(名称未取得)",
+                  })
+                }
               />
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        message={
+          confirmRemove
+            ? `「${confirmRemove.name}」をリストから削除しますか？\n登録対象から外すだけならチェックを外してください。`
+            : ""
+        }
+        onConfirm={() => {
+          if (confirmRemove) removeEntry(confirmRemove.id);
+          setConfirmRemove(null);
+        }}
+        onCancel={() => setConfirmRemove(null)}
+      />
 
       {entries.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
