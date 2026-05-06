@@ -99,19 +99,39 @@ export default function ItemCard({
       <AtelierThumb src={thumbUrl} alt={item.name} size={64} />
 
       <div className="min-w-0 flex-1" style={{ paddingTop: 1 }}>
-        {/* item name — Cormorant serif */}
-        <h3
-          className="text-[var(--color-text)] leading-snug break-words"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 17,
-            fontWeight: 400,
-            letterSpacing: "0.02em",
-            margin: 0,
-          }}
-        >
-          {item.name || "(名称未設定)"}
-        </h3>
+        {/* item name — Cormorant serif (+ REPLICA badge for replicas) */}
+        <div className="flex items-start gap-2">
+          <h3
+            className="flex-1 min-w-0 text-[var(--color-text)] leading-snug break-words"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 17,
+              fontWeight: 400,
+              letterSpacing: "0.02em",
+              margin: 0,
+            }}
+          >
+            {item.name || "(名称未設定)"}
+          </h3>
+          {item.isReplica && (
+            <span
+              className="shrink-0 inline-flex items-center mt-[3px]"
+              style={{
+                fontFamily: "var(--font-label)",
+                fontSize: 8.5,
+                fontWeight: 500,
+                letterSpacing: "0.22em",
+                padding: "1px 5px",
+                borderRadius: 0,
+                background: "transparent",
+                color: "var(--color-gold-deep)",
+                border: "1px solid var(--color-gold-deep)",
+              }}
+            >
+              REPLICA
+            </span>
+          )}
+        </div>
 
         {/* 参考価格 + period badge */}
         <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1 mt-[7px]">

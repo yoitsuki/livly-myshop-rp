@@ -65,6 +65,8 @@ export interface CreateItemInput {
   tagIds: string[];
   minPrice: number;
   priceEntries: PriceEntry[];
+  /** true = レプリカ、undefined = 原本 ( 既定 )。 */
+  isReplica?: boolean;
 }
 
 export async function createItem(input: CreateItemInput): Promise<string> {
@@ -89,6 +91,7 @@ export async function createItem(input: CreateItemInput): Promise<string> {
     tagIds: input.tagIds,
     minPrice: input.minPrice,
     priceEntries: input.priceEntries,
+    isReplica: input.isReplica,
     createdAt: now,
     updatedAt: now,
   };
@@ -109,6 +112,8 @@ export interface UpdateItemPatch {
   mainCrop?: ItemCropRecord;
   /** Removes the main image regardless of mainImageBlob. */
   clearMain?: boolean;
+  /** 切り替え可能。true / false / undefined を受ける ( undefined = 触らない ) */
+  isReplica?: boolean;
 }
 
 export async function updateItem(
@@ -151,6 +156,10 @@ export async function updateItem(
     if (patch.category !== undefined) next.category = patch.category;
     if (patch.tagIds !== undefined) next.tagIds = patch.tagIds;
     if (patch.minPrice !== undefined) next.minPrice = patch.minPrice;
+    if (patch.isReplica !== undefined) {
+      // false は undefined に畳む ( = 原本 )。compact が落として schema 維持。
+      next.isReplica = patch.isReplica === true ? true : undefined;
+    }
 
     next.updatedAt = Date.now();
     tx.set(ref, itemToFs(next));

@@ -22,6 +22,7 @@ interface FormState {
   category: string;
   tagIds: string[];
   minPrice: string;
+  isReplica: boolean;
 }
 
 type CropTarget = "icon" | "main" | null;
@@ -66,6 +67,7 @@ export default function EditItemPage({
       category: item.category,
       tagIds: item.tagIds,
       minPrice: String(item.minPrice ?? ""),
+      isReplica: item.isReplica === true,
     });
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -184,6 +186,7 @@ export default function EditItemPage({
         mainImageBlob: !pendingClearMain ? pendingMain?.blob : undefined,
         mainCrop: !pendingClearMain ? pendingMain?.crop : undefined,
         clearMain: pendingClearMain,
+        isReplica: form.isReplica,
       });
       router.replace(`/items/${i.id}`);
     } catch (e) {
@@ -295,6 +298,24 @@ export default function EditItemPage({
         selected={form.tagIds}
         onChange={(ids) => setForm({ ...form, tagIds: ids })}
       />
+
+      <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={form.isReplica}
+          onChange={(e) => setForm({ ...form, isReplica: e.target.checked })}
+          className="w-4 h-4 accent-[var(--color-gold-deep)]"
+        />
+        <span
+          className="text-[13px] text-[var(--color-text)]"
+          style={{ fontFamily: "var(--font-body)" }}
+        >
+          レプリカ
+        </span>
+        <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
+          ( 原本でない場合のみ ON )
+        </span>
+      </label>
 
       <div className="flex gap-2 pt-2">
         <Link href={`/items/${i.id}`} className="flex-1">

@@ -284,6 +284,25 @@
  *        /register?entryId=xxx は entry の inboxStoragePath 有無で
  *        戻り先を /register/inbox or /register/bulk に分岐。
  *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.18.0 レプリカ管理 ( = 同じ見た目の「原本」と「レプリカ」を分けて
+ *        記録・検索する )。`Item.isReplica?: boolean` 追加 ( true のみ
+ *        Firestore に書く / undefined = 原本 で schema を汚さない、
+ *        マイグレーション不要 )。/register と /items/[id]/edit のフォーム
+ *        にチェックボックスを追加。/register の bulk 編集モード ( = entryId
+ *        付き ) では BulkEntry に値が乗らないので checkbox を非表示に
+ *        し、登録後に編集ページで切替する運用に倒す。
+ *        ホームに 3 値セグメント (原本のみ / 両方 (既定) / レプリカのみ)
+ *        を追加。件数は q / category / tag フィルタを通した後の数を
+ *        表示するので、絞った状態でレプリカ内訳が一目で分かる。
+ *        詳細ページのタイトルブロックにアウトライン枠の `REPLICA` バッジ
+ *        ( gold-deep / Atelier label fontFamily / letterSpacing 0.22em )、
+ *        ItemCard にも一回り小さい同じバッジ。
+ *        bulk 行 / inbox 行への組み込みは UI 密度の観点で v1 では見送り
+ *        ( 必要なら登録後に詳細編集で設定する運用 )。
+ *        viewer 同期: `Item.isReplica?: boolean` の型と mappers の同更新、
+ *        ホームのセグメント、詳細 / カードのバッジ同期が必要 ( 別途指示書 )。
+ *        用語: ゲーム内呼称は「原本」 ( 「本物」ではない ) — UI / コミット /
+ *        コメントすべて「原本」表記で統一。
  * 0.17.5 タグ種別 `gacha` の表示名を「通常ガチャ」→「ニューマハラ
  *        ショップ」に変更 ( ゲーム内に「コラボガチャ」が別途存在する
  *        ことが判明し、二項対立的な「ガチャ vs ショップ」括りが成立
@@ -459,4 +478,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.17.5";
+export const APP_VERSION = "0.18.0";

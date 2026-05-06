@@ -173,15 +173,35 @@ export default function ItemDetailPage({
 
       {/* ── Title block ──────────────────────────────────────────── */}
       <div className="pt-4 pb-3">
-        {/* category — right-aligned, no rule */}
-        {i.category && (
-          <div className="flex justify-end mb-2">
-            <span
-              className="text-[var(--color-muted)]"
-              style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
-            >
-              {i.category}
-            </span>
+        {/* category + (optional) REPLICA badge — right-aligned, no rule */}
+        {(i.category || i.isReplica) && (
+          <div className="flex justify-end items-center gap-2 mb-2">
+            {i.isReplica && (
+              <span
+                className="inline-flex items-center"
+                style={{
+                  fontFamily: "var(--font-label)",
+                  fontSize: 9.5,
+                  fontWeight: 500,
+                  letterSpacing: "0.22em",
+                  padding: "2px 7px",
+                  borderRadius: 0,
+                  background: "transparent",
+                  color: "var(--color-gold-deep)",
+                  border: "1px solid var(--color-gold-deep)",
+                }}
+              >
+                REPLICA
+              </span>
+            )}
+            {i.category && (
+              <span
+                className="text-[var(--color-muted)]"
+                style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+              >
+                {i.category}
+              </span>
+            )}
           </div>
         )}
         {/* item name */}

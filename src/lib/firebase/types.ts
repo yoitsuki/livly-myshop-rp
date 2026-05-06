@@ -46,6 +46,9 @@ export interface Item {
   tagIds: string[];
   minPrice: number;
   priceEntries: PriceEntry[];
+  /** true = レプリカ。undefined / false = 原本 ( 既定 ) 。
+   *  ゲーム内呼称は「原本」 ( 「本物」ではない ) — UI も全部「原本」表記。 */
+  isReplica?: boolean;
   createdAt: number;
   updatedAt: number;
 }

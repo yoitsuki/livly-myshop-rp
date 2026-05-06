@@ -71,6 +71,7 @@ interface FormState {
   shopPhase: ShopPhase;
   shopAuto: boolean;
   priceSource: string;
+  isReplica: boolean;
 }
 
 const SOURCE_PRESETS: Array<{ value: string; label: string }> = [
@@ -91,6 +92,7 @@ const EMPTY_FORM: FormState = {
   shopPhase: "ongoing",
   shopAuto: false,
   priceSource: "",
+  isReplica: false,
 };
 
 type CropTarget = "icon" | "main" | null;
@@ -219,6 +221,9 @@ function RegisterPageInner() {
       shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
       shopAuto: bulkEntry.shopPeriod?.auto ?? false,
       priceSource: bulkEntry.priceSource ?? "",
+      // BulkEntry never carries isReplica — bulk / inbox flows always create
+      // 原本 by default; user opts in here explicitly.
+      isReplica: false,
     });
     setOcrDone(true); // fields are filled — the OCR button becomes 'rerun'
 
@@ -481,6 +486,7 @@ function RegisterPageInner() {
         tagIds: form.tagIds,
         minPrice: Number(form.minPrice) || 0,
         priceEntries: [initialEntry],
+        isReplica: form.isReplica || undefined,
       });
 
       router.push("/");
@@ -828,6 +834,31 @@ function RegisterPageInner() {
         selected={form.tagIds}
         onChange={(ids) => setForm({ ...form, tagIds: ids })}
       />
+
+      {/* Bulk-edit (entryId) doesn't persist isReplica back to the BulkEntry,
+          so the checkbox is hidden in that mode — user can flip it on the
+          per-item edit page after registration. */}
+      {!isBulk && (
+        <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={form.isReplica}
+            onChange={(e) =>
+              setForm({ ...form, isReplica: e.target.checked })
+            }
+            className="w-4 h-4 accent-[var(--color-gold-deep)]"
+          />
+          <span
+            className="text-[13px] text-[var(--color-text)]"
+            style={{ fontFamily: "var(--font-body)" }}
+          >
+            レプリカ
+          </span>
+          <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
+            ( 原本でない場合のみ ON )
+          </span>
+        </label>
+      )}
 
       <div className="flex gap-2 pt-2">
         <Button

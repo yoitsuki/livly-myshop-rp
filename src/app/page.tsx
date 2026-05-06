@@ -12,11 +12,13 @@ import { Button } from "@/components/ui";
 import Link from "next/link";
 
 type SortKey = "checkedAt" | "createdAt" | "price";
+type ReplicaFilter = "original" | "all" | "replica";
 
 export default function Home() {
   const [q, setQ] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeTagIds, setActiveTagIds] = useState<string[]>([]);
+  const [replicaFilter, setReplicaFilter] = useState<ReplicaFilter>("all");
   const [sort, setSort] = useState<SortKey>("checkedAt");
 
   const items = useItems();
@@ -36,7 +38,10 @@ export default function Home() {
     return map;
   }, [items]);
 
-  const filtered = useMemo(() => {
+  /** Items after q / category / tag filters, before the replica segment.
+   *  Used both as the source for the replica counts (so the numbers reflect
+   *  the current narrowed-down view) and as the input to the replica filter. */
+  const preReplicaFiltered = useMemo(() => {
     let list = items ?? [];
     if (q.trim()) {
       const needle = q.trim().toLowerCase();
@@ -49,6 +54,26 @@ export default function Home() {
     }
     if (activeTagIds.length > 0) {
       list = list.filter((i) => activeTagIds.every((t) => i.tagIds.includes(t)));
+    }
+    return list;
+  }, [items, q, activeCategory, activeTagIds]);
+
+  const replicaCounts = useMemo(() => {
+    let original = 0;
+    let replica = 0;
+    for (const i of preReplicaFiltered) {
+      if (i.isReplica === true) replica++;
+      else original++;
+    }
+    return { original, all: original + replica, replica };
+  }, [preReplicaFiltered]);
+
+  const filtered = useMemo(() => {
+    let list = preReplicaFiltered;
+    if (replicaFilter === "original") {
+      list = list.filter((i) => !i.isReplica);
+    } else if (replicaFilter === "replica") {
+      list = list.filter((i) => i.isReplica === true);
     }
     const sorted = [...list];
     if (sort === "checkedAt") {
@@ -67,7 +92,7 @@ export default function Home() {
       );
     }
     return sorted;
-  }, [items, q, activeCategory, activeTagIds, sort]);
+  }, [preReplicaFiltered, replicaFilter, sort]);
 
   const totalCount = items?.length ?? 0;
 
@@ -146,6 +171,31 @@ export default function Home() {
         </div>
       )}
 
+      {/* 原本 / レプリカ 3 値セグメント — 「両方」既定。 在庫があれば常に
+          表示 ( アイテム 0 件で隠す )。 */}
+      {totalCount > 0 && (
+        <div className="flex gap-0 px-1 pt-1">
+          <ReplicaSegmentButton
+            label="原本のみ"
+            count={replicaCounts.original}
+            active={replicaFilter === "original"}
+            onClick={() => setReplicaFilter("original")}
+          />
+          <ReplicaSegmentButton
+            label="両方"
+            count={replicaCounts.all}
+            active={replicaFilter === "all"}
+            onClick={() => setReplicaFilter("all")}
+          />
+          <ReplicaSegmentButton
+            label="レプリカのみ"
+            count={replicaCounts.replica}
+            active={replicaFilter === "replica"}
+            onClick={() => setReplicaFilter("replica")}
+          />
+        </div>
+      )}
+
       <div
         className="flex items-center justify-between px-1 pt-1 text-[var(--color-muted)]"
         style={{ fontFamily: "var(--font-label)", fontSize: 11.5 }}
@@ -204,6 +254,40 @@ function CategoryChip({
       style={{ height: 30, borderRadius: 0, fontFamily: "var(--font-body)" }}
     >
       {label}
+    </button>
+  );
+}
+
+/** 3 値セグメントの 1 ボタン。隣り合うボタンと border が 2px 線にならない
+ *  よう左隣との重なりを `-ml-px` で吸収する Atelier セグメント。 */
+function ReplicaSegmentButton({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 px-2 h-8 text-[11.5px] border inline-flex items-center justify-center gap-1 transition-colors -ml-px first:ml-0 ${
+        active
+          ? "bg-gold text-white border-gold relative z-10"
+          : "bg-white text-text/80 border-[var(--color-line)] hover:border-[var(--color-line-strong)]"
+      }`}
+      style={{ borderRadius: 0, fontFamily: "var(--font-body)" }}
+    >
+      <span>{label}</span>
+      <span
+        className={`tabular-nums ${active ? "text-white/80" : "text-[var(--color-muted)]"}`}
+        style={{ fontSize: 10 }}
+      >
+        {count}
+      </span>
     </button>
   );
 }
