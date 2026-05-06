@@ -272,6 +272,18 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.17.2 受信BOX のフリーズ修正 + Claude API 呼出の永続キャッシュ。
+ *        (1) list 取得直後に loading=false に落とす。OCR ループは
+ *        背景に回し、ユーザーは即座に行を見られる ( 行ごとに Loader2 )。
+ *        (2) `customMetadata.cachedOcr` に OCR 結果を JSON で書き戻し、
+ *        次回以降は API 呼出をスキップ。listInboxFiles の getMetadata
+ *        で同時取得するので余計な往復なし。
+ *        (3) BulkRow の「未入力」赤字を processing 中は出さないよう修正
+ *        ( 解析待ちの行で未入力警告が出ていたバグ )。
+ *        (4) 「解析中 N 件」インジケータをカウント表示の隣に追加。
+ *        (5) seenPathsRef で重複作成防止 ( 連打 + 削除との競合対策 )。
+ *        DB は使わず Storage に同居 — ファイル削除時に cache も自動消滅、
+ *        Firestore の余計な collection が増えないため。
  * 0.17.1 storage.rules の inbox `allow create` に size + contentType
  *        の hard limit を追加 (10 MiB 以下 / image/(jpeg|png|webp) のみ)。
  *        viewer 側でも client-side で同等のチェックをしているが、
@@ -406,4 +418,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.17.1";
+export const APP_VERSION = "0.17.2";

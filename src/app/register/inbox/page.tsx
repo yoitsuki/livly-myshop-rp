@@ -19,6 +19,8 @@ import {
   deleteInboxFile,
   fetchInboxBlob,
   listInboxFiles,
+  readOcrCache,
+  writeOcrCache,
   type InboxFile,
 } from "@/lib/firebase/inbox";
 import { SEED_PRESETS, type CropPreset } from "@/lib/preset";
@@ -49,8 +51,13 @@ export default function InboxRegisterPage() {
   const [entries, setEntries] = useState<BulkEntry[]>([]);
   const [meta, setMeta] = useState<Record<string, InboxRowMeta>>({});
   const blobsRef = useRef<Map<string, Blob>>(new Map());
+  // Tracks every Storage path we've already turned into a row.  Synchronously
+  // updated so back-to-back refresh() calls don't double-create entries.
+  const seenPathsRef = useRef<Set<string>>(new Set());
 
   const [loading, setLoading] = useState(false);
+  /** How many rows are still going through processBulkSource. */
+  const [processingCount, setProcessingCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [info, setInfo] = useState<string | undefined>();
@@ -73,6 +80,8 @@ export default function InboxRegisterPage() {
   const removeLocalEntry = (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     setMeta((prev) => {
+      const path = prev[id]?.path;
+      if (path) seenPathsRef.current.delete(path);
       const next = { ...prev };
       delete next[id];
       return next;
@@ -80,78 +89,122 @@ export default function InboxRegisterPage() {
     blobsRef.current.delete(id);
   };
 
+  /** Process one row.  Reads the OCR cache first; only calls Claude when the
+   *  cache is empty, then writes the result back so the next page load is
+   *  free.  Updates the row's status as side-effects. */
+  const processRow = async (entry: BulkEntry, file: InboxFile) => {
+    try {
+      const blob = await fetchInboxBlob(file.path);
+      blobsRef.current.set(entry.id, blob);
+
+      const cached = readOcrCache(file);
+      const patch = await processBulkSource(blob, presets, {
+        skipOcr: cached !== null,
+      });
+
+      if (cached) {
+        if (cached.name !== undefined) patch.name = cached.name;
+        if (cached.category !== undefined) patch.category = cached.category;
+        if (cached.minPrice !== undefined) patch.minPrice = cached.minPrice;
+        if (cached.refPriceMin !== undefined)
+          patch.refPriceMin = cached.refPriceMin;
+        if (cached.refPriceMax !== undefined)
+          patch.refPriceMax = cached.refPriceMax;
+      }
+
+      const draft = { ...entry, ...patch, status: "ready" as const };
+      const valid = bulkEntryMissingFields(draft).length === 0;
+      updateEntry(entry.id, {
+        ...patch,
+        status: "ready",
+        checked: valid,
+      });
+
+      // Persist OCR results.  Always write on a fresh call (even when fields
+      // are empty) so we never re-bill the API for the same file.  User can
+      // delete + re-upload to retry if Claude misread.
+      if (!cached) {
+        try {
+          await writeOcrCache(file.path, {
+            name: patch.name,
+            category: patch.category,
+            minPrice: patch.minPrice,
+            refPriceMin: patch.refPriceMin,
+            refPriceMax: patch.refPriceMax,
+            cachedAt: Date.now(),
+          });
+        } catch (e) {
+          console.warn("OCR cache write failed:", e);
+        }
+      }
+    } catch (e) {
+      updateEntry(entry.id, {
+        status: "failed",
+        error: e instanceof Error ? e.message : "処理に失敗しました",
+      });
+    } finally {
+      setProcessingCount((c) => Math.max(0, c - 1));
+    }
+  };
+
   const refresh = async () => {
     setError(undefined);
     setInfo(undefined);
     setLoading(true);
+
+    let listed: InboxFile[];
     try {
-      const files = await listInboxFiles();
-      const knownPaths = new Set(Object.values(meta).map((m) => m.path));
-      const newFiles = files.filter((f) => !knownPaths.has(f.path));
-
-      if (newFiles.length === 0 && files.length === entries.length) {
-        setInfo("新着なし");
-      }
-
-      // Add fresh entries up-front in processing state.
-      const created: { entry: BulkEntry; file: InboxFile }[] = newFiles.map(
-        (f) => ({
-          entry: {
-            id: uid(),
-            fileName: f.name,
-            fileSize: f.size,
-            status: "processing",
-            name: "",
-            category: "",
-            tagIds: [],
-            minPrice: 0,
-            refPriceMin: 0,
-            refPriceMax: 0,
-            checkedAt: f.uploadedAt,
-            checked: false,
-          },
-          file: f,
-        }),
-      );
-
-      if (created.length === 0) {
-        return;
-      }
-
-      setEntries((prev) => [...prev, ...created.map((c) => c.entry)]);
-      setMeta((prev) => {
-        const next = { ...prev };
-        created.forEach(({ entry, file }) => {
-          next[entry.id] = { path: file.path };
-        });
-        return next;
-      });
-
-      // Sequentially fetch + process (tesseract worker shared, Claude API
-      // rate-limited; same pattern as /register/bulk).
-      for (const { entry, file } of created) {
-        try {
-          const blob = await fetchInboxBlob(file.path);
-          blobsRef.current.set(entry.id, blob);
-          const patch = await processBulkSource(blob, presets);
-          const draft = { ...entry, ...patch, status: "ready" as const };
-          const valid = bulkEntryMissingFields(draft).length === 0;
-          updateEntry(entry.id, {
-            ...patch,
-            status: "ready",
-            checked: valid,
-          });
-        } catch (e) {
-          updateEntry(entry.id, {
-            status: "failed",
-            error: e instanceof Error ? e.message : "処理に失敗しました",
-          });
-        }
-      }
+      listed = await listInboxFiles();
     } catch (e) {
       setError(e instanceof Error ? e.message : "受信BOX の取得に失敗しました");
-    } finally {
       setLoading(false);
+      return;
+    }
+
+    const newFiles = listed.filter((f) => !seenPathsRef.current.has(f.path));
+
+    if (newFiles.length === 0) {
+      if (listed.length === entries.length) setInfo("新着なし");
+      setLoading(false);
+      return;
+    }
+
+    const created: { entry: BulkEntry; file: InboxFile }[] = newFiles.map(
+      (f) => ({
+        entry: {
+          id: uid(),
+          fileName: f.name,
+          fileSize: f.size,
+          status: "processing",
+          name: "",
+          category: "",
+          tagIds: [],
+          minPrice: 0,
+          refPriceMin: 0,
+          refPriceMax: 0,
+          checkedAt: f.uploadedAt,
+          checked: false,
+        },
+        file: f,
+      }),
+    );
+
+    setEntries((prev) => [...prev, ...created.map((c) => c.entry)]);
+    setMeta((prev) => {
+      const next = { ...prev };
+      created.forEach(({ entry, file }) => {
+        next[entry.id] = { path: file.path };
+      });
+      return next;
+    });
+    created.forEach(({ file }) => seenPathsRef.current.add(file.path));
+    setProcessingCount((c) => c + created.length);
+    // List is in the DOM — drop the page-level "loading" before the slow
+    // OCR loop starts so the user sees rows + per-row spinners.
+    setLoading(false);
+
+    for (const item of created) {
+      await processRow(item.entry, item.file);
     }
   };
 
@@ -315,6 +368,11 @@ export default function InboxRegisterPage() {
           style={{ fontFamily: "var(--font-label)", letterSpacing: "0.08em" }}
         >
           {totalCount} 件 / 登録済み {savedCount} 件
+          {processingCount > 0 && (
+            <span className="ml-2 text-[var(--color-gold-deep)]">
+              ・ 解析中 {processingCount} 件
+            </span>
+          )}
         </div>
       )}
 

@@ -196,7 +196,9 @@ export default function BulkRow({
         </select>
       </div>
 
-      {(failed || (!saved && missing.length > 0) || entry.error) && (
+      {(failed ||
+        (!processing && !saved && missing.length > 0) ||
+        entry.error) && (
         <div className="ml-[34px] mt-2 flex items-start gap-1.5 text-[11px] text-[var(--color-danger)]">
           <AlertTriangle size={12} className="mt-[2px] shrink-0" />
           <span className="leading-snug">

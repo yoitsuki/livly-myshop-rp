@@ -7,6 +7,7 @@ import {
   getMetadata,
   listAll,
   ref,
+  updateMetadata,
 } from "firebase/storage";
 import { storage } from "./client";
 
@@ -22,9 +23,26 @@ export interface InboxFile {
   /** Stored size in bytes. */
   size: number;
   contentType?: string;
+  /**
+   * Custom metadata as written by the viewer (originalLastModified) and admin
+   * (cachedOcr). Returned alongside the file so the inbox page can read the
+   * cache without an extra round-trip per row.
+   */
+  customMetadata?: Record<string, string>;
 }
 
 const INBOX_PREFIX = "inbox";
+const OCR_CACHE_KEY = "cachedOcr";
+
+/** Shape of the JSON we serialise into customMetadata.cachedOcr. */
+export interface InboxOcrCache {
+  name?: string;
+  category?: string;
+  minPrice?: number;
+  refPriceMin?: number;
+  refPriceMax?: number;
+  cachedAt: number;
+}
 
 /** List every object under `inbox/`, newest-first. */
 export async function listInboxFiles(): Promise<InboxFile[]> {
@@ -47,6 +65,7 @@ export async function listInboxFiles(): Promise<InboxFile[]> {
         uploadedAt,
         size: meta.size,
         contentType: meta.contentType,
+        customMetadata: meta.customMetadata ?? undefined,
       } satisfies InboxFile;
     }),
   );
@@ -64,3 +83,29 @@ export async function fetchInboxBlob(path: string): Promise<Blob> {
 export async function deleteInboxFile(path: string): Promise<void> {
   await deleteObject(ref(storage(), path));
 }
+
+/** Read the OCR cache that we previously wrote into customMetadata. */
+export function readOcrCache(file: InboxFile): InboxOcrCache | null {
+  const raw = file.customMetadata?.[OCR_CACHE_KEY];
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as InboxOcrCache;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist OCR results onto the inbox object so subsequent loads can skip the
+ * Claude API call. updateMetadata MERGES customMetadata, so unrelated keys
+ * (e.g. originalLastModified from the viewer) are preserved.
+ */
+export async function writeOcrCache(
+  path: string,
+  value: InboxOcrCache,
+): Promise<void> {
+  await updateMetadata(ref(storage(), path), {
+    customMetadata: { [OCR_CACHE_KEY]: JSON.stringify(value) },
+  });
+}
+
