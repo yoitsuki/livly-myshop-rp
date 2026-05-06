@@ -284,6 +284,31 @@
  *        /register?entryId=xxx は entry の inboxStoragePath 有無で
  *        戻り先を /register/inbox or /register/bulk に分岐。
  *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.18.3 詳細ページ ( /items/[id] ) のタイトルブロック左に 64px の
+ *        corner-tick `AtelierThumb` を追加。viewer は v0.1.0 から既に
+ *        この構成で、admin だけアイコンが出ていない状態だったので
+ *        viewer parity を取った。`iconUrl` 未設定時は ImageIcon
+ *        プレースホルダ。Title block を `flex gap-3.5` にし、テキスト側
+ *        を `flex-1 min-w-0` でラップ ( category / REPLICA / 名前の順序
+ *        や右寄せはこれまで通り保つ )。AtelierHero / 編集 / 削除 / 価格
+ *        行・メタ表示は全て触らず温存。
+ * 0.18.2 ホームのフィルタ UI を「絞込み」パネル化して再構成。SearchBar
+ *        の右に SlidersHorizontal アイコン付き「絞込み」ボタンを置き、
+ *        押すまでパネルは非表示 ( 既定で閉じる ) 。アクティブフィルタ
+ *        件数を絞込みボタン右上のバッジに出すので、パネルを閉じたまま
+ *        でも "フィルタ中" が分かる ( q は SearchBar 自体に表示済みなので
+ *        除外 )。パネル内は 原本・レプリカ → カテゴリ → タグ の順。
+ *        タグは TYPE_ORDER 別の TagSection ( ChevronRight rotate-90 で
+ *        折り畳み、既定で全部閉じる ) に変更。各セクション見出しの右
+ *        端に「全て選択 ⇄ 全て解除」 ( 全タグ active なら解除、それ
+ *        以外は選択 ) を 1 ボタンで切替表示 + section 内の active 件数
+ *        ( N/M ) を表示。`<button>` ネスト不可なので「全て選択/解除」
+ *        側は `role="button" tabIndex={0}` + Enter/Space ハンドラで代用。
+ *        ロジック ( tagUsage / replicaCounts / preReplicaFiltered /
+ *        filtered の useMemo チェイン ) は触らず UI だけ再構成。
+ *        SEED 58 件タグ + カテゴリ + レプリカで埋まっていたファースト
+ *        ビューが SearchBar + 件数 + 一覧だけになり、密度問題が解消。
+ *        viewer 同期も同じ構造で必要 ( 別途指示書あり )。
  * 0.18.1 0.18.0 のレプリカ表示を実機確認の上で微調整。
  *        (1) ホームの 3 値セグメントの上に「原本・レプリカ」見出し
  *        ( タグセクションと同じ Atelier label スタイル ) を追加。
@@ -486,4 +511,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.18.1";
+export const APP_VERSION = "0.18.3";

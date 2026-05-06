@@ -105,9 +105,19 @@ function isAdmin() {
 
 `src/lib/version.ts` の `APP_VERSION` を更新する運用。Drawer 下部に表示される。
 
-最新: **0.16.1**
+最新: **0.18.3**
 
 直近のチェンジログ要約:
+- **0.18.3 — 詳細ページ タイトルブロック左に 64px AtelierThumb 追加 ( viewer parity )**。viewer は v0.1.0 から既にこの構成で、admin だけアイコンが出ていない状態だった。Title block を `flex gap-3.5` にし、左に 64px の corner-tick `AtelierThumb`、右側 ( category / REPLICA / 名前の順序や右寄せ ) はこれまで通り `flex-1 min-w-0` でラップ。`iconUrl` 未設定時は `ImageIcon` プレースホルダ。AtelierHero / 編集 / 削除 / 価格行・メタ表示は全て温存。
+- **0.18.2 — ホームのフィルタ UI を「絞込み」パネル化して再構成**。SearchBar の右に SlidersHorizontal アイコン付き「絞込み」ボタンを置き、押すまでパネルは非表示 ( 既定で閉じる )。アクティブフィルタ件数を絞込みボタン右上のバッジに出すので、パネルを閉じたままでも "フィルタ中" が分かる ( q は SearchBar 自体に表示済みなので除外 )。パネル内は 原本・レプリカ → カテゴリ → タグ の順。タグは TYPE_ORDER 別の `TagSection` ( ChevronRight rotate-90 で折り畳み、既定で全部閉じる ) に変更。各セクション見出しの右端に「全て選択 ⇄ 全て解除」 ( 全タグ active なら解除、それ以外は選択 ) を 1 ボタンで切替表示 + section 内の active 件数 ( N/M ) を表示。`<button>` ネスト不可なので「全て選択/解除」側は `role="button" tabIndex={0}` + Enter/Space ハンドラで代用。ロジック ( `tagUsage` / `replicaCounts` / `preReplicaFiltered` / `filtered` の useMemo チェイン ) は触らず UI だけ再構成。SEED 58 件タグ + カテゴリ + レプリカで埋まっていたファーストビューが SearchBar + 件数 + 一覧だけになり、密度問題が解消。viewer 同期も同じ構造で必要 ( チャット内で別途指示書を提示済み — 履歴破棄方針なので docs にコミットしていない ) 。
+- **0.18.1 — レプリカ表示の微調整**。ホームの 3 値セグメントに「原本・レプリカ」見出しを追加 ( タグセクションと同じ Atelier label スタイル ) 、ボタン順を 両方 → 原本のみ → レプリカのみ ( 既定が左端 ) に変更、`ItemCard` の REPLICA バッジを `<h3>` 横から **icon thumb の下** に移動 ( 画像とアイコンの関連性を明確に )。詳細ページのバッジ位置 ( タイトル右 ) は変更しない ( ユーザー指示 )。
+- **0.18.0 — レプリカ管理**。`Item.isReplica?: boolean` を導入 ( true のみ Firestore に書く / undefined = 原本 で schema を汚さない、マイグレーション不要 ) 。/register と /items/[id]/edit のフォームにチェックボックス追加。/register の bulk 編集モード ( = entryId 付き ) では BulkEntry に値が乗らないので checkbox を非表示にし、登録後に編集ページで切替する運用に倒す。ホームに 3 値セグメント (原本のみ / 両方 (既定) / レプリカのみ) を追加。件数は q / category / tag フィルタを通した後の数を表示するので、絞った状態でレプリカ内訳が一目で分かる。詳細ページのタイトルブロックにアウトライン枠の REPLICA バッジ ( gold-deep / Atelier label fontFamily / letterSpacing 0.22em )、`ItemCard` にも一回り小さい同じバッジ。bulk 行 / inbox 行への組み込みは UI 密度の観点で v1 では見送り。**ゲーム内呼称は「原本」 ( 「本物」ではない ) — UI / コミット / コメント全て「原本」表記で統一**。
+- **0.17.5 — タグ種別 `gacha` 表示名変更**。「通常ガチャ」→「ニューマハラショップ」 ( ゲーム内に「コラボガチャ」が別途存在することが判明し、二項対立的な「ガチャ vs ショップ」括りが成立しなくなったため )。データ側の type id `gacha` は触らず、`TYPE_LABEL.gacha` と /register・/items/[id]/edit のドロップダウン option (短縮形「ニューマハラ」) のみ更新。
+- **0.17.4 — 受信BOX 行から /register への個別編集導線を復活**。inbox の状態を `BulkDraftProvider` に統合し、`BulkEntry` に `inboxStoragePath` (源ファイルのパス) と `savedAt` (登録済みフラグ) を追加。inbox ページは `entries.filter(e => e.inboxStoragePath)`、bulk ページは `entries.filter(e => !e.inboxStoragePath)` で表示 + 保存ループ ( 互いに干渉しない )。URL 契約も整理: 旧 `?bulkIndex=N` は legacy として残しつつ、新規 editHref は `?entryId=xxx` ( id 直接参照、reorder 安全 )。/register?entryId=xxx は entry の inboxStoragePath 有無で戻り先を /register/inbox or /register/bulk に分岐し、ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+- **0.17.3 — 受信BOX iOS Safari 無言フリーズの対症修正**。Storage SDK の `getBlob()` は cross-origin (Vercel) 上の iOS Safari で hang することがある既知挙動。`fetch(file.url)` + AbortController (45 秒タイムアウト) に置換。CORS / 4xx / ネットワーク失敗は TypeError として catch に到達し「処理失敗: ...」に倒れる ( = 無言 hang しない )。各ステップに console.log/error を入れた。
+- **0.17.2 — 受信BOX のフリーズ修正 + Claude API 呼出の永続キャッシュ**。list 取得直後に `loading=false` に落とし、OCR ループは背景に回す ( 行ごとに Loader2 )。`customMetadata.cachedOcr` に OCR 結果を JSON で書き戻し、次回以降は API 呼出をスキップ ( ファイル削除時に cache も自動消滅 )。「未入力」赤字を processing 中は出さないよう修正。「解析中 N 件」インジケータ追加。`seenPathsRef` で重複作成防止。
+- **0.17.1 — `storage.rules` の inbox `allow create` に hard limit 追加**。10 MiB 以下 / `image/(jpeg|png|webp)` のみ。viewer 側でも client-side で同等のチェックをしているが、改変クライアントから回避可能なのでルール層で二重に弾く。`matches()` は部分一致なので `^...$` で anchor 必須。Console から手動デプロイが必要。
+- **0.17.0 — 受信BOX**。viewer から Storage `inbox/` に upload された画像を、admin の /register/inbox で一覧 + bulk と同じ OCR/プリセット/クロップで取り込めるように。bulk と違い、登録成功しても行は消えず「登録済み」バッジを出してチェック不可化 — 明示的に × を押した時だけ Storage からも削除 ( 削除確認は ConfirmDialog )。`storage.rules` に inbox 用 rule を追加 (public create + read / admin-only delete)。bulk の保存ロジックを `src/lib/bulk/save.ts` に、行 UI を `src/components/BulkRow.tsx` に切り出して bulk と inbox で共有。FAB ポップオーバーと Drawer サブメニューにも 受信BOX エントリを追加。viewer 側の upload 実装はこのリポジトリでは提供せず、viewer リポジトリ側で `uploadBytes(ref(storage, 'inbox/<id>.jpg'), blob)` するだけで良い。
 - **0.16.1 — 同名アイテムの検知 + マージ**。`/register` で同名アイテムが既にあると `MergeDialog` を出す: 既存にどう反映するか (新期間の追加 = ADD / 同 yearMonth の更新 = UPDATE) を見出しで示しつつ、`✅ メイン画像を更新する` チェック (デフォルトは新期間が既存の最新 yearMonth 以上の時のみ ON) で main 画像差し替えも選べる。`/register/bulk` ではサイレントにマージ — 新期間がそのアイテム内で最新なら main 画像も自動上書き、そうでなければ既存画像を保持。`repo.mergeItemPriceEntry` が「同 yearMonth → 新しい方で置き換え (1 件扱い)」の主処理 + `isNewestYearMonth` ヘルパで判定。アイコンは触らない。
 - **0.16.0 — タグの拡張 + シード読み込み**。`TagType` を 5 → 7 種化 (`nuts` warm dusty lavender / `collab` muted olive を新設、マハラナッツ系・コラボショップ系を独立カテゴリ化)。`src/lib/seedTags.ts` に `SEED_TAGS` (58 件: グレショ 11 / バザール 12 / ナッツ 3 / コラボ 3 / クリエイターズ 29、各カテゴリ新しい順) を同梱。`repo.seedTagsIfMissing()` が既存タグ名と突き合わせて未登録分だけを 1 件の `writeBatch` で投入する idempotent な実装 — `displayOrder = SEED_TAGS.indexOf(t)` を埋めて並び順を保つ。/tags ページの最下部に `Sparkles` アイコン付き "シード (58 件) を読み込む" ボタン。ホームのタグフィルタチップ列を `TYPE_ORDER` で section 化し、各セクションに Atelier `--font-label` の小見出し (tracked-out uppercase) を載せた。register / item edit の type select にも nuts / collab option を追加。
 - **0.15.0 系 — タグ分類のリファクタ + ドラッグ並び替え + bulk の細部**。0.15.0 で `TagType` を 4 → 5 種に再分割 (ガチャ/バザール/ショップ/その他 → 通常ガチャ/バザール/グレデリーショップ/リヴリークリエイターズウィーク/その他)、Atelier-tinted の desaturated 5 色パレットを導入。共通モジュール `src/lib/tagTypes.ts` に `TYPE_LABEL` / `TYPE_ORDER` / `TYPE_COLORS` / `normalizeTagType` を集約。`Tag` に `displayOrder?: number` を追加し、`@dnd-kit/*` で /tags ページのグループ内ドラッグ並び替えを実装 (`reorderTags()` の `writeBatch`)。`useTags` のソートが `(TYPE_ORDER, displayOrder asc nulls last, createdAt asc)` の安定ソートに。bulk 行で tagIds 空の時に「タグ未設定」 dashed バッジ。0.15.1 で詳細ページ EDIT ボタンを上部右寄せ → 0.15.3 で横幅いっぱいに拡張。0.15.2 で旧 'shop' → 'gradely' の自動マイグレーションパスを削除 (移行完了)。
@@ -396,18 +406,19 @@ UI 変更を含む場合は dev サーバ起動 + ブラウザで操作確認す
 
 v0.13.0 で **Phase 1 + Phase 2 (Firebase 移行)** 完了。**ユーザー曰く「いったん終わり」**。
 v0.17.5 までで受信BOX (viewer→admin 連携) + タグ周りの整理がひと段落。
-現在は **レプリカ管理** と **タグフィルタ密度改善** に着手予定。
+v0.18.0–0.18.3 で **レプリカ管理** + **ホームのフィルタ UI 再構成 ( 絞込みパネル化 )** + **詳細タイトル左の 64px AtelierThumb 追加 ( viewer parity )** が完了。
+現在は admin 側で目立つ TODO は無く、要望待ち。
 
 ### 計画書 §10 の残フェーズ
-- **Phase 3 — viewer リポジトリ scaffold**: 公開閲覧用の `livly-myshop-viewer` リポジトリを新規作成。同じ Firebase プロジェクトを向け、ホーム + 詳細だけの read-only Next.js。書込みコードを bundle に含めない。設計コピー (globals.css / layout / 主要 components / lib のサブセット) → 同じデザインで開始 → 以後は viewer 側で独自進化 OK。**現在 viewer リポジトリは存在し、admin と並走で更新中**。タグ系の同期は 0.17.5 まで反映済み (ユーザー報告)。受信BOX 連携の uploadBytes 実装も完了済み。
+- **Phase 3 — viewer リポジトリ scaffold**: 公開閲覧用の `livly-myshop-viewer` リポジトリを新規作成。同じ Firebase プロジェクトを向け、ホーム + 詳細だけの read-only Next.js。書込みコードを bundle に含めない。設計コピー (globals.css / layout / 主要 components / lib のサブセット) → 同じデザインで開始 → 以後は viewer 側で独自進化 OK。**現在 viewer リポジトリは存在し、admin と並走で更新中**。タグ系の同期は 0.17.5 まで反映済み (ユーザー報告)。受信BOX 連携の uploadBytes 実装も完了済み。**0.18.0–0.18.3 のレプリカ + ホームフィルタ再構成については viewer 同期が必要** ( 指示書はチャットでユーザーに渡し、履歴破棄方針なので docs にはコミットしていない )。
 - **Phase 4 — viewer の仕上げ**: 404 ページ、OG meta、`next/image` 切替、PWA 微調整、production deploy
 
-### 現在着手中 ( 仕様書あり )
-- **レプリカ管理** — `docs/SPEC_REPLICA.md` 参照。Item に `isReplica?: boolean` を追加し、登録/編集フォームのチェックボックス、ホームの 3 値セグメントフィルタ ( 原本のみ / 両方 / レプリカのみ )、詳細カードの `REPLICA` バッジを実装する。**ゲーム内呼称は「原本」 ( 「本物」ではない ) — UI ラベル / コミット / コメント全部「原本」表記で統一**。
-- **タグフィルタ密度改善** — `docs/SPEC_TAG_FILTER_DENSITY.md` 参照。0.16.3 の件数表示 + 0 件非表示までで止まっていたが、SEED 58 件中アクティブタグが多くてもファーストビューが埋まる問題が残っている。各セクションを折り畳み可能にし、デフォルトは閉じる ( ただし現在選択中のタグを含むセクションだけ自動展開 ) という方向で仕様化。
+### 完了済み ( 直近 ) — 仕様書は履歴用に残っている
+- **レプリカ管理** ( v0.18.0 / 0.18.1 ) — `docs/SPEC_REPLICA.md` の方針通り Item に `isReplica?: boolean` 追加 + ホーム 3 値セグメント + 詳細 / `ItemCard` の REPLICA バッジを実装済み。詳細位置は仕様書から微調整 ( タイトル右寄せ )、`ItemCard` バッジは icon thumb の下に配置する形に。**ゲーム内呼称は「原本」 ( 「本物」ではない ) — UI ラベル / コミット / コメント全部「原本」表記で統一**。
+- **ホームのフィルタ UI 再構成** ( v0.18.2 ) — `docs/SPEC_TAG_FILTER_DENSITY.md` の auto-expand 案は **採用せず** 、より大きな再構成 ( SearchBar の右に「絞込み」ボタン、押下でパネルがインライン展開、パネル内に 原本・レプリカ → カテゴリ → タグ ( 折り畳み + 全て選択/解除 ) を配置 ) に倒した。**SPEC_TAG_FILTER_DENSITY.md の内容は破棄** ( 履歴目的で残しているだけで、現状とは食い違う点に注意 )。
+- **詳細タイトル左の 64px AtelierThumb** ( v0.18.3 ) — viewer parity を取るための追加。
 
 ### 細かい改善候補
-- **ホームのタグフィルタ密度** — 上記「現在着手中」に移動。
 - **register / edit の画面タイトルブロック** — 詳細ページのような editorial title block を入れると一貫感が出る
 - **Atelier 関連 section 化** — register / edit のフォームを `MARKET REFERENCE` 風セクションヘッダで区切る
 - 茶ヘッダプリセットの **メイン画像矩形** が未指定のままプレースホルダ
