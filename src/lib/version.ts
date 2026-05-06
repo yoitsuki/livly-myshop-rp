@@ -272,6 +272,13 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.16.3 ホームのタグフィルタチップに件数を表示し、0 件のタグ
+ *        は非表示。タグ多数 (SEED 58 件投入後) でファーストビュー
+ *        が埋まる問題への第一手。各チップは `#name N` の形で
+ *        小さな件数を末尾に並べ、active の時は半透明の白で
+ *        馴染ませる。0 件タグはセクションごと隠れるが、選択中
+ *        (activeTagIds に入っている) タグだけは 0 件でも残し、
+ *        解除できる導線を確保。
  * 0.16.2 削除確認ダイアログを共通化 + bulk × に確認を追加。
  *        src/components/ui/ConfirmDialog.tsx を primitives として
  *        切り出し、/register/bulk 行の × ボタン、/tags と
@@ -378,4 +385,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.16.2";
+export const APP_VERSION = "0.16.3";

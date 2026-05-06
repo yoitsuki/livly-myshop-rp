@@ -28,6 +28,14 @@ export default function Home() {
     return Array.from(set).sort();
   }, [items]);
 
+  const tagUsage = useMemo(() => {
+    const map = new Map<string, number>();
+    items?.forEach((i) => {
+      i.tagIds.forEach((id) => map.set(id, (map.get(id) ?? 0) + 1));
+    });
+    return map;
+  }, [items]);
+
   const filtered = useMemo(() => {
     let list = items ?? [];
     if (q.trim()) {
@@ -88,7 +96,11 @@ export default function Home() {
       {tags && tags.length > 0 && (
         <div className="space-y-2.5">
           {TYPE_ORDER.map((type) => {
-            const group = tags.filter((t) => t.type === type);
+            const group = tags.filter(
+              (t) =>
+                t.type === type &&
+                ((tagUsage.get(t.id) ?? 0) > 0 || activeTagIds.includes(t.id)),
+            );
             if (group.length === 0) return null;
             return (
               <section key={type} className="space-y-1">
@@ -101,6 +113,7 @@ export default function Home() {
                 <div className="flex gap-1.5 flex-wrap">
                   {group.map((t) => {
                     const on = activeTagIds.includes(t.id);
+                    const count = tagUsage.get(t.id) ?? 0;
                     return (
                       <button
                         key={t.id}
@@ -109,14 +122,20 @@ export default function Home() {
                             on ? prev.filter((x) => x !== t.id) : [...prev, t.id]
                           )
                         }
-                        className={`px-2.5 h-7 text-[12px] border transition-colors ${
+                        className={`px-2.5 h-7 text-[12px] border transition-colors inline-flex items-center gap-1 ${
                           on
                             ? "bg-gold text-white border-gold"
                             : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
                         }`}
                         style={{ borderRadius: 0 }}
                       >
-                        #{t.name}
+                        <span>#{t.name}</span>
+                        <span
+                          className={`tabular-nums ${on ? "text-white/75" : "text-[var(--color-muted)]"}`}
+                          style={{ fontSize: 10.5 }}
+                        >
+                          {count}
+                        </span>
                       </button>
                     );
                   })}
