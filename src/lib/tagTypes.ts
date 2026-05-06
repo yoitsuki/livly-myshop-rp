@@ -2,7 +2,7 @@ import type { TagType } from "@/lib/firebase/types";
 
 /** Display label per tag type. */
 export const TYPE_LABEL: Record<TagType, string> = {
-  gacha: "通常ガチャ",
+  gacha: "ニューマハラショップ",
   bazaar: "バザール",
   nuts: "ナッツ",
   gradely: "グレデリーショップ",

@@ -284,6 +284,13 @@
  *        /register?entryId=xxx は entry の inboxStoragePath 有無で
  *        戻り先を /register/inbox or /register/bulk に分岐。
  *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.17.5 タグ種別 `gacha` の表示名を「通常ガチャ」→「ニューマハラ
+ *        ショップ」に変更 ( ゲーム内に「コラボガチャ」が別途存在する
+ *        ことが判明し、二項対立的な「ガチャ vs ショップ」括りが成立
+ *        しなくなったため )。データ側の type id `gacha` は触らず、
+ *        TYPE_LABEL.gacha と /register・/items/[id]/edit のドロップ
+ *        ダウン option (短縮形「ニューマハラ」) のみ更新。viewer
+ *        側にも同期が必要。
  * 0.17.4 受信BOX 行のタップで /register?entryId=xxx に遷移して
  *        個別編集できるように。inbox state を BulkDraftProvider
  *        に統合し、`BulkEntry` に inbox 用 optional フィールド
@@ -452,4 +459,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.17.4";
+export const APP_VERSION = "0.17.5";
