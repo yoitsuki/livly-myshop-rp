@@ -272,6 +272,12 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.17.1 storage.rules の inbox `allow create` に size + contentType
+ *        の hard limit を追加 (10 MiB 以下 / image/(jpeg|png|webp) のみ)。
+ *        viewer 側でも client-side で同等のチェックをしているが、
+ *        改変クライアントから回避可能なのでルール層で二重に弾く。
+ *        matches() は部分一致なので `^...$` で anchor 必須。
+ *        Console から手動デプロイが必要 (`firebase deploy --only storage:rules`)。
  * 0.17.0 受信BOX。閲覧用 (viewer) アプリから Storage `inbox/` に
  *        upload された画像を、admin の /register/inbox で一覧
  *        + bulk と同じ OCR/プリセット/クロップで取り込めるように
@@ -400,4 +406,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.17.0";
+export const APP_VERSION = "0.17.1";

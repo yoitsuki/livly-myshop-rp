@@ -16,9 +16,17 @@ service firebase.storage {
     // viewer から admin への画像受け渡し用 inbox。
     // 公開の create + read を許可し、上書き / 削除は admin のみ。
     // 一覧 (listAll) は read が list を兼ねるので true で OK。
+    //
+    // create には size + contentType の hard limit を入れている。
+    // viewer 側でも同等のチェック (10 MB / image/(jpeg|png|webp)) を
+    // しているが client-side のため改変クライアントから回避可能 →
+    // ルール層で改めて弾く。matches() は部分一致なので ^...$ で anchor
+    // しないと image/jpegEvil のような亜種が通ってしまう点に注意。
     match /inbox/{file=**} {
       allow read: if true;
-      allow create: if true;
+      allow create:
+        if request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('^image/(jpeg|png|webp)$');
       allow update, delete: if isAdmin();
     }
   }
