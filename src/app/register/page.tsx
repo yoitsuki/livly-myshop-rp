@@ -106,15 +106,25 @@ export default function RegisterPage() {
 function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const bulk = useBulkDraft();
+  // Look up the draft entry being edited.  We accept two URL contracts:
+  //   ?entryId=xxx  — direct id lookup (used by both /register/bulk and
+  //                   /register/inbox; robust to entry list reordering).
+  //   ?bulkIndex=N  — legacy index into the bulk-only filtered array.
+  const entryIdParam = searchParams?.get("entryId") ?? null;
   const bulkIndexRaw = searchParams?.get("bulkIndex") ?? null;
   const bulkIdx =
     bulkIndexRaw !== null && bulkIndexRaw !== ""
       ? Number(bulkIndexRaw)
       : null;
-  const bulk = useBulkDraft();
-  const bulkEntry =
-    bulkIdx !== null && Number.isInteger(bulkIdx) ? bulk.entries[bulkIdx] : undefined;
+  const bulkEntry: BulkEntry | undefined = entryIdParam
+    ? bulk.entries.find((e) => e.id === entryIdParam)
+    : bulkIdx !== null && Number.isInteger(bulkIdx)
+      ? bulk.entries.filter((e) => !e.inboxStoragePath)[bulkIdx]
+      : undefined;
   const isBulk = bulkEntry !== undefined;
+  const isInbox = bulkEntry?.inboxStoragePath !== undefined;
+  const backHref = isInbox ? "/register/inbox" : "/register/bulk";
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [sourceBlob, setSourceBlob] = useState<Blob | undefined>();
@@ -183,7 +193,7 @@ function RegisterPageInner() {
     const source = bulk.getSourceBlob(bulkEntry.id);
     if (!source) {
       // Browser refresh dropped the blob — return to bulk page.
-      router.replace("/register/bulk");
+      router.replace(backHref);
       return;
     }
     bulkPopulatedRef.current = bulkEntry.id;
@@ -406,7 +416,7 @@ function RegisterPageInner() {
           ...updates,
           checked: valid ? true : bulkEntry.checked,
         });
-        router.replace("/register/bulk");
+        router.replace(backHref);
       } catch (e) {
         setError(e instanceof Error ? e.message : "保存に失敗しました");
         setBusy("idle");
@@ -824,11 +834,11 @@ function RegisterPageInner() {
           variant="secondary"
           size="lg"
           onClick={() =>
-            isBulk ? router.replace("/register/bulk") : router.back()
+            isBulk ? router.replace(backHref) : router.back()
           }
           className="flex-1"
         >
-          {isBulk ? "リストに戻る" : "キャンセル"}
+          {isBulk ? (isInbox ? "受信BOXに戻る" : "リストに戻る") : "キャンセル"}
         </Button>
         <div className="flex-[2]">
           <Button

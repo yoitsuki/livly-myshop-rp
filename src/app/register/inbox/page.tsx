@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Inbox as InboxIcon, RefreshCw } from "lucide-react";
 import { useItems, useSettings } from "@/lib/firebase/hooks";
 import { uid } from "@/lib/firebase/repo";
 import { saveBulkEntry } from "@/lib/bulk/save";
+import { useBulkDraft } from "@/lib/bulk/context";
 import {
   bulkEntryMissingFields,
   type BulkEntry,
@@ -28,17 +29,27 @@ import { useLocalSettings } from "@/lib/localSettings";
 import { Button, ConfirmDialog } from "@/components/ui";
 import BulkRow from "@/components/BulkRow";
 
-interface InboxRowMeta {
-  /** Storage path so × can delete the source. */
-  path: string;
-  /** When the saveBulkEntry succeeded (epoch ms). undefined = not saved. */
-  savedAt?: number;
-}
-
+/**
+ * Receiving box for images uploaded by the public viewer to Storage `inbox/`.
+ *
+ * Entries live in the shared BulkDraftProvider (alongside /register/bulk
+ * draft entries) so that /register?entryId=xxx can hydrate the detailed
+ * editor from this page's rows.  We distinguish inbox-sourced entries by
+ * the presence of `inboxStoragePath` and lock saved rows with `savedAt`.
+ *
+ * Differences vs /register/bulk:
+ *   - Source images come from Storage (fetch via /api or downloadURL),
+ *     not from a file picker.
+ *   - Successful saveBulkEntry sets entry.savedAt and keeps the row in the
+ *     list — Storage objects are deleted only when the user clicks ×.
+ *   - OCR results are persisted to the Storage object's customMetadata so
+ *     subsequent loads skip the Claude API call.
+ */
 export default function InboxRegisterPage() {
   const settings = useSettings();
   const allItems = useItems();
   const { settings: local } = useLocalSettings();
+  const bulk = useBulkDraft();
 
   const presets: CropPreset[] = useMemo(
     () =>
@@ -48,12 +59,10 @@ export default function InboxRegisterPage() {
     [settings?.cropPresets],
   );
 
-  const [entries, setEntries] = useState<BulkEntry[]>([]);
-  const [meta, setMeta] = useState<Record<string, InboxRowMeta>>({});
-  const blobsRef = useRef<Map<string, Blob>>(new Map());
-  // Tracks every Storage path we've already turned into a row.  Synchronously
-  // updated so back-to-back refresh() calls don't double-create entries.
-  const seenPathsRef = useRef<Set<string>>(new Set());
+  const inboxEntries = useMemo(
+    () => bulk.entries.filter((e) => e.inboxStoragePath !== undefined),
+    [bulk.entries],
+  );
 
   const [loading, setLoading] = useState(false);
   /** How many rows are still going through processBulkSource. */
@@ -72,33 +81,15 @@ export default function InboxRegisterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateEntry = (id: string, patch: Partial<BulkEntry>) =>
-    setEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, ...patch } : e)),
-    );
-
-  const removeLocalEntry = (id: string) => {
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-    setMeta((prev) => {
-      const path = prev[id]?.path;
-      if (path) seenPathsRef.current.delete(path);
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-    blobsRef.current.delete(id);
-  };
-
   /** Process one row.  Reads the OCR cache first; only calls Claude when the
    *  cache is empty, then writes the result back so the next page load is
-   *  free.  Updates the row's status as side-effects.  Logs progress so the
-   *  Safari Web Inspector / Chrome console can show where a row got stuck. */
+   *  free.  Updates the row's status as side-effects. */
   const processRow = async (entry: BulkEntry, file: InboxFile) => {
     try {
       console.log("[inbox] start:", file.name);
       const blob = await fetchInboxBlob(file);
       console.log("[inbox] downloaded:", file.name, blob.size, "bytes");
-      blobsRef.current.set(entry.id, blob);
+      bulk.setSourceBlob(entry.id, blob);
 
       const cached = readOcrCache(file);
       console.log(
@@ -123,15 +114,12 @@ export default function InboxRegisterPage() {
 
       const draft = { ...entry, ...patch, status: "ready" as const };
       const valid = bulkEntryMissingFields(draft).length === 0;
-      updateEntry(entry.id, {
+      bulk.updateEntry(entry.id, {
         ...patch,
         status: "ready",
         checked: valid,
       });
 
-      // Persist OCR results.  Always write on a fresh call (even when fields
-      // are empty) so we never re-bill the API for the same file.  User can
-      // delete + re-upload to retry if Claude misread.
       if (!cached) {
         try {
           await writeOcrCache(file.path, {
@@ -148,7 +136,7 @@ export default function InboxRegisterPage() {
       }
     } catch (e) {
       console.error("[inbox] failed:", file.name, e);
-      updateEntry(entry.id, {
+      bulk.updateEntry(entry.id, {
         status: "failed",
         error:
           e instanceof Error
@@ -174,10 +162,17 @@ export default function InboxRegisterPage() {
       return;
     }
 
-    const newFiles = listed.filter((f) => !seenPathsRef.current.has(f.path));
+    // Use the latest entries from the provider (closure may be stale across
+    // back-to-back refresh() invocations, hence reading via bulk.entries).
+    const knownPaths = new Set(
+      bulk.entries
+        .map((e) => e.inboxStoragePath)
+        .filter((p): p is string => !!p),
+    );
+    const newFiles = listed.filter((f) => !knownPaths.has(f.path));
 
     if (newFiles.length === 0) {
-      if (listed.length === entries.length) setInfo("新着なし");
+      if (listed.length === inboxEntries.length) setInfo("新着なし");
       setLoading(false);
       return;
     }
@@ -197,20 +192,13 @@ export default function InboxRegisterPage() {
           refPriceMax: 0,
           checkedAt: f.uploadedAt,
           checked: false,
+          inboxStoragePath: f.path,
         },
         file: f,
       }),
     );
 
-    setEntries((prev) => [...prev, ...created.map((c) => c.entry)]);
-    setMeta((prev) => {
-      const next = { ...prev };
-      created.forEach(({ entry, file }) => {
-        next[entry.id] = { path: file.path };
-      });
-      return next;
-    });
-    created.forEach(({ file }) => seenPathsRef.current.add(file.path));
+    bulk.setEntries((prev) => [...prev, ...created.map((c) => c.entry)]);
     setProcessingCount((c) => c + created.length);
     // List is in the DOM — drop the page-level "loading" before the slow
     // OCR loop starts so the user sees rows + per-row spinners.
@@ -222,16 +210,16 @@ export default function InboxRegisterPage() {
   };
 
   const onChangePreset = async (entryId: string, presetId: string) => {
-    const entry = entries.find((e) => e.id === entryId);
+    const entry = bulk.entries.find((e) => e.id === entryId);
     if (!entry) return;
     const source = entry.sourceWidth
       ? { width: entry.sourceWidth, height: entry.sourceHeight ?? 0 }
       : undefined;
     if (!source) return;
-    const blob = blobsRef.current.get(entryId);
+    const blob = bulk.getSourceBlob(entryId);
 
     if (presetId === "") {
-      updateEntry(entryId, {
+      bulk.updateEntry(entryId, {
         presetId: undefined,
         iconRect: undefined,
         mainRect: undefined,
@@ -244,12 +232,12 @@ export default function InboxRegisterPage() {
     const preset = presets.find((p) => p.id === presetId);
     if (!preset) return;
     const patch = applyPresetRects(preset.id, preset.icon, preset.main, source);
-    updateEntry(entryId, patch);
+    bulk.updateEntry(entryId, patch);
 
     if (blob) {
       try {
         const url = await renderIconThumb(blob, preset.icon);
-        updateEntry(entryId, { iconThumbDataUrl: url });
+        bulk.updateEntry(entryId, { iconThumbDataUrl: url });
       } catch {
         /* ignore */
       }
@@ -257,23 +245,24 @@ export default function InboxRegisterPage() {
   };
 
   const onToggleCheck = (entry: BulkEntry, next: boolean) => {
-    if (meta[entry.id]?.savedAt !== undefined) return;
+    if (entry.savedAt !== undefined) return;
     if (next && bulkEntryMissingFields(entry).length > 0) return;
-    updateEntry(entry.id, { checked: next });
+    bulk.updateEntry(entry.id, { checked: next });
   };
 
   const onConfirmRemove = async () => {
     if (!confirmRemove) return;
-    const path = meta[confirmRemove.entryId]?.path;
+    const entry = bulk.entries.find((e) => e.id === confirmRemove.entryId);
+    const path = entry?.inboxStoragePath;
     if (!path) {
-      removeLocalEntry(confirmRemove.entryId);
+      bulk.removeEntry(confirmRemove.entryId);
       setConfirmRemove(null);
       return;
     }
     setBusy(true);
     try {
       await deleteInboxFile(path);
-      removeLocalEntry(confirmRemove.entryId);
+      bulk.removeEntry(confirmRemove.entryId);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Storage からの削除に失敗しました",
@@ -285,8 +274,8 @@ export default function InboxRegisterPage() {
   };
 
   const onSave = async () => {
-    const targets = entries.filter(
-      (e) => e.checked && meta[e.id]?.savedAt === undefined,
+    const targets = inboxEntries.filter(
+      (e) => e.checked && e.savedAt === undefined,
     );
     if (targets.length === 0) return;
     setError(undefined);
@@ -296,21 +285,19 @@ export default function InboxRegisterPage() {
     let failed = 0;
     for (const entry of targets) {
       try {
-        const source = blobsRef.current.get(entry.id);
+        const source = bulk.getSourceBlob(entry.id);
         if (!source) throw new Error("元画像が見つかりません");
         await saveBulkEntry({ entry, source, allItems: allItems ?? [] });
         // Inbox flow: do NOT remove. Mark saved + uncheck so it doesn't
         // get included again, and BulkRow shows the 登録済み badge.
-        const now = Date.now();
-        setMeta((prev) => ({
-          ...prev,
-          [entry.id]: { ...prev[entry.id], savedAt: now },
-        }));
-        updateEntry(entry.id, { checked: false });
+        bulk.updateEntry(entry.id, {
+          savedAt: Date.now(),
+          checked: false,
+        });
         succeeded++;
       } catch (e) {
         const msg = e instanceof Error ? e.message : "保存に失敗しました";
-        updateEntry(entry.id, {
+        bulk.updateEntry(entry.id, {
           error: `保存失敗: ${msg}`,
           checked: false,
         });
@@ -332,13 +319,13 @@ export default function InboxRegisterPage() {
       ? `Claude (${local.claudeModel || "default"})`
       : "Tesseract (端末)";
 
-  const checkedCount = entries.filter(
-    (e) => e.checked && meta[e.id]?.savedAt === undefined,
+  const checkedCount = inboxEntries.filter(
+    (e) => e.checked && e.savedAt === undefined,
   ).length;
 
-  const totalCount = entries.length;
-  const savedCount = entries.filter(
-    (e) => meta[e.id]?.savedAt !== undefined,
+  const totalCount = inboxEntries.length;
+  const savedCount = inboxEntries.filter(
+    (e) => e.savedAt !== undefined,
   ).length;
 
   return (
@@ -400,15 +387,16 @@ export default function InboxRegisterPage() {
         </div>
       )}
 
-      {entries.length === 0 ? (
+      {inboxEntries.length === 0 ? (
         <EmptyState loading={loading} />
       ) : (
         <ul className="-mx-2 border-t border-[var(--color-line)]">
-          {entries.map((e) => (
+          {inboxEntries.map((e) => (
             <li key={e.id}>
               <BulkRow
                 entry={e}
                 presets={presets}
+                editHref={`/register?entryId=${e.id}`}
                 onToggleCheck={(next) => onToggleCheck(e, next)}
                 onChangePreset={(pid) => void onChangePreset(e.id, pid)}
                 onRemove={() =>
@@ -417,7 +405,7 @@ export default function InboxRegisterPage() {
                     name: e.name || e.fileName || "(名称未取得)",
                   })
                 }
-                savedAt={meta[e.id]?.savedAt}
+                savedAt={e.savedAt}
               />
             </li>
           ))}
@@ -436,7 +424,7 @@ export default function InboxRegisterPage() {
         onCancel={() => setConfirmRemove(null)}
       />
 
-      {entries.length > 0 && (
+      {inboxEntries.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
           <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
             <Link href="/">

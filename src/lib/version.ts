@@ -272,6 +272,28 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.17.4 受信BOX 行から /register への個別編集導線を復活。
+ *        実装上は inbox の状態を BulkDraftProvider に統合し、
+ *        `BulkEntry` に `inboxStoragePath` (源ファイルのパス) と
+ *        `savedAt` (登録済みフラグ) を追加。inbox ページは
+ *        `entries.filter(e => e.inboxStoragePath)` で表示。
+ *        bulk ページは `entries.filter(e => !e.inboxStoragePath)`
+ *        で表示 + 保存ループ ( 互いに干渉しない )。
+ *        URL 契約も整理: 旧 `?bulkIndex=N` は legacy として残しつつ、
+ *        新規 editHref は `?entryId=xxx` ( id 直接参照、reorder 安全 )。
+ *        /register?entryId=xxx は entry の inboxStoragePath 有無で
+ *        戻り先を /register/inbox or /register/bulk に分岐。
+ *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.17.4 受信BOX 行のタップで /register?entryId=xxx に遷移して
+ *        個別編集できるように。inbox state を BulkDraftProvider
+ *        に統合し、`BulkEntry` に inbox 用 optional フィールド
+ *        ( `inboxStoragePath`, `savedAt` ) を追加。/register は
+ *        新しい `entryId` クエリ ( + 旧 `bulkIndex` 互換 ) で entry
+ *        を引き、`inboxStoragePath` の有無で「リストに戻る」先を
+ *        /register/bulk か /register/inbox か振り分け。bulk 行も
+ *        editHref を `entryId` 形式に統一。bulk ページは描画 / 保存
+ *        ループを `inboxStoragePath === undefined` で絞り、片方の
+ *        操作で他方の draft が破壊されないように。
  * 0.17.3 受信BOX が iOS Safari で無言で固まる問題の対症修正。
  *        Storage SDK の `getBlob()` は cross-origin (Vercel) 上の
  *        iOS Safari で hang することがある既知挙動。`fetch(file.url)` +
@@ -430,4 +452,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.17.3";
+export const APP_VERSION = "0.17.4";

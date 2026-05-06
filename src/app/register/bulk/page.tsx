@@ -32,7 +32,6 @@ export default function BulkRegisterPage() {
     setEntries,
     updateEntry,
     removeEntry,
-    clear,
     setSourceBlob,
     getSourceBlob,
     hasSource,
@@ -44,6 +43,12 @@ export default function BulkRegisterPage() {
         : SEED_PRESETS,
     [settings?.cropPresets],
   );
+  // Inbox-sourced rows live in the same provider but belong to /register/inbox.
+  // Filter them out so this page only sees / saves bulk-picker entries.
+  const bulkOnlyEntries = useMemo(
+    () => entries.filter((e) => e.inboxStoragePath === undefined),
+    [entries],
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [confirmRemove, setConfirmRemove] = useState<{
@@ -52,12 +57,15 @@ export default function BulkRegisterPage() {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // If we land here with stale entries whose source Blobs are gone (browser
-  // refresh), wipe them — the user agreed to a fresh-start on refresh.
+  // If we land here with stale bulk entries whose source Blobs are gone
+  // (browser refresh), wipe them — fresh-start on refresh.  Inbox-sourced
+  // entries are left alone (they live in /register/inbox).
   useEffect(() => {
-    if (entries.length === 0) return;
-    const stale = entries.some((e) => !hasSource(e.id));
-    if (stale) clear();
+    if (bulkOnlyEntries.length === 0) return;
+    const stale = bulkOnlyEntries.some((e) => !hasSource(e.id));
+    if (stale) {
+      bulkOnlyEntries.forEach((e) => removeEntry(e.id));
+    }
     // Only run once on mount; entries change naturally inside this page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -153,7 +161,7 @@ export default function BulkRegisterPage() {
   };
 
   const onBulkSave = async () => {
-    const targets = entries.filter((e) => e.checked);
+    const targets = bulkOnlyEntries.filter((e) => e.checked);
     if (targets.length === 0) return;
     setError(undefined);
     setBusy(true);
@@ -190,7 +198,7 @@ export default function BulkRegisterPage() {
       ? `Claude (${local.claudeModel || "default"})`
       : "Tesseract (端末)";
 
-  const checkedCount = entries.filter((e) => e.checked).length;
+  const checkedCount = bulkOnlyEntries.filter((e) => e.checked).length;
 
   return (
     <div className="pt-3 pb-32 space-y-4">
@@ -220,13 +228,13 @@ export default function BulkRegisterPage() {
           }}
         />
         <Button
-          variant={entries.length === 0 ? "primary" : "secondary"}
+          variant={bulkOnlyEntries.length === 0 ? "primary" : "secondary"}
           size="md"
           icon={<Plus size={16} />}
           onClick={() => fileInputRef.current?.click()}
           disabled={busy}
         >
-          {entries.length === 0 ? "画像を選択" : "画像を追加"}
+          {bulkOnlyEntries.length === 0 ? "画像を選択" : "画像を追加"}
         </Button>
         <span
           className="text-[10.5px] text-[var(--color-muted)] tabular-nums ml-auto"
@@ -242,16 +250,16 @@ export default function BulkRegisterPage() {
         </div>
       )}
 
-      {entries.length === 0 ? (
+      {bulkOnlyEntries.length === 0 ? (
         <EmptyState />
       ) : (
         <ul className="-mx-2 border-t border-[var(--color-line)]">
-          {entries.map((e, i) => (
+          {bulkOnlyEntries.map((e) => (
             <li key={e.id}>
               <BulkRow
                 entry={e}
                 presets={presets}
-                editHref={`/register?bulkIndex=${i}`}
+                editHref={`/register?entryId=${e.id}`}
                 onToggleCheck={(next) => onToggleCheck(e, next)}
                 onChangePreset={(pid) => void onChangePreset(e.id, pid)}
                 onRemove={() =>
@@ -280,14 +288,15 @@ export default function BulkRegisterPage() {
         onCancel={() => setConfirmRemove(null)}
       />
 
-      {entries.length > 0 && (
+      {bulkOnlyEntries.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
           <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
             <Button
               variant="secondary"
               size="lg"
               onClick={() => {
-                clear();
+                // Drop only this page's bulk entries, leave inbox rows alone.
+                bulkOnlyEntries.forEach((e) => removeEntry(e.id));
                 router.push("/");
               }}
             >
