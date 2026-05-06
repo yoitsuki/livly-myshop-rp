@@ -174,26 +174,34 @@ export default function Home() {
       {/* 原本 / レプリカ 3 値セグメント — 「両方」既定。 在庫があれば常に
           表示 ( アイテム 0 件で隠す )。 */}
       {totalCount > 0 && (
-        <div className="flex gap-0 px-1 pt-1">
-          <ReplicaSegmentButton
-            label="原本のみ"
-            count={replicaCounts.original}
-            active={replicaFilter === "original"}
-            onClick={() => setReplicaFilter("original")}
-          />
-          <ReplicaSegmentButton
-            label="両方"
-            count={replicaCounts.all}
-            active={replicaFilter === "all"}
-            onClick={() => setReplicaFilter("all")}
-          />
-          <ReplicaSegmentButton
-            label="レプリカのみ"
-            count={replicaCounts.replica}
-            active={replicaFilter === "replica"}
-            onClick={() => setReplicaFilter("replica")}
-          />
-        </div>
+        <section className="space-y-1">
+          <h3
+            className="text-[10px] font-medium tracking-[0.18em] uppercase text-[var(--color-muted)] px-1"
+            style={{ fontFamily: "var(--font-label)" }}
+          >
+            原本・レプリカ
+          </h3>
+          <div className="flex gap-0 px-1">
+            <ReplicaSegmentButton
+              label="両方"
+              count={replicaCounts.all}
+              active={replicaFilter === "all"}
+              onClick={() => setReplicaFilter("all")}
+            />
+            <ReplicaSegmentButton
+              label="原本のみ"
+              count={replicaCounts.original}
+              active={replicaFilter === "original"}
+              onClick={() => setReplicaFilter("original")}
+            />
+            <ReplicaSegmentButton
+              label="レプリカのみ"
+              count={replicaCounts.replica}
+              active={replicaFilter === "replica"}
+              onClick={() => setReplicaFilter("replica")}
+            />
+          </div>
+        </section>
       )}
 
       <div

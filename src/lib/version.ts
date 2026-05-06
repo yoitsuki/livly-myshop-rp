@@ -284,6 +284,14 @@
  *        /register?entryId=xxx は entry の inboxStoragePath 有無で
  *        戻り先を /register/inbox or /register/bulk に分岐。
  *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.18.1 0.18.0 のレプリカ表示を実機確認の上で微調整。
+ *        (1) ホームの 3 値セグメントの上に「原本・レプリカ」見出し
+ *        ( タグセクションと同じ Atelier label スタイル ) を追加。
+ *        (2) ボタン順を 両方 → 原本のみ → レプリカのみ に変更
+ *        ( 既定が左端に来るように )。
+ *        (3) ItemCard の REPLICA バッジを `<h3>` 横から **icon thumb の下** に
+ *        移動。thumb と同じ縦列に揃って画像とアイコンの関連性が明確に。
+ *        詳細ページのバッジ位置 ( タイトル右 ) は変更しない ( ユーザー指示 )。
  * 0.18.0 レプリカ管理 ( = 同じ見た目の「原本」と「レプリカ」を分けて
  *        記録・検索する )。`Item.isReplica?: boolean` 追加 ( true のみ
  *        Firestore に書く / undefined = 原本 で schema を汚さない、
@@ -478,4 +486,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.18.0";
+export const APP_VERSION = "0.18.1";
