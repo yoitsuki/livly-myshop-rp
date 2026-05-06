@@ -13,9 +13,7 @@ import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 import InfoSourceChip from "./InfoSourceChip";
 
-/** Atelier period badge — 3 tiers based on round age.
- *  List variant: tighter than the detail-page badge so it doesn't overpower
- *  the muted 最低価格 row it sits on. */
+/** Atelier period badge — 3 tiers based on round age. */
 function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
   const idx = roundAgeIndex(yearMonth);
   const tier = idx <= 0 ? 0 : idx === 1 ? 1 : 2;
@@ -41,13 +39,13 @@ function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string })
 
   return (
     <span
-      className="shrink-0 inline-flex items-center leading-none whitespace-nowrap"
+      className="shrink-0 inline-flex items-center px-2 leading-none whitespace-nowrap"
       style={{
         fontFamily: "var(--font-label)",
-        fontSize: 9,
+        fontSize: 9.5,
         fontWeight: 500,
-        letterSpacing: "0.12em",
-        padding: "2px 6px",
+        letterSpacing: "0.16em",
+        padding: "2px 8px",
         borderRadius: 0,
         ...styles[tier],
       }}
@@ -141,13 +139,10 @@ export default function ItemCard({
           {item.name || "(名称未設定)"}
         </h3>
 
-        {/* 参考価格 — period badge is moved down to the 最低価格 row so
-            very long prices ( up to 6+6 digit ) never push it onto a 2nd
-            line. min-w-0 keeps the long number from forcing the card
-            to overflow horizontally. */}
-        <div className="flex items-baseline gap-x-1.5 mt-[7px] min-w-0">
+        {/* 参考価格 + period badge */}
+        <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1 mt-[7px]">
           <span
-            className="text-[var(--color-muted)] shrink-0"
+            className="text-[var(--color-muted)]"
             style={{
               fontFamily: "var(--font-body)",
               fontSize: 11,
@@ -157,7 +152,7 @@ export default function ItemCard({
             参考価格
           </span>
           <span
-            className="text-[var(--color-gold-deep)] tabular-nums min-w-0 truncate"
+            className="text-[var(--color-gold-deep)] tabular-nums"
             style={{
               fontFamily: "var(--font-display)",
               fontSize: 18,
@@ -170,7 +165,7 @@ export default function ItemCard({
               : "—"}
           </span>
           <span
-            className="text-[var(--color-muted)] shrink-0"
+            className="text-[var(--color-muted)]"
             style={{
               fontFamily: "var(--font-label)",
               fontSize: 9,
@@ -179,29 +174,27 @@ export default function ItemCard({
           >
             GP
           </span>
-        </div>
-
-        {/* 最低価格 + period badge ( right-aligned ) */}
-        <div className="flex items-center gap-x-1.5 mt-px tabular-nums min-w-0">
-          <span
-            className="text-[var(--color-muted)]"
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 11,
-              letterSpacing: "0.04em",
-            }}
-          >
-            <span>最低価格</span>{" "}
-            {formatPrice(item.minPrice)} GP
-          </span>
           {latest?.shopPeriod && (
-            <span className="ml-auto shrink-0">
+            <span className="ml-auto self-center">
               <PeriodBadge
                 yearMonth={latest.shopPeriod.yearMonth}
                 phase={latest.shopPeriod.phase}
               />
             </span>
           )}
+        </div>
+
+        {/* 最低価格 */}
+        <div
+          className="text-[var(--color-muted)] mt-px tabular-nums"
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 11,
+            letterSpacing: "0.04em",
+          }}
+        >
+          <span>最低価格</span>{" "}
+          {formatPrice(item.minPrice)} GP
         </div>
 
         {/* tags + 情報元 chip */}
