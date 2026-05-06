@@ -347,7 +347,7 @@ export default function BulkRegisterPage() {
         open={confirmRemove !== null}
         message={
           confirmRemove
-            ? `「${confirmRemove.name}」をリストから削除しますか？\n登録対象から外すだけならチェックを外してください。`
+            ? `「${confirmRemove.name}」をリストから削除しますか？\n登録対象から外して残す場合はチェックボックスをOFFにしてください。`
             : ""
         }
         onConfirm={() => {
