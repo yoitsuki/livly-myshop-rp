@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Crop,
   Home,
+  Inbox,
   PlusCircle,
   Tag,
   Settings,
@@ -46,6 +47,7 @@ const items: NavItem[] = [
     children: [
       { href: "/register", label: "登録", icon: PlusCircle },
       { href: "/register/bulk", label: "まとめて登録", icon: PlusCircle },
+      { href: "/register/inbox", label: "受信BOX", icon: Inbox },
     ],
   },
   { href: "/tags", label: "タグ管理", icon: Tag },

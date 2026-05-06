@@ -272,6 +272,21 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.17.0 受信BOX。閲覧用 (viewer) アプリから Storage `inbox/` に
+ *        upload された画像を、admin の /register/inbox で一覧
+ *        + bulk と同じ OCR/プリセット/クロップで取り込めるように
+ *        した。bulk と違い、登録成功しても行は消えず「登録済み」
+ *        バッジを出してチェック不可化 — 明示的に × を押した時
+ *        だけ Storage からも削除される (削除確認は ConfirmDialog)。
+ *        storage.rules に inbox 用 rule を追加 (public create + read /
+ *        admin-only delete)。Console から手動デプロイが必要。
+ *        bulk の保存ロジックを src/lib/bulk/save.ts に、行 UI を
+ *        src/components/BulkRow.tsx に切り出し、bulk と inbox で
+ *        同じ実装を共有。FAB ポップオーバーと Drawer サブメニュー
+ *        にも 受信BOX エントリを追加。
+ *        viewer 側の upload 実装はこのリポジトリでは提供せず、
+ *        viewer リポジトリ側で `uploadBytes(ref(storage, 'inbox/<id>.jpg'), blob)`
+ *        するだけで良い。
  * 0.16.3 ホームのタグフィルタチップに件数を表示し、0 件のタグ
  *        は非表示。タグ多数 (SEED 58 件投入後) でファーストビュー
  *        が埋まる問題への第一手。各チップは `#name N` の形で
@@ -385,4 +400,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.16.3";
+export const APP_VERSION = "0.17.0";
