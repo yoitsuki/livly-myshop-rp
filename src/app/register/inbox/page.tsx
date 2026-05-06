@@ -190,6 +190,7 @@ export default function InboxRegisterPage() {
           minPrice: 0,
           refPriceMin: 0,
           refPriceMax: 0,
+          priceSource: "なんおし",
           checkedAt: f.uploadedAt,
           checked: false,
           inboxStoragePath: f.path,

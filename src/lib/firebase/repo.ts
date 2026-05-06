@@ -491,3 +491,14 @@ export function latestPriceEntry(
   return sortedPriceEntries(item)[0];
 }
 
+/** Resolved 情報元 label for list/detail display.
+ *  - メイン画像あり → "マイショ" ( implicit )
+ *  - メイン画像なし → 最新 priceEntry の priceSource ( 既定 "なんおし" ) */
+export function infoSourceLabel(
+  item: Pick<Item, "priceEntries" | "mainImageUrl">,
+): string {
+  if (item.mainImageUrl) return "マイショ";
+  const latest = latestPriceEntry(item);
+  return latest?.priceSource?.trim() || "なんおし";
+}
+

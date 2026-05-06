@@ -14,6 +14,7 @@ import { useItem, useTags } from "@/lib/firebase/hooks";
 import {
   deleteItem,
   deletePriceEntry,
+  infoSourceLabel,
   sortedPriceEntries,
   type Item,
   type PriceEntry,
@@ -22,6 +23,7 @@ import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
+import InfoSourceChip from "@/components/InfoSourceChip";
 import { ConfirmDialog } from "@/components/ui";
 
 /** Atelier period badge */
@@ -254,14 +256,13 @@ export default function ItemDetailPage({
         </div>
       </div>
 
-      {/* ── Tags ─────────────────────────────────────────────────── */}
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-[5px] mb-4">
-          {tags.map((t) => (
-            <TagChip key={t.id} tag={t} />
-          ))}
-        </div>
-      )}
+      {/* ── Tags + 情報元 ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-[5px] mb-4">
+        {tags.map((t) => (
+          <TagChip key={t.id} tag={t} />
+        ))}
+        <InfoSourceChip label={infoSourceLabel(i)} />
+      </div>
 
       {/* ── MIN PRICE bar ────────────────────────────────────────── */}
       <div className="flex items-center py-3">

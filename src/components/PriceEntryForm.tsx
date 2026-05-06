@@ -35,11 +35,12 @@ export const EMPTY_PRICE_ENTRY_FORM: PriceEntryFormValue = {
   shopPhase: "ongoing",
   shopAuto: false,
   checkedAt: "",
-  priceSource: "",
+  // メイン画像なし時の既定。表示中のみ保存される ( showPriceSource=false の
+  // ときは onSave で undefined に倒される ) 。
+  priceSource: "なんおし",
 };
 
 export const PRICE_SOURCE_PRESETS: Array<{ value: string; label: string }> = [
-  { value: "", label: "選択しない" },
   { value: "なんおし", label: "なんおし" },
   { value: "その他", label: "その他" },
 ];

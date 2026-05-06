@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { ImageIcon } from "lucide-react";
-import { latestPriceEntry, type Item, type Tag } from "@/lib/firebase/repo";
+import {
+  infoSourceLabel,
+  latestPriceEntry,
+  type Item,
+  type Tag,
+} from "@/lib/firebase/repo";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
+import InfoSourceChip from "./InfoSourceChip";
 
 /** Atelier period badge — 3 tiers based on round age. */
 function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
@@ -191,14 +197,13 @@ export default function ItemCard({
           {formatPrice(item.minPrice)} GP
         </div>
 
-        {/* tags */}
-        {itemTags.length > 0 && (
-          <div className="flex items-center flex-wrap gap-[5px] mt-[7px]">
-            {itemTags.map((t) => (
-              <TagChip key={t.id} tag={t} />
-            ))}
-          </div>
-        )}
+        {/* tags + 情報元 chip */}
+        <div className="flex items-center flex-wrap gap-[5px] mt-[7px]">
+          {itemTags.map((t) => (
+            <TagChip key={t.id} tag={t} />
+          ))}
+          <InfoSourceChip label={infoSourceLabel(item)} />
+        </div>
       </div>
     </Link>
   );

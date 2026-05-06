@@ -75,7 +75,6 @@ interface FormState {
 }
 
 const SOURCE_PRESETS: Array<{ value: string; label: string }> = [
-  { value: "", label: "選択しない" },
   { value: "なんおし", label: "なんおし" },
   { value: "その他", label: "その他" },
 ];
@@ -91,7 +90,9 @@ const EMPTY_FORM: FormState = {
   shopYearMonth: "",
   shopPhase: "ongoing",
   shopAuto: false,
-  priceSource: "",
+  // メイン画像なしの場合の既定値。あっても保持しておくが saveBulkEntry / onSave
+  // で mainBlob ありなら捨てるのでデータには出ない。
+  priceSource: "なんおし",
   isReplica: false,
 };
 
@@ -220,7 +221,7 @@ function RegisterPageInner() {
       shopYearMonth: bulkEntry.shopPeriod?.yearMonth ?? "",
       shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
       shopAuto: bulkEntry.shopPeriod?.auto ?? false,
-      priceSource: bulkEntry.priceSource ?? "",
+      priceSource: bulkEntry.priceSource ?? "なんおし",
       // BulkEntry never carries isReplica — bulk / inbox flows always create
       // 原本 by default; user opts in here explicitly.
       isReplica: false,
