@@ -290,7 +290,8 @@
  *            hairline border / 角丸ゼロ ) を常時表示する InfoSourceChip を
  *            追加。値は infoSourceLabel(item) で算出 — メイン画像あり
  *            なら "マイショ"、なければ最新 priceEntry の priceSource
- *            ( 既定 "なんおし" ) 。
+ *            ( "なんおし" / "その他" )、priceSource 未設定の旧データは
+ *            "設定無し" で出す ( 表示専用フォールバック ) 。
  *        (2) 登録系の初期値を統一。register / register/bulk /
  *            register/inbox / 価格追加 (PriceEntryForm) で priceSource の
  *            既定を "なんおし" に。SOURCE_PRESETS / PRICE_SOURCE_PRESETS
