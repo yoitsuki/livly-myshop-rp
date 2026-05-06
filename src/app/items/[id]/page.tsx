@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
+  ImageIcon,
   Pencil,
   Plus,
   Trash2,
@@ -21,6 +22,7 @@ import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
+import { ConfirmDialog } from "@/components/ui";
 
 /** Atelier period badge */
 function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
@@ -50,6 +52,37 @@ function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string })
     >
       {label}
     </span>
+  );
+}
+
+/** Small Atelier corner-tick thumb for the title block (viewer parity). */
+function AtelierThumb({
+  src,
+  alt,
+  size,
+}: {
+  src?: string;
+  alt: string;
+  size: number;
+}) {
+  return (
+    <div
+      className="atelier-thumb shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <div className="atelier-thumb-inner w-full h-full flex items-center justify-center text-[var(--color-muted)]">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={alt} className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon size={size > 60 ? 22 : 18} strokeWidth={1.4} />
+        )}
+      </div>
+      <span className="atelier-tick atelier-tick--tl" aria-hidden />
+      <span className="atelier-tick atelier-tick--tr" aria-hidden />
+      <span className="atelier-tick atelier-tick--bl" aria-hidden />
+      <span className="atelier-tick atelier-tick--br" aria-hidden />
+    </div>
   );
 }
 
@@ -171,31 +204,54 @@ export default function ItemDetailPage({
       </div>
 
       {/* ── Title block ──────────────────────────────────────────── */}
-      <div className="pt-4 pb-3">
-        {/* category — right-aligned, no rule */}
-        {i.category && (
-          <div className="flex justify-end mb-2">
-            <span
-              className="text-[var(--color-muted)]"
-              style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
-            >
-              {i.category}
-            </span>
-          </div>
-        )}
-        {/* item name */}
-        <h2
-          className="text-[var(--color-text)] leading-snug break-words"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 28,
-            fontWeight: 400,
-            letterSpacing: "0.02em",
-            margin: 0,
-          }}
-        >
-          {i.name}
-        </h2>
+      <div className="pt-4 pb-3 flex gap-3.5">
+        <AtelierThumb src={i.iconUrl} alt={i.name} size={64} />
+        <div className="flex-1 min-w-0">
+          {/* category + (optional) REPLICA badge — right-aligned, no rule */}
+          {(i.category || i.isReplica) && (
+            <div className="flex justify-end items-center gap-2 mb-2">
+              {i.isReplica && (
+                <span
+                  className="inline-flex items-center"
+                  style={{
+                    fontFamily: "var(--font-label)",
+                    fontSize: 9.5,
+                    fontWeight: 500,
+                    letterSpacing: "0.22em",
+                    padding: "2px 7px",
+                    borderRadius: 0,
+                    background: "transparent",
+                    color: "var(--color-gold-deep)",
+                    border: "1px solid var(--color-gold-deep)",
+                  }}
+                >
+                  REPLICA
+                </span>
+              )}
+              {i.category && (
+                <span
+                  className="text-[var(--color-muted)]"
+                  style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+                >
+                  {i.category}
+                </span>
+              )}
+            </div>
+          )}
+          {/* item name */}
+          <h2
+            className="text-[var(--color-text)] leading-snug break-words"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 28,
+              fontWeight: 400,
+              letterSpacing: "0.02em",
+              margin: 0,
+            }}
+          >
+            {i.name}
+          </h2>
+        </div>
       </div>
 
       {/* ── Tags ─────────────────────────────────────────────────── */}
@@ -307,72 +363,14 @@ export default function ItemDetailPage({
       </div>
 
       <ConfirmDialog
-        dialog={confirmDialog}
-        onClose={() => setConfirmDialog(null)}
+        open={confirmDialog !== null}
+        message={confirmDialog?.message ?? ""}
+        onConfirm={async () => {
+          await confirmDialog?.onConfirm();
+          setConfirmDialog(null);
+        }}
+        onCancel={() => setConfirmDialog(null)}
       />
-    </div>
-  );
-}
-
-function ConfirmDialog({
-  dialog,
-  onClose,
-}: {
-  dialog: { message: string; onConfirm: () => Promise<void> | void } | null;
-  onClose: () => void;
-}) {
-  if (!dialog) return null;
-  const handleConfirm = async () => {
-    await dialog.onConfirm();
-    onClose();
-  };
-  return (
-    <div
-      className="fixed inset-0 z-[70] bg-[var(--color-text)]/40 flex items-center justify-center p-5"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="bg-white border border-[var(--color-line)] max-w-sm w-full p-5"
-        style={{ borderRadius: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          className="text-[var(--color-text)] leading-relaxed mb-5 whitespace-pre-line"
-          style={{ fontFamily: "var(--font-body)", fontSize: 14 }}
-        >
-          {dialog.message}
-        </div>
-        <div className="flex gap-2 justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors"
-            style={{
-              fontFamily: "var(--font-label)",
-              fontSize: 10,
-              letterSpacing: "0.24em",
-              borderRadius: 0,
-            }}
-          >
-            CANCEL
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="px-4 py-2 bg-[var(--color-danger)] text-white hover:opacity-90 transition-opacity"
-            style={{
-              fontFamily: "var(--font-label)",
-              fontSize: 10,
-              letterSpacing: "0.24em",
-              borderRadius: 0,
-            }}
-          >
-            DELETE
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

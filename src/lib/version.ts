@@ -272,6 +272,147 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.17.4 受信BOX 行から /register への個別編集導線を復活。
+ *        実装上は inbox の状態を BulkDraftProvider に統合し、
+ *        `BulkEntry` に `inboxStoragePath` (源ファイルのパス) と
+ *        `savedAt` (登録済みフラグ) を追加。inbox ページは
+ *        `entries.filter(e => e.inboxStoragePath)` で表示。
+ *        bulk ページは `entries.filter(e => !e.inboxStoragePath)`
+ *        で表示 + 保存ループ ( 互いに干渉しない )。
+ *        URL 契約も整理: 旧 `?bulkIndex=N` は legacy として残しつつ、
+ *        新規 editHref は `?entryId=xxx` ( id 直接参照、reorder 安全 )。
+ *        /register?entryId=xxx は entry の inboxStoragePath 有無で
+ *        戻り先を /register/inbox or /register/bulk に分岐。
+ *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.18.3 詳細ページ ( /items/[id] ) のタイトルブロック左に 64px の
+ *        corner-tick `AtelierThumb` を追加。viewer は v0.1.0 から既に
+ *        この構成で、admin だけアイコンが出ていない状態だったので
+ *        viewer parity を取った。`iconUrl` 未設定時は ImageIcon
+ *        プレースホルダ。Title block を `flex gap-3.5` にし、テキスト側
+ *        を `flex-1 min-w-0` でラップ ( category / REPLICA / 名前の順序
+ *        や右寄せはこれまで通り保つ )。AtelierHero / 編集 / 削除 / 価格
+ *        行・メタ表示は全て触らず温存。
+ * 0.18.2 ホームのフィルタ UI を「絞込み」パネル化して再構成。SearchBar
+ *        の右に SlidersHorizontal アイコン付き「絞込み」ボタンを置き、
+ *        押すまでパネルは非表示 ( 既定で閉じる ) 。アクティブフィルタ
+ *        件数を絞込みボタン右上のバッジに出すので、パネルを閉じたまま
+ *        でも "フィルタ中" が分かる ( q は SearchBar 自体に表示済みなので
+ *        除外 )。パネル内は 原本・レプリカ → カテゴリ → タグ の順。
+ *        タグは TYPE_ORDER 別の TagSection ( ChevronRight rotate-90 で
+ *        折り畳み、既定で全部閉じる ) に変更。各セクション見出しの右
+ *        端に「全て選択 ⇄ 全て解除」 ( 全タグ active なら解除、それ
+ *        以外は選択 ) を 1 ボタンで切替表示 + section 内の active 件数
+ *        ( N/M ) を表示。`<button>` ネスト不可なので「全て選択/解除」
+ *        側は `role="button" tabIndex={0}` + Enter/Space ハンドラで代用。
+ *        ロジック ( tagUsage / replicaCounts / preReplicaFiltered /
+ *        filtered の useMemo チェイン ) は触らず UI だけ再構成。
+ *        SEED 58 件タグ + カテゴリ + レプリカで埋まっていたファースト
+ *        ビューが SearchBar + 件数 + 一覧だけになり、密度問題が解消。
+ *        viewer 同期も同じ構造で必要 ( 別途指示書あり )。
+ * 0.18.1 0.18.0 のレプリカ表示を実機確認の上で微調整。
+ *        (1) ホームの 3 値セグメントの上に「原本・レプリカ」見出し
+ *        ( タグセクションと同じ Atelier label スタイル ) を追加。
+ *        (2) ボタン順を 両方 → 原本のみ → レプリカのみ に変更
+ *        ( 既定が左端に来るように )。
+ *        (3) ItemCard の REPLICA バッジを `<h3>` 横から **icon thumb の下** に
+ *        移動。thumb と同じ縦列に揃って画像とアイコンの関連性が明確に。
+ *        詳細ページのバッジ位置 ( タイトル右 ) は変更しない ( ユーザー指示 )。
+ * 0.18.0 レプリカ管理 ( = 同じ見た目の「原本」と「レプリカ」を分けて
+ *        記録・検索する )。`Item.isReplica?: boolean` 追加 ( true のみ
+ *        Firestore に書く / undefined = 原本 で schema を汚さない、
+ *        マイグレーション不要 )。/register と /items/[id]/edit のフォーム
+ *        にチェックボックスを追加。/register の bulk 編集モード ( = entryId
+ *        付き ) では BulkEntry に値が乗らないので checkbox を非表示に
+ *        し、登録後に編集ページで切替する運用に倒す。
+ *        ホームに 3 値セグメント (原本のみ / 両方 (既定) / レプリカのみ)
+ *        を追加。件数は q / category / tag フィルタを通した後の数を
+ *        表示するので、絞った状態でレプリカ内訳が一目で分かる。
+ *        詳細ページのタイトルブロックにアウトライン枠の `REPLICA` バッジ
+ *        ( gold-deep / Atelier label fontFamily / letterSpacing 0.22em )、
+ *        ItemCard にも一回り小さい同じバッジ。
+ *        bulk 行 / inbox 行への組み込みは UI 密度の観点で v1 では見送り
+ *        ( 必要なら登録後に詳細編集で設定する運用 )。
+ *        viewer 同期: `Item.isReplica?: boolean` の型と mappers の同更新、
+ *        ホームのセグメント、詳細 / カードのバッジ同期が必要 ( 別途指示書 )。
+ *        用語: ゲーム内呼称は「原本」 ( 「本物」ではない ) — UI / コミット /
+ *        コメントすべて「原本」表記で統一。
+ * 0.17.5 タグ種別 `gacha` の表示名を「通常ガチャ」→「ニューマハラ
+ *        ショップ」に変更 ( ゲーム内に「コラボガチャ」が別途存在する
+ *        ことが判明し、二項対立的な「ガチャ vs ショップ」括りが成立
+ *        しなくなったため )。データ側の type id `gacha` は触らず、
+ *        TYPE_LABEL.gacha と /register・/items/[id]/edit のドロップ
+ *        ダウン option (短縮形「ニューマハラ」) のみ更新。viewer
+ *        側にも同期が必要。
+ * 0.17.4 受信BOX 行のタップで /register?entryId=xxx に遷移して
+ *        個別編集できるように。inbox state を BulkDraftProvider
+ *        に統合し、`BulkEntry` に inbox 用 optional フィールド
+ *        ( `inboxStoragePath`, `savedAt` ) を追加。/register は
+ *        新しい `entryId` クエリ ( + 旧 `bulkIndex` 互換 ) で entry
+ *        を引き、`inboxStoragePath` の有無で「リストに戻る」先を
+ *        /register/bulk か /register/inbox か振り分け。bulk 行も
+ *        editHref を `entryId` 形式に統一。bulk ページは描画 / 保存
+ *        ループを `inboxStoragePath === undefined` で絞り、片方の
+ *        操作で他方の draft が破壊されないように。
+ * 0.17.3 受信BOX が iOS Safari で無言で固まる問題の対症修正。
+ *        Storage SDK の `getBlob()` は cross-origin (Vercel) 上の
+ *        iOS Safari で hang することがある既知挙動。`fetch(file.url)` +
+ *        AbortController (45 秒タイムアウト) に置換。CORS / 4xx /
+ *        ネットワーク失敗は TypeError として catch に到達するので
+ *        「処理失敗: ...」に倒れる ( = 無言 hang しない )。
+ *        各ステップに console.log/error を入れて、Safari Web
+ *        Inspector / Chrome devtools で詰まっている箇所が見えるよう
+ *        にした。失敗メッセージにも error.name を含める。
+ *        OCR 切替で症状が変わらないことから OCR 前段 (= Blob 取得)
+ *        での詰まりと判断。Tesseract / Claude 双方で発症するのと
+ *        合致。
+ * 0.17.2 受信BOX のフリーズ修正 + Claude API 呼出の永続キャッシュ。
+ *        (1) list 取得直後に loading=false に落とす。OCR ループは
+ *        背景に回し、ユーザーは即座に行を見られる ( 行ごとに Loader2 )。
+ *        (2) `customMetadata.cachedOcr` に OCR 結果を JSON で書き戻し、
+ *        次回以降は API 呼出をスキップ。listInboxFiles の getMetadata
+ *        で同時取得するので余計な往復なし。
+ *        (3) BulkRow の「未入力」赤字を processing 中は出さないよう修正
+ *        ( 解析待ちの行で未入力警告が出ていたバグ )。
+ *        (4) 「解析中 N 件」インジケータをカウント表示の隣に追加。
+ *        (5) seenPathsRef で重複作成防止 ( 連打 + 削除との競合対策 )。
+ *        DB は使わず Storage に同居 — ファイル削除時に cache も自動消滅、
+ *        Firestore の余計な collection が増えないため。
+ * 0.17.1 storage.rules の inbox `allow create` に size + contentType
+ *        の hard limit を追加 (10 MiB 以下 / image/(jpeg|png|webp) のみ)。
+ *        viewer 側でも client-side で同等のチェックをしているが、
+ *        改変クライアントから回避可能なのでルール層で二重に弾く。
+ *        matches() は部分一致なので `^...$` で anchor 必須。
+ *        Console から手動デプロイが必要 (`firebase deploy --only storage:rules`)。
+ * 0.17.0 受信BOX。閲覧用 (viewer) アプリから Storage `inbox/` に
+ *        upload された画像を、admin の /register/inbox で一覧
+ *        + bulk と同じ OCR/プリセット/クロップで取り込めるように
+ *        した。bulk と違い、登録成功しても行は消えず「登録済み」
+ *        バッジを出してチェック不可化 — 明示的に × を押した時
+ *        だけ Storage からも削除される (削除確認は ConfirmDialog)。
+ *        storage.rules に inbox 用 rule を追加 (public create + read /
+ *        admin-only delete)。Console から手動デプロイが必要。
+ *        bulk の保存ロジックを src/lib/bulk/save.ts に、行 UI を
+ *        src/components/BulkRow.tsx に切り出し、bulk と inbox で
+ *        同じ実装を共有。FAB ポップオーバーと Drawer サブメニュー
+ *        にも 受信BOX エントリを追加。
+ *        viewer 側の upload 実装はこのリポジトリでは提供せず、
+ *        viewer リポジトリ側で `uploadBytes(ref(storage, 'inbox/<id>.jpg'), blob)`
+ *        するだけで良い。
+ * 0.16.3 ホームのタグフィルタチップに件数を表示し、0 件のタグ
+ *        は非表示。タグ多数 (SEED 58 件投入後) でファーストビュー
+ *        が埋まる問題への第一手。各チップは `#name N` の形で
+ *        小さな件数を末尾に並べ、active の時は半透明の白で
+ *        馴染ませる。0 件タグはセクションごと隠れるが、選択中
+ *        (activeTagIds に入っている) タグだけは 0 件でも残し、
+ *        解除できる導線を確保。
+ * 0.16.2 削除確認ダイアログを共通化 + bulk × に確認を追加。
+ *        src/components/ui/ConfirmDialog.tsx を primitives として
+ *        切り出し、/register/bulk 行の × ボタン、/tags と
+ *        /presets の「 window.confirm 」をこれに統一。bulk 行は
+ *        以前は誤タップで黙って消えていたので、「登録対象から
+ *        外すだけならチェックを外せばよい」とフォローも記載。
+ *        items/[id] も同 primitive にスワップし、同型のダイアログ
+ *        が 4 ページで同じ見た目・同じ振る舞いで出るようになった。
  * 0.16.1 アイテム重複登録の検知 + マージ。/register で同名アイテム
  *        を検知したら、価格を「追加 (別期間)」または「更新 (同じ
  *        yearMonth)」の確認モーダルを出し、「✅ メイン画像を更新する」
@@ -370,4 +511,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.16.1";
+export const APP_VERSION = "0.18.3";

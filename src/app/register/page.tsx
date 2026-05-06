@@ -71,6 +71,7 @@ interface FormState {
   shopPhase: ShopPhase;
   shopAuto: boolean;
   priceSource: string;
+  isReplica: boolean;
 }
 
 const SOURCE_PRESETS: Array<{ value: string; label: string }> = [
@@ -91,6 +92,7 @@ const EMPTY_FORM: FormState = {
   shopPhase: "ongoing",
   shopAuto: false,
   priceSource: "",
+  isReplica: false,
 };
 
 type CropTarget = "icon" | "main" | null;
@@ -106,15 +108,25 @@ export default function RegisterPage() {
 function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const bulk = useBulkDraft();
+  // Look up the draft entry being edited.  We accept two URL contracts:
+  //   ?entryId=xxx  — direct id lookup (used by both /register/bulk and
+  //                   /register/inbox; robust to entry list reordering).
+  //   ?bulkIndex=N  — legacy index into the bulk-only filtered array.
+  const entryIdParam = searchParams?.get("entryId") ?? null;
   const bulkIndexRaw = searchParams?.get("bulkIndex") ?? null;
   const bulkIdx =
     bulkIndexRaw !== null && bulkIndexRaw !== ""
       ? Number(bulkIndexRaw)
       : null;
-  const bulk = useBulkDraft();
-  const bulkEntry =
-    bulkIdx !== null && Number.isInteger(bulkIdx) ? bulk.entries[bulkIdx] : undefined;
+  const bulkEntry: BulkEntry | undefined = entryIdParam
+    ? bulk.entries.find((e) => e.id === entryIdParam)
+    : bulkIdx !== null && Number.isInteger(bulkIdx)
+      ? bulk.entries.filter((e) => !e.inboxStoragePath)[bulkIdx]
+      : undefined;
   const isBulk = bulkEntry !== undefined;
+  const isInbox = bulkEntry?.inboxStoragePath !== undefined;
+  const backHref = isInbox ? "/register/inbox" : "/register/bulk";
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [sourceBlob, setSourceBlob] = useState<Blob | undefined>();
@@ -183,7 +195,7 @@ function RegisterPageInner() {
     const source = bulk.getSourceBlob(bulkEntry.id);
     if (!source) {
       // Browser refresh dropped the blob — return to bulk page.
-      router.replace("/register/bulk");
+      router.replace(backHref);
       return;
     }
     bulkPopulatedRef.current = bulkEntry.id;
@@ -209,6 +221,9 @@ function RegisterPageInner() {
       shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
       shopAuto: bulkEntry.shopPeriod?.auto ?? false,
       priceSource: bulkEntry.priceSource ?? "",
+      // BulkEntry never carries isReplica — bulk / inbox flows always create
+      // 原本 by default; user opts in here explicitly.
+      isReplica: false,
     });
     setOcrDone(true); // fields are filled — the OCR button becomes 'rerun'
 
@@ -406,7 +421,7 @@ function RegisterPageInner() {
           ...updates,
           checked: valid ? true : bulkEntry.checked,
         });
-        router.replace("/register/bulk");
+        router.replace(backHref);
       } catch (e) {
         setError(e instanceof Error ? e.message : "保存に失敗しました");
         setBusy("idle");
@@ -471,6 +486,7 @@ function RegisterPageInner() {
         tagIds: form.tagIds,
         minPrice: Number(form.minPrice) || 0,
         priceEntries: [initialEntry],
+        isReplica: form.isReplica || undefined,
       });
 
       router.push("/");
@@ -819,16 +835,41 @@ function RegisterPageInner() {
         onChange={(ids) => setForm({ ...form, tagIds: ids })}
       />
 
+      {/* Bulk-edit (entryId) doesn't persist isReplica back to the BulkEntry,
+          so the checkbox is hidden in that mode — user can flip it on the
+          per-item edit page after registration. */}
+      {!isBulk && (
+        <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={form.isReplica}
+            onChange={(e) =>
+              setForm({ ...form, isReplica: e.target.checked })
+            }
+            className="w-4 h-4 accent-[var(--color-gold-deep)]"
+          />
+          <span
+            className="text-[13px] text-[var(--color-text)]"
+            style={{ fontFamily: "var(--font-body)" }}
+          >
+            レプリカ
+          </span>
+          <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
+            ( 原本でない場合のみ ON )
+          </span>
+        </label>
+      )}
+
       <div className="flex gap-2 pt-2">
         <Button
           variant="secondary"
           size="lg"
           onClick={() =>
-            isBulk ? router.replace("/register/bulk") : router.back()
+            isBulk ? router.replace(backHref) : router.back()
           }
           className="flex-1"
         >
-          {isBulk ? "リストに戻る" : "キャンセル"}
+          {isBulk ? (isInbox ? "受信BOXに戻る" : "リストに戻る") : "キャンセル"}
         </Button>
         <div className="flex-[2]">
           <Button
@@ -1296,7 +1337,7 @@ function TagPicker({
               onChange={(e) => setNewType(e.target.value as TagType)}
               className={`${inputClass({ fullWidth: false })} w-24 shrink-0 h-9 text-[12px]`}
             >
-              <option value="gacha">通常ガチャ</option>
+              <option value="gacha">ニューマハラ</option>
               <option value="bazaar">バザール</option>
               <option value="nuts">ナッツ</option>
               <option value="gradely">グレデリー</option>

@@ -36,6 +36,9 @@ export function itemToFs(item: Item): DocumentData {
         createdAt: e.createdAt,
       }),
     ),
+    // Only true gets persisted — original is the implicit default and we
+    // keep the Firestore schema clean by not writing the field at all.
+    isReplica: item.isReplica === true ? true : undefined,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   });
@@ -55,6 +58,7 @@ export function itemFromFs(id: string, data: DocumentData): Item {
     tagIds: Array.isArray(data.tagIds) ? data.tagIds : [],
     minPrice: typeof data.minPrice === "number" ? data.minPrice : 0,
     priceEntries: Array.isArray(data.priceEntries) ? data.priceEntries : [],
+    isReplica: data.isReplica === true ? true : undefined,
     createdAt: typeof data.createdAt === "number" ? data.createdAt : 0,
     updatedAt: typeof data.updatedAt === "number" ? data.updatedAt : 0,
   };

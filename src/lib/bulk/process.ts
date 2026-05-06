@@ -24,6 +24,13 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+export interface ProcessBulkOptions {
+  /** Skip the OCR (Claude/Tesseract) call. Used by /register/inbox when a
+   *  cached OCR result is available — basics (EXIF, preset, thumb) still run
+   *  because they're cheap and the cache only covers OCR-derived fields. */
+  skipOcr?: boolean;
+}
+
 /**
  * Run EXIF + preset match + OCR on a single bulk source. Returns a partial
  * BulkEntry that the caller merges into the row. OCR failure is reported via
@@ -33,6 +40,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 export async function processBulkSource(
   source: Blob,
   presets: CropPreset[],
+  options: ProcessBulkOptions = {},
 ): Promise<Partial<BulkEntry>> {
   const result: Partial<BulkEntry> = {};
 
@@ -67,6 +75,8 @@ export async function processBulkSource(
       // thumb is best-effort — leave it absent
     }
   }
+
+  if (options.skipOcr) return result;
 
   const local = getLocalSettings();
   try {

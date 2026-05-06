@@ -15,3 +15,5 @@ export { default as IconButton } from "./IconButton";
 export type { IconButtonProps } from "./IconButton";
 export { default as Toast } from "./Toast";
 export type { ToastProps } from "./Toast";
+export { default as ConfirmDialog } from "./ConfirmDialog";
+export type { ConfirmDialogProps, ConfirmVariant } from "./ConfirmDialog";

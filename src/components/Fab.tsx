@@ -49,10 +49,19 @@ export default function Fab() {
             href="/register/bulk"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="block px-4 py-3 text-[14px] text-[var(--color-text)] hover:bg-[var(--color-line-soft)]"
+            className="block px-4 py-3 text-[14px] text-[var(--color-text)] hover:bg-[var(--color-line-soft)] border-b border-[var(--color-line)]"
             style={{ fontFamily: "var(--font-body)" }}
           >
             まとめて登録
+          </Link>
+          <Link
+            href="/register/inbox"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="block px-4 py-3 text-[14px] text-[var(--color-text)] hover:bg-[var(--color-line-soft)]"
+            style={{ fontFamily: "var(--font-body)" }}
+          >
+            受信BOX
           </Link>
         </div>
       )}

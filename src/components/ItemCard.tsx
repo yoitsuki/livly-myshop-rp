@@ -96,7 +96,27 @@ export default function ItemCard({
       href={`/items/${item.id}`}
       className="atelier-row flex gap-3.5 px-3.5 pt-4 pb-4 border-t border-[var(--color-line)] bg-white"
     >
-      <AtelierThumb src={thumbUrl} alt={item.name} size={64} />
+      <div className="shrink-0 flex flex-col items-center gap-1">
+        <AtelierThumb src={thumbUrl} alt={item.name} size={64} />
+        {item.isReplica && (
+          <span
+            className="inline-flex items-center"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 8.5,
+              fontWeight: 500,
+              letterSpacing: "0.22em",
+              padding: "1px 5px",
+              borderRadius: 0,
+              background: "transparent",
+              color: "var(--color-gold-deep)",
+              border: "1px solid var(--color-gold-deep)",
+            }}
+          >
+            REPLICA
+          </span>
+        )}
+      </div>
 
       <div className="min-w-0 flex-1" style={{ paddingTop: 1 }}>
         {/* item name — Cormorant serif */}

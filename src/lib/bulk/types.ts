@@ -49,6 +49,15 @@ export interface BulkEntry {
 
   /** Whether the row is selected for the bulk-save sweep. */
   checked: boolean;
+
+  // ---- Inbox-only fields ----
+  // These are set by /register/inbox on rows that originate from the public
+  // viewer upload (Storage `inbox/`).  Bulk-sourced rows leave them undefined.
+  /** Storage path so × can remove the source object after a confirm. */
+  inboxStoragePath?: string;
+  /** Filled once saveBulkEntry succeeds.  Inbox rows are NOT removed on
+   *  save — they get a 登録済み badge and are locked from re-registering. */
+  savedAt?: number;
 }
 
 /** Required fields for createItem(). Used for row-level validation. */
