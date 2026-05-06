@@ -91,16 +91,25 @@ export default function InboxRegisterPage() {
 
   /** Process one row.  Reads the OCR cache first; only calls Claude when the
    *  cache is empty, then writes the result back so the next page load is
-   *  free.  Updates the row's status as side-effects. */
+   *  free.  Updates the row's status as side-effects.  Logs progress so the
+   *  Safari Web Inspector / Chrome console can show where a row got stuck. */
   const processRow = async (entry: BulkEntry, file: InboxFile) => {
     try {
-      const blob = await fetchInboxBlob(file.path);
+      console.log("[inbox] start:", file.name);
+      const blob = await fetchInboxBlob(file);
+      console.log("[inbox] downloaded:", file.name, blob.size, "bytes");
       blobsRef.current.set(entry.id, blob);
 
       const cached = readOcrCache(file);
+      console.log(
+        "[inbox] cache:",
+        file.name,
+        cached ? "hit (skip OCR)" : "miss",
+      );
       const patch = await processBulkSource(blob, presets, {
         skipOcr: cached !== null,
       });
+      console.log("[inbox] processed:", file.name, "name=", patch.name);
 
       if (cached) {
         if (cached.name !== undefined) patch.name = cached.name;
@@ -138,9 +147,13 @@ export default function InboxRegisterPage() {
         }
       }
     } catch (e) {
+      console.error("[inbox] failed:", file.name, e);
       updateEntry(entry.id, {
         status: "failed",
-        error: e instanceof Error ? e.message : "処理に失敗しました",
+        error:
+          e instanceof Error
+            ? `${e.name}: ${e.message}`
+            : "処理に失敗しました",
       });
     } finally {
       setProcessingCount((c) => Math.max(0, c - 1));

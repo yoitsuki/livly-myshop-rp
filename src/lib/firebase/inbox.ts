@@ -2,7 +2,6 @@
 
 import {
   deleteObject,
-  getBlob,
   getDownloadURL,
   getMetadata,
   listAll,
@@ -74,9 +73,32 @@ export async function listInboxFiles(): Promise<InboxFile[]> {
   return files;
 }
 
-/** Download an inbox object as a Blob (for OCR + crop). */
-export async function fetchInboxBlob(path: string): Promise<Blob> {
-  return await getBlob(ref(storage(), path));
+/**
+ * Download an inbox object as a Blob via fetch on its public download URL.
+ *
+ * We deliberately don't use Storage SDK's getBlob() here — on iOS Safari it
+ * has been observed to hang silently in cross-origin contexts (Vercel
+ * preview / production domains), with no error and no resolution.  fetch
+ * surfaces CORS / network problems as a TypeError, and an AbortController
+ * gives us a hard upper bound so a single bad row can't freeze the loop.
+ */
+export async function fetchInboxBlob(file: InboxFile): Promise<Blob> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45_000);
+  try {
+    const res = await fetch(file.url, { signal: ctrl.signal });
+    if (!res.ok) {
+      throw new Error(`画像のダウンロード失敗 (${res.status})`);
+    }
+    return await res.blob();
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("画像ダウンロードがタイムアウトしました (45 秒)");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Delete an inbox object. Admin-only per storage.rules. */

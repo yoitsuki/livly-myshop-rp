@@ -272,6 +272,18 @@
  *        devices use signInWithRedirect to dodge mobile-Safari popup
  *        blocks; desktop uses signInWithPopup. Existing Dexie data and
  *        write paths are untouched in this phase.
+ * 0.17.3 受信BOX が iOS Safari で無言で固まる問題の対症修正。
+ *        Storage SDK の `getBlob()` は cross-origin (Vercel) 上の
+ *        iOS Safari で hang することがある既知挙動。`fetch(file.url)` +
+ *        AbortController (45 秒タイムアウト) に置換。CORS / 4xx /
+ *        ネットワーク失敗は TypeError として catch に到達するので
+ *        「処理失敗: ...」に倒れる ( = 無言 hang しない )。
+ *        各ステップに console.log/error を入れて、Safari Web
+ *        Inspector / Chrome devtools で詰まっている箇所が見えるよう
+ *        にした。失敗メッセージにも error.name を含める。
+ *        OCR 切替で症状が変わらないことから OCR 前段 (= Blob 取得)
+ *        での詰まりと判断。Tesseract / Claude 双方で発症するのと
+ *        合致。
  * 0.17.2 受信BOX のフリーズ修正 + Claude API 呼出の永続キャッシュ。
  *        (1) list 取得直後に loading=false に落とす。OCR ループは
  *        背景に回し、ユーザーは即座に行を見られる ( 行ごとに Loader2 )。
@@ -418,4 +430,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.17.2";
+export const APP_VERSION = "0.17.3";
