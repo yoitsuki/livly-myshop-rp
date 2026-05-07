@@ -564,8 +564,14 @@
  *          /items/[id]/prices/[entryId]/edit ( 元 entry との差分 ) ,
  *          /register ( bulk-edit モード以外で sourceBlob または form の
  *            非デフォルト値 ) ,
+ *          /register/bulk ( bulkOnlyEntries.length > 0 — saveBulkEntry が
+ *            成功すると行が消えるので length > 0 = 未保存 ) ,
+ *          /register/inbox ( inboxEntries.some(e => savedAt === undefined)
+ *            — 保存後も行が残るので savedAt フラグで未保存判定 ) ,
  *          PresetForm ( JSON.stringify ベースの baselineRef 比較 — new /
  *            edit 両方で動作 ) 。
+ *        bulk / inbox はどちらも BulkDraftProvider の in-memory state +
+ *        ソース Blob が /register/* を抜けると消えるため対象に含める。
  *        modifier-click ( cmd / ctrl / shift / 中ボタン ) は新規タブ
  *        遷移としてそのまま通す。/register の キャンセル / 詳細
  *        ページの 編集 ボタン等の通常 Link は意図的にガード対象外

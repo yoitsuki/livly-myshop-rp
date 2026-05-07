@@ -33,6 +33,7 @@ import { SEED_PRESETS, type CropPreset } from "@/lib/preset";
 import { useLocalSettings } from "@/lib/localSettings";
 import { Button, ConfirmDialog } from "@/components/ui";
 import BulkRow from "@/components/BulkRow";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 /**
  * Receiving box for images uploaded by the public viewer to Storage `inbox/`.
@@ -104,6 +105,13 @@ export default function InboxRegisterPage() {
     const start = (currentPage - 1) * pageSize;
     return inboxEntries.slice(start, start + pageSize);
   }, [inboxEntries, currentPage, pageSize]);
+
+  // Inbox source images live in Storage so they can always be re-fetched,
+  // but the BulkDraftProvider holds the per-row form patches + the in-memory
+  // source blob; both are dropped when the user navigates outside /register.
+  // Warn whenever there's still a row that hasn't been saved.
+  const hasUnsavedInbox = inboxEntries.some((e) => e.savedAt === undefined);
+  useDirtyTracker(hasUnsavedInbox);
 
   // Visible-only OCR queue: kick off processRow for rows on the current
   // page that we haven't queued yet.  Runs sequentially in the background
