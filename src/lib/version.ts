@@ -737,5 +737,25 @@
  *        items が空のときだけ EmptyState を出す。SearchBar / 絞込みボタンは
  *        従来通り上部に残す ( hasAnyFilterUI は totalCount + tags 由来なので
  *        loading 中は自動で非表示 )。
+ * 0.27.0 viewer リポジトリ ( livly-myshop-rp ) を本リポジトリ ( -m ) に統合。
+ *        ホーム ( / ) と詳細 ( /items/[id] ) と viewer の upload UI ( /inbox )
+ *        を public route 化、それ以外 ( /register*, /items/[id]/edit,
+ *        /items/[id]/prices/*, /tags, /presets, /settings ) を admin gating。
+ *        AppShell は public route では LoginScreen を出さず content を
+ *        そのまま render し、admin URL を直打ちした時だけ LoginScreen を
+ *        出す ( = login UI を public route に一切露出させない ) 。AppHeader
+ *        の右上スロットは未ログインで Upload icon → /inbox ( viewer 既存
+ *        UX を温存 ) 、admin ログイン後で Hamburger → DrawerNav に置換
+ *        する形で出し分け、Fab は !isAdmin なら null を返して非表示。
+ *        DrawerNav には admin 用の "アップロード" entry ( → /inbox ) を
+ *        追加。詳細ページの EDIT / DELETE / + 価格 / per-entry edit-delete
+ *        + ConfirmDialog + deleteItem / deletePriceEntry 呼出しは
+ *        新規 src/components/ItemAdminActions.tsx に集約し、page から
+ *        next/dynamic で `{ ssr: false }` 付きで lazy load → 非 admin の
+ *        bundle に write 関数が乗らない。viewer から `src/lib/inboxUpload.ts`
+ *        ( HEIC → JPEG canvas 再エンコード + customMetadata.originalLastModified )
+ *        と `src/app/inbox/page.tsx` ( upload queue + Toast + beforeunload
+ *        ガード ) を移植。Storage rules ( inbox public create + admin
+ *        delete ) は既に対応済みで変更なし。
  */
-export const APP_VERSION = "0.26.5";
+export const APP_VERSION = "0.27.0";

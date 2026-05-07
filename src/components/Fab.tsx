@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/lib/firebase/auth";
 
 export default function Fab() {
+  const { isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -26,6 +28,11 @@ export default function Fab() {
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  // Public visitors never see the registration FAB. Admin-only entry points
+  // are gated at render time; Firebase rules still block any write that
+  // somehow bypasses this UI guard.
+  if (!isAdmin) return null;
 
   return (
     <div ref={wrapRef} className="fixed bottom-6 right-6 z-20">

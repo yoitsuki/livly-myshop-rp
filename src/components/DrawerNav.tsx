@@ -10,6 +10,7 @@ import {
   PlusCircle,
   Tag,
   Settings,
+  Upload,
   X,
 } from "lucide-react";
 import { useEffect, useState, type ComponentType } from "react";
@@ -50,6 +51,7 @@ const items: NavItem[] = [
       { href: "/register/inbox", label: "受信BOX", icon: Inbox },
     ],
   },
+  { href: "/inbox", label: "アップロード", icon: Upload },
   { href: "/tags", label: "タグ管理", icon: Tag },
   { href: "/presets", label: "プリセット管理", icon: Crop },
   { href: "/settings", label: "設定", icon: Settings },
