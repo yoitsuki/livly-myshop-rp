@@ -892,5 +892,15 @@
  *          残りの kind ( "addPrice" / "entryActions" ) は据え置き。
  *        main の `pb-24` は AppShell 共通で 96px 確保しているため、
  *        新しい fixed bar (高さ約 72px) でも本文の末尾が隠れない。
+ * 0.27.11 v0.27.10 の bottom-nav 微調整 2 件 ( /items/[id] のみ対象 ) :
+ *        (a) ボタン配置を [ EDIT ] [ DELETE ] から [ DELETE ] [ EDIT ] に
+ *            swap。 「決定に近いよく押すもの ( = EDIT ) を親指の可動域
+ *            である右」に持ってきて、 タップミスでの誤削除を減らす。
+ *            register form 側 ( /register ) は元から右が primary 保存
+ *            なので変更なし。
+ *        (b) DELETE と EDIT の両方に v0.27.0 以前の Atelier アイコン
+ *            ( Trash2 / Pencil ) を復活。 lg ボタン ( h-12, text-15px ) に
+ *            対して 16px の strokeWidth 1.8 で、 inbox / bulk の bottom
+ *            nav とテンポが揃う。
  */
-export const APP_VERSION = "0.27.10";
+export const APP_VERSION = "0.27.11";

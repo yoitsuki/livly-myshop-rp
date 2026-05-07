@@ -100,11 +100,13 @@ function EntryActions({
 }
 
 /**
- * 詳細ページ専用の固定 bottom-nav ( v0.27.10 ) 。 inbox 一覧の bottom nav と
- * 同じ枠 ( fixed bottom-0 + max-w-screen-sm + px-4 py-3 + flex gap-2 ) で
- * EDIT ( primary ) + DELETE ( danger ) を flex-1 ずつ並べる。 main の
- * pb-24 が AppShell 共通で確保済なので、 footer に被って読めない問題は
- * 起きない。
+ * 詳細ページ専用の固定 bottom-nav ( v0.27.10 → v0.27.11 ) 。 inbox 一覧の
+ * bottom nav と同じ枠 ( fixed bottom-0 + max-w-screen-sm + px-4 py-3 +
+ * flex gap-2 ) で DELETE ( danger, 左 ) と EDIT ( primary, 右 ) を flex-1
+ * ずつ並べる。 よく押す決定系を親指の自然な可動域 ( = 右 ) に置く配置。
+ * アイコン ( Trash2 / Pencil ) は v0.27.0 以前の Atelier 表現に合わせて
+ * 復活。 main の pb-24 が AppShell 共通で確保済なので footer に被って
+ * 読めない問題は起きない。
  */
 function BottomNav({ item }: { item: Item }) {
   const router = useRouter();
@@ -114,25 +116,31 @@ function BottomNav({ item }: { item: Item }) {
     <>
       <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
         <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
-          <Link
-            href={`/items/${item.id}/edit`}
-            className="flex-1"
-            aria-label="編集"
-          >
-            <Button variant="primary" size="lg" fullWidth>
-              EDIT
-            </Button>
-          </Link>
           <div className="flex-1">
             <Button
               variant="danger"
               size="lg"
               fullWidth
+              icon={<Trash2 size={16} strokeWidth={1.8} aria-hidden />}
               onClick={() => setConfirmOpen(true)}
             >
               DELETE
             </Button>
           </div>
+          <Link
+            href={`/items/${item.id}/edit`}
+            className="flex-1"
+            aria-label="編集"
+          >
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              icon={<Pencil size={16} strokeWidth={1.8} aria-hidden />}
+            >
+              EDIT
+            </Button>
+          </Link>
         </div>
       </div>
       <ConfirmDialog
