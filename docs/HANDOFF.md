@@ -105,9 +105,12 @@ function isAdmin() {
 
 `src/lib/version.ts` の `APP_VERSION` を更新する運用。Drawer 下部に表示される。
 
-最新: **0.18.3**
+最新: **0.20.0**
 
 直近のチェンジログ要約:
+- **0.20.0 — 受信BOX ページネーション + visible-only OCR**。大量画像 ( 50+ ) で初期 OCR ループが詰まって作業開始できない問題を解消。`listInboxFiles()` ( = 全件 metadata + URL を newest-first で一括取得 ) は据え置きだが、image download + OCR は **表示中のページ N 件のみ** 順次実行するように変更。`useRef<Map<string, InboxFile>>` で InboxFile を id キーで保持し、`useEffect(() => ..., [pagedEntries])` が未キュー分だけ processRow に流す。`queuedRef: Set<string>` で多重キックを防止、行 × 削除時に inboxFilesRef + queuedRef を同期クリーン。ページ番号 UI は `‹ 1 … 4 [5] 6 … 20 ›` のコンパクトナビ ( current は gold-deep 塗り、その他は warm hairline outline、32px hit target、1 ページなら非表示 )。1 ページあたり件数は `localSettings.inboxPageSize` ( 5 / 10 / 20、既定 10 ) で切替、設定画面に「受信BOX 表示件数」 Section を追加。「ページ N / M」表示も上部 status 行に追加。
+- **0.19.1 — 一覧 ( ItemCard ) の参考価格行を 2 段構成に + PeriodBadge コンパクト化**。5 桁以上 ( 〜 6+6 桁 ) の価格で badge が flex-wrap で折り返しカード高さがバラついていた問題を解消。Row 1 = 「参考価格」ラベル単独 / Row 2 = `[価格] [GP] [period badge ml-auto]` の 2 段。価格セルに `min-w-0 + truncate`、GP / badge セルに `shrink-0` を入れて長さ依存しない。ラベル↔価格の "視覚的な塊感" を出すため、両行に `lineHeight: 1` を効かせて Cormorant 18px の暗黙 line-height ( ≈ 1.5 ) による上余白を殺し、`marginTop: 3px` で密着させる。逆に最低価格行は `marginTop: 8px` で別クラスタとして分離。あわせて `PeriodBadge` ( ItemCard + 詳細ページ items/[id] ) を fontSize 9.5→9 / tracking 0.16→0.08em / padding 8→5px で 1 段コンパクト化 ( 配色 / 3 tier 分岐は不変 )。**前段に 0.19.1 で badge を最低価格行に移設する案を試したが UX が悪く revert** ( 該当 commit は revert 済 )。
+- **0.19.0 — 情報元 ( priceSource ) の取り方と見え方を整理**。一覧 ( ItemCard ) と詳細 ( /items/[id] ) のタグ列の末尾に「情報元: ◯◯」のタグ形 chip ( `InfoSourceChip`、背景白 / 文字 muted / 0.5px hairline / 角丸ゼロ ) を常時表示。値は `infoSourceLabel(item)` ( `src/lib/firebase/repo.ts` ) で算出 — メイン画像あり → `"マイショ"`、なし + priceSource あり → `"なんおし" / "その他"`、なし + priceSource なし ( 旧データ ) → `"設定無し"` ( 表示専用フォールバック )。登録 form 側は既定値を `"なんおし"` に統一 ( register / register/bulk / register/inbox / 価格追加 PriceEntryForm 全部 )。`SOURCE_PRESETS` / `PRICE_SOURCE_PRESETS` から「選択しない」を削除し なんおし / その他 の 2 択に。メイン画像ありなら従来通り Field 自体を非表示 + onSave で undefined に倒すのでデータ書き込みには影響しない。per-entry の priceSource 表示 ( 詳細 MARKET REFERENCE 行の Calendar | priceSource ) は触らず温存。
 - **0.18.3 — 詳細ページ タイトルブロック左に 64px AtelierThumb 追加 ( viewer parity )**。viewer は v0.1.0 から既にこの構成で、admin だけアイコンが出ていない状態だった。Title block を `flex gap-3.5` にし、左に 64px の corner-tick `AtelierThumb`、右側 ( category / REPLICA / 名前の順序や右寄せ ) はこれまで通り `flex-1 min-w-0` でラップ。`iconUrl` 未設定時は `ImageIcon` プレースホルダ。AtelierHero / 編集 / 削除 / 価格行・メタ表示は全て温存。
 - **0.18.2 — ホームのフィルタ UI を「絞込み」パネル化して再構成**。SearchBar の右に SlidersHorizontal アイコン付き「絞込み」ボタンを置き、押すまでパネルは非表示 ( 既定で閉じる )。アクティブフィルタ件数を絞込みボタン右上のバッジに出すので、パネルを閉じたままでも "フィルタ中" が分かる ( q は SearchBar 自体に表示済みなので除外 )。パネル内は 原本・レプリカ → カテゴリ → タグ の順。タグは TYPE_ORDER 別の `TagSection` ( ChevronRight rotate-90 で折り畳み、既定で全部閉じる ) に変更。各セクション見出しの右端に「全て選択 ⇄ 全て解除」 ( 全タグ active なら解除、それ以外は選択 ) を 1 ボタンで切替表示 + section 内の active 件数 ( N/M ) を表示。`<button>` ネスト不可なので「全て選択/解除」側は `role="button" tabIndex={0}` + Enter/Space ハンドラで代用。ロジック ( `tagUsage` / `replicaCounts` / `preReplicaFiltered` / `filtered` の useMemo チェイン ) は触らず UI だけ再構成。SEED 58 件タグ + カテゴリ + レプリカで埋まっていたファーストビューが SearchBar + 件数 + 一覧だけになり、密度問題が解消。viewer 同期も同じ構造で必要 ( チャット内で別途指示書を提示済み — 履歴破棄方針なので docs にコミットしていない ) 。
 - **0.18.1 — レプリカ表示の微調整**。ホームの 3 値セグメントに「原本・レプリカ」見出しを追加 ( タグセクションと同じ Atelier label スタイル ) 、ボタン順を 両方 → 原本のみ → レプリカのみ ( 既定が左端 ) に変更、`ItemCard` の REPLICA バッジを `<h3>` 横から **icon thumb の下** に移動 ( 画像とアイコンの関連性を明確に )。詳細ページのバッジ位置 ( タイトル右 ) は変更しない ( ユーザー指示 )。
@@ -168,7 +171,8 @@ interface PriceEntry {
   refPriceMin: number;
   refPriceMax: number;
   checkedAt: number;             // EXIF or 手動
-  priceSource?: string;          // "なんおし" / "その他"
+  priceSource?: string;          // v0.19.0〜: "なんおし" / "その他"
+                                 //   ( 旧データは undefined のまま残る = 表示は "設定無し" )
   createdAt: number;
 }
 
@@ -256,7 +260,8 @@ src/
     AppShell.tsx            useAuth で gating。loading / unauth / non-admin / admin の 4 状態
     LoginScreen.tsx         未ログイン: Google サインインボタン。ログイン済 admin 未設定: UID 表示。エラー / config diagnostic 折りたたみ
     DrawerNav.tsx           右からスライドイン (登録 / まとめて登録 のサブメニュー付き、v0.14.0)
-    ItemCard.tsx            一覧 1 行 (atelier-row + corner-tick サムネ)
+    ItemCard.tsx            一覧 1 行 (atelier-row + corner-tick サムネ)。参考価格は v0.19.1 から 2 段構成 ( ラベル単独行 + 価格 + GP + period badge ) で 6+6 桁にも対応
+    InfoSourceChip.tsx      タグ列末尾の「情報元: ◯◯」chip (v0.19.0、背景白 / 文字 muted)
     ImageCropper.tsx        モーダル切抜き
     PresetForm.tsx          プリセット新規/編集の共通フォーム (メイン画像なしのトグル付き、v0.14.0)
     PriceEntryForm.tsx      価格エントリの共通フォーム (画像プレビュー + OCR ボタン)
@@ -270,7 +275,7 @@ src/
       mappers.ts            itemToFs / itemFromFs / tagToFs / tagFromFs / settingsToFs / settingsFromFs + compact()
       hooks.ts              useItems / useItem / useTags / useSettings
       images.ts             uploadItemImage / deleteItemImage / deleteAllItemImages
-      repo.ts               CRUD + cascade delete + sortedPriceEntries / latestPriceEntry + mergeItemPriceEntry / isNewestYearMonth (v0.16.1) + seedTagsIfMissing (v0.16.0) + reorderTags (v0.15.0)
+      repo.ts               CRUD + cascade delete + sortedPriceEntries / latestPriceEntry + mergeItemPriceEntry / isNewestYearMonth (v0.16.1) + seedTagsIfMissing (v0.16.0) + reorderTags (v0.15.0) + infoSourceLabel (v0.19.0)
       admin.ts              firebase-admin init (FIREBASE_SERVICE_ACCOUNT を 1 行 JSON でパース) + requireAdmin
       types.ts              Item / Tag / PriceEntry / AppSettings / TagType (7 種、v0.16.0) 等
     bulk/                   BulkDraftProvider (v0.14.0)
@@ -279,7 +284,7 @@ src/
       process.ts            applyPresetRects / processBulkSource / renderIconThumb
     tagTypes.ts             TYPE_LABEL / TYPE_ORDER / TYPE_COLORS / normalizeTagType の正本 (v0.15.0、v0.16.0 で 7 種)
     seedTags.ts             SEED_TAGS 定数 58 件 (v0.16.0)
-    localSettings.ts        OCR プロバイダ・キー・モデル (端末ローカル)
+    localSettings.ts        OCR プロバイダ・キー・モデル + inboxPageSize (5/10/20、既定 10、v0.20.0) (端末ローカル)
     preset.ts               CropPreset + findMatchingPreset (HSV 判定) + SEED_PRESETS。`main` は v0.14.0 から optional
     image.ts                compressImage / cropAndEncode / Blob 周り
     exif.ts                 getCheckedAt(File|Blob)
@@ -342,7 +347,7 @@ storage.rules               同上
 - 編集画面は **保存ボタンを押すまで Firestore / Storage 反映なし**
 - 価格エントリ追加・編集時のスクショは **保存しない** (EXIF + OCR にだけ使う)
 - 一覧と詳細ヘッダの参考価格・期間バッジは `latestPriceEntry()` の値を表示
-- 一覧 / 詳細 の 情報元 はバッジ表示（選択肢は **なんおし / その他**）
+- 一覧 / 詳細 の 情報元 はタグ列の末尾に `InfoSourceChip` ( 背景白 / 文字 muted ) で常時表示 (v0.19.0)。値は `infoSourceLabel(item)` で算出: メイン画像あり → **マイショ** / 画像なし + priceSource あり → **なんおし** または **その他** ( 登録 form の 2 択 ) / 画像なし + priceSource なし ( 旧データ ) → **設定無し** ( 表示専用フォールバック )。登録 form 既定値は全フロー一律で「なんおし」
 - **同名アイテム検出 + マージ (v0.16.1)** — `/register` で既存と同じ name を登録しようとすると `MergeDialog` が出て、新 yearMonth が既存より新しい時だけ「✅ メイン画像を更新する」がデフォルト ON。`/register/bulk` ではサイレントにマージ (新期間が最新なら main も自動上書き)。同 yearMonth は新しい方で上書き (1 件扱い)。アイコンは触らない
 - **シードタグ (v0.16.0)** — `src/lib/seedTags.ts` の `SEED_TAGS` (58 件) を /tags の「シードを読み込む」ボタンで一括投入。`displayOrder` は `SEED_TAGS.indexOf` で採番されるので並び順が SEED の通り保存される。idempotent (再実行で重複作成なし)
 - **タグの色分け + カテゴリ分け** — TagType は 7 種 (gacha / bazaar / nuts / gradely / collab / creators / other)。`TagChip` (詳細・一覧) は `TYPE_COLORS` の warm 矩形ピル、ホームのフィルタチップ列は `TYPE_LABEL` の小見出し付き section
@@ -407,16 +412,20 @@ UI 変更を含む場合は dev サーバ起動 + ブラウザで操作確認す
 v0.13.0 で **Phase 1 + Phase 2 (Firebase 移行)** 完了。**ユーザー曰く「いったん終わり」**。
 v0.17.5 までで受信BOX (viewer→admin 連携) + タグ周りの整理がひと段落。
 v0.18.0–0.18.3 で **レプリカ管理** + **ホームのフィルタ UI 再構成 ( 絞込みパネル化 )** + **詳細タイトル左の 64px AtelierThumb 追加 ( viewer parity )** が完了。
+v0.19.0–0.20.0 で **情報元 chip + 登録既定値の整理** + **ItemCard 参考価格行を 2 段構成に + PeriodBadge コンパクト化** + **受信BOX のページネーション + visible-only OCR** が完了。
 現在は admin 側で目立つ TODO は無く、要望待ち。
 
 ### 計画書 §10 の残フェーズ
-- **Phase 3 — viewer リポジトリ scaffold**: 公開閲覧用の `livly-myshop-viewer` リポジトリを新規作成。同じ Firebase プロジェクトを向け、ホーム + 詳細だけの read-only Next.js。書込みコードを bundle に含めない。設計コピー (globals.css / layout / 主要 components / lib のサブセット) → 同じデザインで開始 → 以後は viewer 側で独自進化 OK。**現在 viewer リポジトリは存在し、admin と並走で更新中**。タグ系の同期は 0.17.5 まで反映済み (ユーザー報告)。受信BOX 連携の uploadBytes 実装も完了済み。**0.18.0–0.18.3 のレプリカ + ホームフィルタ再構成については viewer 同期が必要** ( 指示書はチャットでユーザーに渡し、履歴破棄方針なので docs にはコミットしていない )。
+- **Phase 3 — viewer リポジトリ scaffold**: 公開閲覧用の `livly-myshop-viewer` リポジトリを新規作成。同じ Firebase プロジェクトを向け、ホーム + 詳細だけの read-only Next.js。書込みコードを bundle に含めない。設計コピー (globals.css / layout / 主要 components / lib のサブセット) → 同じデザインで開始 → 以後は viewer 側で独自進化 OK。**現在 viewer リポジトリは存在し、admin と並走で更新中**。タグ系の同期は 0.17.5 まで反映済み (ユーザー報告)。受信BOX 連携の uploadBytes 実装も完了済み。**0.18.0–0.18.3 のレプリカ + ホームフィルタ再構成 + 0.19.0–0.19.1 の 情報元 chip + 参考価格 2 段構成 + PeriodBadge コンパクト化 については viewer 同期が必要** ( 指示書はチャットでユーザーに渡し、履歴破棄方針なので docs にはコミットしていない )。0.20.0 のページネーションは admin 専用機能なので viewer 同期不要。
 - **Phase 4 — viewer の仕上げ**: 404 ページ、OG meta、`next/image` 切替、PWA 微調整、production deploy
 
 ### 完了済み ( 直近 )
 - **レプリカ管理** ( v0.18.0 / 0.18.1 ) — `docs/SPEC_REPLICA.md` の方針通り Item に `isReplica?: boolean` 追加 + ホーム 3 値セグメント + 詳細 / `ItemCard` の REPLICA バッジを実装済み。詳細位置は仕様書から微調整 ( タイトル右寄せ )、`ItemCard` バッジは icon thumb の下に配置する形に。**ゲーム内呼称は「原本」 ( 「本物」ではない ) — UI ラベル / コミット / コメント全部「原本」表記で統一**。
 - **ホームのフィルタ UI 再構成** ( v0.18.2 ) — タグ section の auto-expand 案 ( かつての `docs/SPEC_TAG_FILTER_DENSITY.md` ) は採用せず、より大きな再構成 ( SearchBar の右に「絞込み」ボタン、押下でパネルがインライン展開、パネル内に 原本・レプリカ → カテゴリ → タグ ( 折り畳み + 全て選択/解除 ) を配置 ) に倒した。古い SPEC は **削除済み**。
 - **詳細タイトル左の 64px AtelierThumb** ( v0.18.3 ) — viewer parity を取るための追加。
+- **情報元 chip + 登録既定値の整理** ( v0.19.0 ) — `InfoSourceChip` を一覧 / 詳細のタグ列末尾に常時表示。値は `infoSourceLabel(item)` で算出 ( マイショ / なんおし / その他 / 設定無し ) 。登録 form の既定値は全フローで「なんおし」、選択肢は なんおし / その他 の 2 択。
+- **ItemCard 参考価格行を 2 段構成に + PeriodBadge コンパクト化** ( v0.19.1 ) — 5+5 桁以上の長い価格で badge が折り返してカード高さがバラついていた問題を解消。ラベル単独行 + 価格 + GP + badge 行 の 2 段。両行に lineHeight: 1 でラベル↔価格を密着、最低価格は marginTop: 8 で別クラスタとして分離。PeriodBadge は fontSize 9.5→9 / tracking 0.16→0.08em / padding 8→5px で 1 段詰め。
+- **受信BOX のページネーション + visible-only OCR** ( v0.20.0 ) — 大量画像で初期 OCR が詰まる問題を解消。`listInboxFiles()` は据え置き ( newest-first で全件 metadata + URL を一括取得、これは並列で速い ) 、image download + OCR は表示中ページの行のみ順次実行。`useRef<Map<string, InboxFile>>` で InboxFile を id キーで保持、`useEffect([pagedEntries])` で未キュー分だけ processRow に流す ( queuedRef で多重防止 ) 。ページ番号 UI は `‹ 1 … 4 [5] 6 … 20 ›` のコンパクトナビ、1 ページあたり件数は localSettings.inboxPageSize ( 5 / 10 / 20、既定 10 ) で切替。
 
 ### 細かい改善候補
 - **register / edit の画面タイトルブロック** — 詳細ページのような editorial title block を入れると一貫感が出る
