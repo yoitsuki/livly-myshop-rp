@@ -701,5 +701,31 @@
  *        除去。今後 priceSource undefined の旧データは出ない前提
  *        ( 表示時の "設定無し" フォールバックは残してあるので、もし出ても
  *        無害 ) 。
+ * 0.26.2 inbox / bulk の個別編集画面 ( /register?entryId=xxx ) 上部の
+ *        「受信BOXに戻る」/「リストに戻る」ボタンを secondary ( 白地 +
+ *        gold-deep 文字 ) → primary ( gold 塗りつぶし + 白文字 ) に変更。
+ *        白背景に白ボタンで見落とすという指摘を受けて、戻り導線を
+ *        視認しやすいゴールド塗りに格上げ。
+ * 0.26.3 ImageCropper の NudgeBar を縦方向にコンパクト化 + 1px / 10px
+ *        ステップトグルを追加。directional pad は up / down を h-8 →
+ *        h-6 ( 24px、icon 16px ) に縮小し、left / right はその半分の
+ *        h-3 ( 12px、icon 12px ) にして「上ボタンの半分に横ボタンが来る」
+ *        layout に変更 ( アイコン切り抜き画面で下が見切れる問題の解消 )。
+ *        新設の `nudgeStep` ( 1 | 10 ) state を NudgeBar に渡し、step=10
+ *        では Chevron* → Chevrons* ( double ) に icon を切替 + size row
+ *        の label も "−10 / +10" に切替。NudgeBar 末尾に "1px" / "10px"
+ *        を表示する StepToggle ボタンを追加 ( タップで切替、aria-pressed
+ *        対応 )。素早く荒削り → 1px 微調整の流れが片手で完結する。
+ * 0.26.4 ImageCropper のステップトグルを 10px → 30px に変更 + 同名アイテム
+ *        の同一判定に isReplica 比較を追加。(a) StepToggle / NudgeBar /
+ *        SizeRow の step 型を `1 | 10` → `1 | 30` に。 step=30 のとき
+ *        Chevrons* ( double ) icon と "−30 / +30" 表記に切替。1 タップで
+ *        画面の大半をカバーする荒い移動が可能に。(b) v0.18.0 で導入した
+ *        Item.isReplica の同一判定漏れを修正: /register ( 単発 ) の
+ *        same-name 検出と src/lib/bulk/save.ts ( bulk / inbox の silent
+ *        merge ) の find 条件に `!!i.isReplica === !!form.isReplica`
+ *        ( 単発 ) / `!!i.isReplica === !!entry.isReplica` ( bulk ) を
+ *        追加。原本 と レプリカ は同名でも別 item として共存可能になる。
+ *        現状そのような同居データは存在しないのでマイグレーションは不要。
  */
-export const APP_VERSION = "0.26.1";
+export const APP_VERSION = "0.26.4";
