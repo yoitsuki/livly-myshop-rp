@@ -7,6 +7,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ChevronsDown,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronsUp,
   X,
 } from "lucide-react";
 import { cropAndEncode, getImageSize, type CropRect } from "@/lib/image";
@@ -85,6 +89,8 @@ export default function ImageCropper({
    * after setRect.
    */
   const [layoutTick, setLayoutTick] = useState(0);
+
+  const [nudgeStep, setNudgeStep] = useState<1 | 10>(1);
 
   // Manage object URL for the preview image
   useEffect(() => {
@@ -344,6 +350,8 @@ export default function ImageCropper({
 
       <NudgeBar
         disabled={!rect || !imgSize}
+        step={nudgeStep}
+        onStepChange={setNudgeStep}
         onNudge={nudgeRect}
         onResize={resizeRect}
       />
@@ -440,54 +448,85 @@ export default function ImageCropper({
 
 /**
  * Fine-tune control row rendered above the image — a 3×3 directional pad
- * (1px nudge, keeps size) plus width/height ±1px buttons. Anchored on the
- * cropper's dark teal background; matches the Atelier square / hairline
- * idiom (no rounded corners).
+ * (1px or 10px nudge depending on step toggle, keeps size) plus width/height
+ * ±step buttons. Anchored on the cropper's dark teal background; matches
+ * the Atelier square / hairline idiom (no rounded corners). The middle
+ * (left/right) row is half-height of the up/down rows so the bar fits in
+ * tight viewports.
  */
 function NudgeBar({
   disabled,
+  step,
+  onStepChange,
   onNudge,
   onResize,
 }: {
   disabled: boolean;
+  step: 1 | 10;
+  onStepChange: (s: 1 | 10) => void;
   onNudge: (dx: number, dy: number) => void;
   onResize: (dw: number, dh: number) => void;
 }) {
+  const Up = step === 10 ? ChevronsUp : ChevronUp;
+  const Down = step === 10 ? ChevronsDown : ChevronDown;
+  const Left = step === 10 ? ChevronsLeft : ChevronLeft;
+  const Right = step === 10 ? ChevronsRight : ChevronRight;
   return (
     <div className="px-3 py-2 border-b border-white/10 flex items-center justify-center gap-3 flex-wrap">
-      <div className="grid grid-cols-3 grid-rows-3 gap-0.5">
+      <div className="grid grid-cols-3 gap-0.5">
         <span aria-hidden />
-        <NudgeBtn aria-label="上に1px" disabled={disabled} onClick={() => onNudge(0, -1)}>
-          <ChevronUp size={16} strokeWidth={1.8} />
+        <NudgeBtn
+          aria-label={`上に${step}px`}
+          disabled={disabled}
+          tall
+          onClick={() => onNudge(0, -step)}
+        >
+          <Up size={16} strokeWidth={1.8} />
         </NudgeBtn>
         <span aria-hidden />
-        <NudgeBtn aria-label="左に1px" disabled={disabled} onClick={() => onNudge(-1, 0)}>
-          <ChevronLeft size={16} strokeWidth={1.8} />
+        <NudgeBtn
+          aria-label={`左に${step}px`}
+          disabled={disabled}
+          onClick={() => onNudge(-step, 0)}
+        >
+          <Left size={12} strokeWidth={1.8} />
         </NudgeBtn>
         <span aria-hidden />
-        <NudgeBtn aria-label="右に1px" disabled={disabled} onClick={() => onNudge(1, 0)}>
-          <ChevronRight size={16} strokeWidth={1.8} />
+        <NudgeBtn
+          aria-label={`右に${step}px`}
+          disabled={disabled}
+          onClick={() => onNudge(step, 0)}
+        >
+          <Right size={12} strokeWidth={1.8} />
         </NudgeBtn>
         <span aria-hidden />
-        <NudgeBtn aria-label="下に1px" disabled={disabled} onClick={() => onNudge(0, 1)}>
-          <ChevronDown size={16} strokeWidth={1.8} />
+        <NudgeBtn
+          aria-label={`下に${step}px`}
+          disabled={disabled}
+          tall
+          onClick={() => onNudge(0, step)}
+        >
+          <Down size={16} strokeWidth={1.8} />
         </NudgeBtn>
         <span aria-hidden />
       </div>
       <div className="flex flex-col gap-1.5">
         <SizeRow
           label="横幅"
+          step={step}
           disabled={disabled}
-          onMinus={() => onResize(-1, 0)}
-          onPlus={() => onResize(1, 0)}
+          onMinus={() => onResize(-step, 0)}
+          onPlus={() => onResize(step, 0)}
         />
         <SizeRow
           label="縦幅"
+          step={step}
           disabled={disabled}
-          onMinus={() => onResize(0, -1)}
-          onPlus={() => onResize(0, 1)}
+          onMinus={() => onResize(0, -step)}
+          onPlus={() => onResize(0, step)}
         />
       </div>
+      <StepToggle step={step} onChange={onStepChange} />
     </div>
   );
 }
@@ -495,11 +534,13 @@ function NudgeBar({
 function NudgeBtn({
   children,
   disabled,
+  tall,
   onClick,
   ...rest
 }: {
   children: React.ReactNode;
   disabled: boolean;
+  tall?: boolean;
   onClick: () => void;
   "aria-label": string;
 }) {
@@ -508,7 +549,7 @@ function NudgeBtn({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="w-8 h-8 flex items-center justify-center text-white border border-white/60 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
+      className={`w-8 ${tall ? "h-6" : "h-3"} flex items-center justify-center text-white border border-white/60 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors`}
       style={{ borderRadius: 0 }}
       {...rest}
     >
@@ -519,11 +560,13 @@ function NudgeBtn({
 
 function SizeRow({
   label,
+  step,
   disabled,
   onMinus,
   onPlus,
 }: {
   label: string;
+  step: 1 | 10;
   disabled: boolean;
   onMinus: () => void;
   onPlus: () => void;
@@ -539,13 +582,38 @@ function SizeRow({
       >
         {label}
       </span>
-      <SizeBtn aria-label={`${label}を1px小さく`} disabled={disabled} onClick={onMinus}>
-        −1
+      <SizeBtn aria-label={`${label}を${step}px小さく`} disabled={disabled} onClick={onMinus}>
+        −{step}
       </SizeBtn>
-      <SizeBtn aria-label={`${label}を1px大きく`} disabled={disabled} onClick={onPlus}>
-        +1
+      <SizeBtn aria-label={`${label}を${step}px大きく`} disabled={disabled} onClick={onPlus}>
+        +{step}
       </SizeBtn>
     </div>
+  );
+}
+
+function StepToggle({
+  step,
+  onChange,
+}: {
+  step: 1 | 10;
+  onChange: (s: 1 | 10) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(step === 1 ? 10 : 1)}
+      aria-label={step === 1 ? "10px モードに切替" : "1px モードに切替"}
+      aria-pressed={step === 10}
+      className="h-7 px-2.5 text-white text-[11px] tabular-nums border border-white/60 hover:bg-white/15 active:bg-white/25 transition-colors"
+      style={{
+        borderRadius: 0,
+        fontFamily: "var(--font-label)",
+        letterSpacing: "0.1em",
+      }}
+    >
+      {step}px
+    </button>
   );
 }
 

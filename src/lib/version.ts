@@ -706,5 +706,15 @@
  *        gold-deep 文字 ) → primary ( gold 塗りつぶし + 白文字 ) に変更。
  *        白背景に白ボタンで見落とすという指摘を受けて、戻り導線を
  *        視認しやすいゴールド塗りに格上げ。
+ * 0.26.3 ImageCropper の NudgeBar を縦方向にコンパクト化 + 1px / 10px
+ *        ステップトグルを追加。directional pad は up / down を h-8 →
+ *        h-6 ( 24px、icon 16px ) に縮小し、left / right はその半分の
+ *        h-3 ( 12px、icon 12px ) にして「上ボタンの半分に横ボタンが来る」
+ *        layout に変更 ( アイコン切り抜き画面で下が見切れる問題の解消 )。
+ *        新設の `nudgeStep` ( 1 | 10 ) state を NudgeBar に渡し、step=10
+ *        では Chevron* → Chevrons* ( double ) に icon を切替 + size row
+ *        の label も "−10 / +10" に切替。NudgeBar 末尾に "1px" / "10px"
+ *        を表示する StepToggle ボタンを追加 ( タップで切替、aria-pressed
+ *        対応 )。素早く荒削り → 1px 微調整の流れが片手で完結する。
  */
-export const APP_VERSION = "0.26.2";
+export const APP_VERSION = "0.26.3";
