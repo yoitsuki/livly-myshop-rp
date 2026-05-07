@@ -659,5 +659,39 @@
  *        なので意図的に触らない ( 検索文字列を保ったまま絞込みだけ
  *        リセットしたい場面に対応 ) 。クリア後は activeFilterCount が
  *        0 になるのでバー自身も自動で消える。
+ * 0.26.0 情報元 ( priceSource ) を完全に per-entry 化 + 価格追加に画像
+ *        アップロード対応 + メイン画像の更新ルール明文化。
+ *        (a) `infoSourceLabel(item)` が item.mainImageUrl を最優先に
+ *        参照していた挙動を撤去。最新エントリの `priceSource` をそのまま
+ *        表示する `entryInfoSourceLabel` を新設、`infoSourceLabel` は
+ *        latestPriceEntry にディスパッチするだけのシンが薄いラッパに。
+ *        新規エントリの priceSource は `resolveEntryPriceSource(hasMain,
+ *        fallback)` で `"マイショ" | "なんおし" | "その他"` の 3 値に
+ *        正規化 ( /register / bulk save / /prices/new で共通利用 ) 。
+ *        (b) メイン画像の更新ルールを `shouldReplaceMainImage` に集約:
+ *          - item に画像が無い → 採用 ( 期間に関わらず 1 枚目 )
+ *          - 画像あり + 新エントリ yearMonth >= 既存最新 → 上書き
+ *          - 画像あり + 古い期間 → 既存維持 ( 新画像は破棄 )
+ *        bulk save の `replaceMain` 判定と `/register` の MergeDialog
+ *        既定値もこのヘルパに切替。
+ *        (c) `addPriceEntry` を mainImage オプション引数を受け取る形に
+ *        拡張。pre-fetch で should-replace を判定 → true なら
+ *        Storage に upload 後に runTransaction で URL 反映、false なら
+ *        blob を破棄 ( per-entry 画像は保持しない方針 ) 。
+ *        (d) /items/[id]/prices/new を全面リフォーム: 画像ファイル
+ *        ピッカー + EXIF auto-fill + プリセット自動判定 + 手動プリセット
+ *        select + ImageCropper での再クロップ + OCR ボタン ( ref price
+ *        のみ抽出 ) 。`useDirtyTracker` で離脱ガードも入れる。「クロップ
+ *        結果をプリセットに登録」は /register 側にだけ残す方針 ( 価格
+ *        追加では不要 ) 。
+ *        (e) /items/[id]/prices/[entryId]/edit は priceSource ピッカー
+ *        の出し分け条件を `entry.priceSource !== "マイショ"` に変更。
+ *        マイショ entry は画像と紐付くので picker 非表示・値固定。
+ *        (f) 旧データ ( priceSource undefined ) を埋める一回限りの
+ *        マイグレーション関数 `migrateInfoSources` を repo.ts に追加し、
+ *        /settings 末尾の「情報元データ移行」inline ボタンから実行。
+ *        item.mainImageUrl の有無で `"マイショ"` か `"なんおし"` を
+ *        差し込む。実行後は次の clean-up コミットでボタン + 関数とも
+ *        ソースから削除する想定 ( TODO コメント付き ) 。
  */
-export const APP_VERSION = "0.25.0";
+export const APP_VERSION = "0.26.0";

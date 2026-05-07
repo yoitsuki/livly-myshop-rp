@@ -4,10 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Home } from "lucide-react";
 import { useItems, useSettings, useTags } from "@/lib/firebase/hooks";
-import { getSettings } from "@/lib/firebase/repo";
+import { getSettings, migrateInfoSources } from "@/lib/firebase/repo";
 import { useLocalSettings } from "@/lib/localSettings";
 import { describePreset, type CropPreset } from "@/lib/preset";
-import { Button, Field, fieldInputClass, Toast } from "@/components/ui";
+import {
+  Button,
+  ConfirmDialog,
+  Field,
+  fieldInputClass,
+  Toast,
+} from "@/components/ui";
 
 const CLAUDE_MODELS = [
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
@@ -33,6 +39,16 @@ export default function SettingsPage() {
   const [showKey, setShowKey] = useState(false);
   const [keyDraft, setKeyDraft] = useState<string | undefined>();
   const [saved, setSaved] = useState(false);
+
+  // TODO: remove after one-time migration ( 0.26.0 ) 。
+  const [migrateConfirm, setMigrateConfirm] = useState(false);
+  const [migrateBusy, setMigrateBusy] = useState(false);
+  const [migrateResult, setMigrateResult] = useState<string | undefined>();
+  useEffect(() => {
+    if (!migrateResult) return;
+    const t = window.setTimeout(() => setMigrateResult(undefined), 6000);
+    return () => window.clearTimeout(t);
+  }, [migrateResult]);
 
   const flashSaved = () => {
     setSaved(true);
@@ -171,6 +187,22 @@ export default function SettingsPage() {
         </Link>
       </Section>
 
+      {/* TODO: remove after one-time migration ( 0.26.0 ) — 後続コミットで
+          これと migrateInfoSources を一緒に削除する。 */}
+      <Section
+        title="情報元データ移行 ( 0.26.0 )"
+        hint="旧データの priceSource を一度だけ埋め直します。実行は 1 回で十分です。"
+      >
+        <Button
+          variant="secondary"
+          size="md"
+          onClick={() => setMigrateConfirm(true)}
+          disabled={migrateBusy}
+        >
+          情報元を移行する
+        </Button>
+      </Section>
+
       <Link href="/" className="block">
         <Button variant="secondary" size="lg" fullWidth icon={<Home size={16} />}>
           ホームに戻る
@@ -178,6 +210,41 @@ export default function SettingsPage() {
       </Link>
 
       <Toast open={saved} message="保存しました" />
+      <Toast
+        open={migrateResult !== undefined}
+        message={migrateResult ?? ""}
+        tone="success"
+      />
+      <ConfirmDialog
+        open={migrateConfirm}
+        message={
+          "全アイテムを走査し、priceSource が未設定のエントリに 'マイショ' / 'なんおし' を入れます。\n( 画像があるアイテムは 'マイショ'、無いアイテムは 'なんおし' )\n\n実行してよろしいですか？"
+        }
+        confirmLabel="実行"
+        cancelLabel="戻る"
+        variant="primary"
+        busy={migrateBusy}
+        onCancel={() => setMigrateConfirm(false)}
+        onConfirm={async () => {
+          setMigrateBusy(true);
+          try {
+            const result = await migrateInfoSources();
+            setMigrateConfirm(false);
+            setMigrateResult(
+              `走査 ${result.scanned} 件 / 更新 ${result.itemsUpdated} 件 ( ${result.entriesUpdated} エントリ ) を埋めました`,
+            );
+          } catch (e) {
+            setMigrateResult(
+              e instanceof Error
+                ? `移行に失敗しました: ${e.message}`
+                : "移行に失敗しました",
+            );
+            setMigrateConfirm(false);
+          } finally {
+            setMigrateBusy(false);
+          }
+        }}
+      />
 
     </div>
   );

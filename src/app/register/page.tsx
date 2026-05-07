@@ -16,7 +16,8 @@ import {
   createItem,
   createTag,
   getSettings,
-  isNewestYearMonth,
+  resolveEntryPriceSource,
+  shouldReplaceMainImage,
   mergeItemPriceEntry,
   patchSettings,
   uid,
@@ -479,7 +480,7 @@ function RegisterPageInner() {
           (e) => e.shopPeriod?.yearMonth === newYearMonth,
         );
       const defaultReplaceMain =
-        !!mainBlob && isNewestYearMonth(existingItem, newYearMonth);
+        !!mainBlob && shouldReplaceMainImage(existingItem, newYearMonth);
       setMergeDialog({ existing: existingItem, willReplaceEntry, defaultReplaceMain });
       return;
     }
@@ -500,8 +501,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
-        priceSource:
-          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
         createdAt: now,
       };
       await createItem({
@@ -541,8 +541,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
-        priceSource:
-          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
       };
       await mergeItemPriceEntry({
         itemId: mergeDialog.existing.id,

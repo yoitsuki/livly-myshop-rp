@@ -89,7 +89,10 @@ export default function EditPriceEntryPage({
   }
 
   const i = item as Item;
-  const hasMain = !!i.mainImageUrl;
+  // v0.26.0+ : priceSource は per-entry の事実。"マイショ" entry は画像付き
+  // 登録のフラグでもあるので編集画面では変更不可 ( picker 非表示 )。
+  // それ以外 ( なんおし / その他 / 未設定 ) は picker を出して編集可能。
+  const isMaisho = entry?.priceSource === "マイショ";
 
   const onSave = async () => {
     setError(undefined);
@@ -109,8 +112,11 @@ export default function EditPriceEntryPage({
         checkedAt: form.checkedAt
           ? fromLocalInput(form.checkedAt)
           : Date.now(),
-        priceSource:
-          !hasMain && form.priceSource ? form.priceSource.trim() : undefined,
+        // "マイショ" entry は画像と紐付いているので priceSource を保持
+        // ( フォームでは編集できないため、元の値をそのまま書き戻す ) 。
+        priceSource: isMaisho
+          ? "マイショ"
+          : form.priceSource.trim() || "なんおし",
       };
       await updatePriceEntry(i.id, entryId, patch);
       router.replace(`/items/${i.id}`);
@@ -139,7 +145,7 @@ export default function EditPriceEntryPage({
         value={form}
         onChange={setForm}
         allowSourcePicker
-        showPriceSource={!hasMain}
+        showPriceSource={!isMaisho}
       />
 
       <div className="flex gap-2 pt-2">
