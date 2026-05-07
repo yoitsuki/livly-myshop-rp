@@ -366,9 +366,10 @@ export default function InboxRegisterPage() {
   };
 
   const onSave = async () => {
-    const targets = inboxEntries.filter(
-      (e) => e.checked && e.savedAt === undefined,
-    );
+    // 登録済み ( savedAt 持ち ) でも、ユーザーが checkbox を再度 ON
+    // にした場合は再登録を許容する ( 同一画像から複数アイテムを切り出す
+    // ケース対応 ) 。新しい savedAt で上書き、metadata も再書込み。
+    const targets = inboxEntries.filter((e) => e.checked);
     if (targets.length === 0) return;
     setError(undefined);
     setInfo(undefined);
@@ -435,9 +436,7 @@ export default function InboxRegisterPage() {
       ? `Claude (${local.claudeModel || "default"})`
       : "Tesseract (端末)";
 
-  const checkedCount = inboxEntries.filter(
-    (e) => e.checked && e.savedAt === undefined,
-  ).length;
+  const checkedCount = inboxEntries.filter((e) => e.checked).length;
 
   const totalCount = inboxEntries.length;
   const savedCount = inboxEntries.filter(

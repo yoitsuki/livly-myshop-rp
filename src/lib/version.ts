@@ -618,5 +618,19 @@
  *        とは独立 ) 。背景は cropper の deep-teal、Atelier 統一の
  *        warm hairline + 角丸ゼロ + tracked-out ラベル ( "横幅" / "縦幅" )
  *        で、dialog を開いてすぐ片手で 1px 単位の追い込みができる。
+ * 0.23.1 ImageCropper の NudgeBar の見た目修正 ( ボタン中身が描画
+ *        されていなかった ) と inbox 登録済み行のブロック解除。
+ *        (a) NudgeBtn / SizeBtn を self-closing tag で書いていて
+ *        children を destructure しても使っていなかったため、矢印
+ *        アイコンと −1 / +1 文字が render されていなかった。
+ *        通常の <button>{children}</button> 形式に直し、border 不透明度
+ *        を /30 → /60 に上げてコントラスト強化。
+ *        (b) inbox の "登録済み" 行のチェックボックス / preset select
+ *        を unblock。BulkRow の checkboxDisabled から saved を除外、
+ *        select の disabled も processing のみに。inbox onSave の
+ *        targets / checkedCount から savedAt === undefined の filter を
+ *        外す。同一画像から複数アイテムを切り出すケースに対応 — 一度
+ *        登録した行を再 check + preset 変更 + 再保存できる。badge は
+ *        引き続き出る ( "一度は登録した" 印として残す ) 。
  */
-export const APP_VERSION = "0.23.0";
+export const APP_VERSION = "0.23.1";

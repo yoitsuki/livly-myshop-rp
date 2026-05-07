@@ -508,10 +508,12 @@ function NudgeBtn({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="w-8 h-8 flex items-center justify-center text-white border border-white/30 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
+      className="w-8 h-8 flex items-center justify-center text-white border border-white/60 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
       style={{ borderRadius: 0 }}
       {...rest}
-    />
+    >
+      {children}
+    </button>
   );
 }
 
@@ -563,10 +565,12 @@ function SizeBtn({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="h-8 min-w-[2.5rem] px-2 text-white text-[12px] tabular-nums border border-white/30 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
+      className="h-8 min-w-[2.5rem] px-2 text-white text-[13px] tabular-nums border border-white/60 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
       style={{ borderRadius: 0 }}
       {...rest}
-    />
+    >
+      {children}
+    </button>
   );
 }
 
