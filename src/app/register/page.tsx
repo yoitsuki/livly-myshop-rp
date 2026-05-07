@@ -143,6 +143,13 @@ function RegisterPageInner() {
   const [presets, setPresets] = useState<{ icon: CropRect; main?: CropRect } | null>(
     null
   );
+  /**
+   * The preset id the current crop was sourced from ( vanilla flow:
+   * findMatchingPreset の結果 / bulk-edit: bulkEntry.presetId ) 。
+   * "クロップ結果をプリセットに登録" を開くとき、この id から名前を逆引き
+   * してフォームの初期値に入れる ( ユーザーがその上で編集 OK ) 。
+   */
+  const [matchedPresetId, setMatchedPresetId] = useState<string | undefined>();
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [error, setError] = useState<string | undefined>();
@@ -225,6 +232,7 @@ function RegisterPageInner() {
     if (bulkEntry.iconRect) {
       setPresets({ icon: bulkEntry.iconRect, main: bulkEntry.mainRect });
     }
+    setMatchedPresetId(bulkEntry.presetId);
     if (bulkEntry.iconCrop) setIconCrop(bulkEntry.iconCrop);
     if (bulkEntry.mainCrop) setMainCrop(bulkEntry.mainCrop);
 
@@ -284,6 +292,7 @@ function RegisterPageInner() {
     setIconCrop(undefined);
     setMainCrop(undefined);
     setPresets(null);
+    setMatchedPresetId(undefined);
     setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
     setAutoFilled(new Set());
     setOcrDone(false);
@@ -314,6 +323,7 @@ function RegisterPageInner() {
             : SEED_PRESETS;
         const matched = await findMatchingPreset(file, list);
         setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
+        setMatchedPresetId(matched?.preset.id);
       } catch (e) {
         setError(
           `プリセット判定に失敗: ${e instanceof Error ? e.message : String(e)}`,
@@ -555,9 +565,18 @@ function RegisterPageInner() {
     }
     try {
       const hex = await sampleTopLeftHex(sourceBlob);
+      // 現在使っているプリセットの名前を初期値に流し込む。
+      // ユーザーが上書きで編集してもOK ( PresetForm 側で自由入力可能 ) 。
+      const list =
+        cloudSettings?.cropPresets && cloudSettings.cropPresets.length > 0
+          ? cloudSettings.cropPresets
+          : SEED_PRESETS;
+      const sourcePresetName = matchedPresetId
+        ? list.find((p) => p.id === matchedPresetId)?.name ?? ""
+        : "";
       const initial: CropPreset = {
         id: newPresetId(),
-        name: "",
+        name: sourcePresetName,
         width: iconCrop.source.width,
         height: iconCrop.source.height,
         colorMode: hex ? "match" : "none",
@@ -596,6 +615,17 @@ function RegisterPageInner() {
             {bulkEntry.fileName}
           </span>
         </div>
+      )}
+
+      {isBulk && (
+        <Button
+          variant="secondary"
+          size="md"
+          fullWidth
+          onClick={() => router.replace(backHref)}
+        >
+          {isInbox ? "受信BOXに戻る" : "リストに戻る"}
+        </Button>
       )}
 
       <input
@@ -874,17 +904,17 @@ function RegisterPageInner() {
       </label>
 
       <div className="flex gap-2 pt-2">
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() =>
-            isBulk ? router.replace(backHref) : router.back()
-          }
-          className="flex-1"
-        >
-          {isBulk ? (isInbox ? "受信BOXに戻る" : "リストに戻る") : "キャンセル"}
-        </Button>
-        <div className="flex-[2]">
+        {!isBulk && (
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => router.back()}
+            className="flex-1"
+          >
+            キャンセル
+          </Button>
+        )}
+        <div className={isBulk ? "flex-1" : "flex-[2]"}>
           <Button
             variant="primary"
             size="lg"

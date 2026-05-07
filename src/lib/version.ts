@@ -632,5 +632,24 @@
  *        外す。同一画像から複数アイテムを切り出すケースに対応 — 一度
  *        登録した行を再 check + preset 変更 + 再保存できる。badge は
  *        引き続き出る ( "一度は登録した" 印として残す ) 。
+ * 0.24.0 entryId 編集画面のナビ強化 + プリセット名 prefill +
+ *        ConfirmDialog の busy 表示崩れ修正。
+ *        (a) /register?entryId=xxx ( bulk / inbox の詳細編集 ) で
+ *        「受信BOXに戻る」/「リストに戻る」ボタンをページ上部 ( BULK
+ *        chip の直下 ) に full-width 配置。下部からは bulk-edit モード
+ *        時のみ消し、保存ボタンを横一杯に。非 bulk の /register は
+ *        引き続き下部に「キャンセル」ボタンが残る。
+ *        (b) 「クロップ結果をプリセットに登録」モーダルが、これまで
+ *        プリセット名を空欄で開いていたのを、現在使っているプリセット
+ *        名で初期化。matchedPresetId state を新設し、vanilla flow では
+ *        findMatchingPreset の結果から、bulk-edit では bulkEntry.presetId
+ *        から流し込む。openPresetFromCrop でこの id を cropPresets /
+ *        SEED_PRESETS から逆引きして PresetForm の name に渡す ( ユーザー
+ *        は引き続きフィールド上で編集可 ) 。
+ *        (c) ConfirmDialog の busy 表示崩れ修正: 確定ボタンが busy
+ *        中に label を "..." に差し替えていた実装が iOS Safari で
+ *        テキスト二重描画 ( "EI" + "..." の重なり ) を起こす場合があった。
+ *        label は元のまま固定し、busy 中は左に Loader2 ( animate-spin )
+ *        を並べる方式に。inline-flex + gap-1.5 でレイアウトを安定化。
  */
-export const APP_VERSION = "0.23.1";
+export const APP_VERSION = "0.24.0";
