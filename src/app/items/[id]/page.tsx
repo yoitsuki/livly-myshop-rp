@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Calendar, ImageIcon } from "lucide-react";
@@ -122,6 +122,14 @@ export default function ItemDetailPage({
   const item = useItem(id);
   const allTags = useTags() ?? [];
   const { isAdmin } = useAuth();
+
+  // 詳細ページに来た瞬間は常にトップから読みたい。 価格追加 → router.replace
+  // で戻ってきたケース等で前の scrollY が引きずられる事象があったため
+  // mount 時に明示的に top に戻す ( v0.27.5 ) 。 [id] が変わる遷移
+  // ( 別アイテムへ ) でも先頭に戻す。
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
 
   const mainUrl = item?.mainImageUrl;
 

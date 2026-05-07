@@ -817,5 +817,17 @@
  *            渡すよう更新し、 これで /register/inbox 一覧でも merge
  *            行のチェックボックスが解禁され、 「登録するアイテムを
  *            選択」フローでそのまま saveBulkEntry に流れる。
+ * 0.27.5 register form の 「レプリカ」 checkbox を 名前 field の直下に
+ *        移動。 レプリカ flag は mergeTarget 判定の入力 ( name +
+ *        isReplica の tuple で同名衝突を分ける ) なので、 名前の
+ *        すぐ下にあると 既存追記モードへの切替が一目で行える。 今までは
+ *        参考販売価格 / TagPicker の下に隠れていて、 追記目的で開いた
+ *        ときに毎回スクロールが必要だった。
+ *
+ *        詳細ページ ( /items/[id] ) に mount 時の `window.scrollTo(0, 0)`
+ *        を追加。 価格追加 → router.replace で戻ってきたケース、 一覧
+ *        からの再訪問で前回の scrollY が引きずられて中途半端な位置に
+ *        着地する事象があり、 useEffect deps を [id] にしておくことで
+ *        別アイテムへの遷移でも先頭から読める。
  */
-export const APP_VERSION = "0.27.4";
+export const APP_VERSION = "0.27.5";
