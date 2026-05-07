@@ -9,10 +9,9 @@ import {
   deletePriceEntry,
   type Item,
 } from "@/lib/firebase/repo";
-import { ConfirmDialog } from "@/components/ui";
+import { Button, ConfirmDialog } from "@/components/ui";
 
 type Props =
-  | { kind: "topEdit"; id: string }
   | { kind: "addPrice"; id: string }
   | {
       kind: "entryActions";
@@ -20,26 +19,9 @@ type Props =
       entryId: string;
       deletable: boolean;
     }
-  | { kind: "bottomDelete"; item: Item };
+  | { kind: "bottomNav"; item: Item };
 
 export default function ItemAdminActions(props: Props) {
-  if (props.kind === "topEdit") {
-    return (
-      <Link
-        href={`/items/${props.id}/edit`}
-        className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 bg-[var(--color-gold-deep)] text-white hover:bg-gold transition-colors"
-        style={{
-          fontFamily: "var(--font-label)",
-          fontSize: 10,
-          letterSpacing: "0.24em",
-          borderRadius: 0,
-        }}
-      >
-        <Pencil size={13} strokeWidth={1.8} />
-        EDIT
-      </Link>
-    );
-  }
   if (props.kind === "addPrice") {
     return (
       <Link
@@ -59,7 +41,7 @@ export default function ItemAdminActions(props: Props) {
   if (props.kind === "entryActions") {
     return <EntryActions {...props} />;
   }
-  return <BottomDelete {...props} />;
+  return <BottomNav {...props} />;
 }
 
 function EntryActions({
@@ -117,26 +99,42 @@ function EntryActions({
   );
 }
 
-function BottomDelete({ item }: { item: Item }) {
+/**
+ * 詳細ページ専用の固定 bottom-nav ( v0.27.10 ) 。 inbox 一覧の bottom nav と
+ * 同じ枠 ( fixed bottom-0 + max-w-screen-sm + px-4 py-3 + flex gap-2 ) で
+ * EDIT ( primary ) + DELETE ( danger ) を flex-1 ずつ並べる。 main の
+ * pb-24 が AppShell 共通で確保済なので、 footer に被って読めない問題は
+ * 起きない。
+ */
+function BottomNav({ item }: { item: Item }) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setConfirmOpen(true)}
-        className="flex items-center justify-center gap-1.5 px-4 py-2.5 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors"
-        style={{
-          fontFamily: "var(--font-label)",
-          fontSize: 10,
-          letterSpacing: "0.24em",
-          borderRadius: 0,
-        }}
-      >
-        <Trash2 size={13} strokeWidth={1.8} />
-        DELETE
-      </button>
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
+        <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
+          <Link
+            href={`/items/${item.id}/edit`}
+            className="flex-1"
+            aria-label="編集"
+          >
+            <Button variant="primary" size="lg" fullWidth>
+              EDIT
+            </Button>
+          </Link>
+          <div className="flex-1">
+            <Button
+              variant="danger"
+              size="lg"
+              fullWidth
+              onClick={() => setConfirmOpen(true)}
+            >
+              DELETE
+            </Button>
+          </div>
+        </div>
+      </div>
       <ConfirmDialog
         open={confirmOpen}
         message={`「${item.name}」を削除しますか？\nこの操作は取り消せません。`}

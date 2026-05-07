@@ -865,5 +865,32 @@
  *        viewer の方がデザイン的に新しいとの方針 ( ユーザー指示 ) に
  *        従い、 viewer の structure 通りに置換 ( 縦区切り線を撤去、
  *        price + GP を `<span flex gap-1.5>` で抱きく ) 。
+ * 0.27.10 ボタン配置を inbox / bulk 一覧と同じ fixed bottom-nav パターンに
+ *        統一。 対象は (a) /items/[id] の admin 詳細ページ、
+ *        (b) /register form の bulk-edit / inbox-edit / 単発 全モード。
+ *        - (a) /items/[id]: 上にあった full-width の EDIT ボタンと、
+ *          下端にあった outlined DELETE ボタンを撤去。 末尾に
+ *          ItemAdminActions kind="bottomNav" を 1 つ置き、 fixed
+ *          bottom-0 の枠の中で `flex-1` 同士の EDIT ( primary ) と
+ *          DELETE ( danger ) を並べる。 header の back arrow は
+ *          アプリ全体で統一されている標準ナビなのでそのまま残す。
+ *          ConfirmDialog は引き続き ItemAdminActions 内に閉じ込めて
+ *          dynamic-import 経由で読込む ( 非 admin の bundle に
+ *          deleteItem が乗らない構造を維持 ) 。
+ *        - (b) /register: 上にあった "受信BOXに戻る" / "リストに戻る"
+ *          の full-width Button を撤去。 末尾の `<div flex gap-2 pt-2>`
+ *          の inline ボタン群を fixed bottom-0 の枠に置き換え、
+ *          [ secondary: 戻る/キャンセル ] [ primary flex-1: 保存 /
+ *          ドラフトに反映 ] の 2 ボタンに統一。 isBulk のときは
+ *          backHref ( /register/inbox or /register/bulk ) に
+ *          router.replace、 単発時は router.back() で挙動分岐。 save
+ *          ボタンの disabled 条件も mergeTarget 対応に同期 (
+ *          merge 時は icon/main 不要 ) 。
+ *        - ItemAdminActions の API も整理: 旧 kind="topEdit" /
+ *          "bottomDelete" を撤去し、 新 kind="bottomNav" に集約 ( 1
+ *          回 mount で EDIT + DELETE + ConfirmDialog を全部出す ) 。
+ *          残りの kind ( "addPrice" / "entryActions" ) は据え置き。
+ *        main の `pb-24` は AppShell 共通で 96px 確保しているため、
+ *        新しい fixed bar (高さ約 72px) でも本文の末尾が隠れない。
  */
-export const APP_VERSION = "0.27.9";
+export const APP_VERSION = "0.27.10";

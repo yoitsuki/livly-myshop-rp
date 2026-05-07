@@ -644,17 +644,6 @@ function RegisterPageInner() {
         </div>
       )}
 
-      {isBulk && (
-        <Button
-          variant="primary"
-          size="md"
-          fullWidth
-          onClick={() => router.replace(backHref)}
-        >
-          {isInbox ? "受信BOXに戻る" : "リストに戻る"}
-        </Button>
-      )}
-
       <input
         ref={fileInput}
         type="file"
@@ -983,32 +972,44 @@ function RegisterPageInner() {
         />
       )}
 
-      <div className="flex gap-2 pt-2">
-        {!isBulk && (
+      {/* Fixed bottom nav ( v0.27.10 ) — inbox/bulk 一覧と同じ枠で
+          [secondary 戻る/キャンセル] [primary 保存/ドラフトに反映] を並べる。
+          isBulk の time は backHref ( /register/inbox or /register/bulk ) に
+          戻り、 単発 /register は router.back() で来た元へ戻る。 */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
+        <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
           <Button
             variant="secondary"
             size="lg"
-            onClick={() => router.back()}
-            className="flex-1"
+            onClick={() =>
+              isBulk ? router.replace(backHref) : router.back()
+            }
           >
-            キャンセル
+            {isBulk
+              ? isInbox
+                ? "受信BOXに戻る"
+                : "リストに戻る"
+              : "キャンセル"}
           </Button>
-        )}
-        <div className={isBulk ? "flex-1" : "flex-[2]"}>
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={onSave}
-            loading={busy === "save"}
-            disabled={busy === "save" || (!iconBlob && !mainBlob)}
-          >
-            {busy === "save"
-              ? "保存中…"
-              : isBulk
-                ? "ドラフトに反映"
-                : "保存"}
-          </Button>
+          <div className="flex-1">
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={onSave}
+              loading={busy === "save"}
+              disabled={
+                busy === "save" ||
+                (!mergeTarget && !iconBlob && !mainBlob)
+              }
+            >
+              {busy === "save"
+                ? "保存中…"
+                : isBulk
+                  ? "ドラフトに反映"
+                  : "保存"}
+            </Button>
+          </div>
         </div>
       </div>
 

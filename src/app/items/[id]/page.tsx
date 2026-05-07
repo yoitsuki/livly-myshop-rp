@@ -178,13 +178,6 @@ export default function ItemDetailPage({
   return (
     <div className="pb-8">
 
-      {/* ── Top action: EDIT (admin-only) ────────────────────────── */}
-      {isAdmin && (
-        <div className="pt-3">
-          <ItemAdminActions kind="topEdit" id={i.id} />
-        </div>
-      )}
-
       {/* ── Title block ──────────────────────────────────────────── */}
       <div className="pt-4 pb-3 flex gap-3.5">
         <AtelierThumb src={i.iconUrl} alt={i.name} size={64} />
@@ -339,12 +332,8 @@ export default function ItemDetailPage({
         )}
       </div>
 
-      {/* ── Bottom action: DELETE (admin-only) ───────────────────── */}
-      {isAdmin && (
-        <div className="flex mt-4">
-          <ItemAdminActions kind="bottomDelete" item={i} />
-        </div>
-      )}
+      {/* ── Fixed bottom nav: EDIT + DELETE (admin-only) ─────────── */}
+      {isAdmin && <ItemAdminActions kind="bottomNav" item={i} />}
     </div>
   );
 }
