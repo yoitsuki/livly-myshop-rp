@@ -111,7 +111,7 @@ export default function BulkRegisterPage() {
         try {
           const patch = await processBulkSource(source, presets);
           const draft = { ...entry, ...patch, status: "ready" as const };
-          const valid = bulkEntryMissingFields(draft).length === 0;
+          const valid = bulkEntryMissingFields(draft, allItems ?? []).length === 0;
           updateEntry(entry.id, {
             ...patch,
             status: "ready",
@@ -167,7 +167,7 @@ export default function BulkRegisterPage() {
   };
 
   const onToggleCheck = (entry: BulkEntry, next: boolean) => {
-    if (next && bulkEntryMissingFields(entry).length > 0) return;
+    if (next && bulkEntryMissingFields(entry, allItems ?? []).length > 0) return;
     updateEntry(entry.id, { checked: next });
   };
 
@@ -270,6 +270,7 @@ export default function BulkRegisterPage() {
               <BulkRow
                 entry={e}
                 presets={presets}
+                allItems={allItems ?? []}
                 editHref={`/register?entryId=${e.id}`}
                 onToggleCheck={(next) => onToggleCheck(e, next)}
                 onChangePreset={(pid) => void onChangePreset(e.id, pid)}

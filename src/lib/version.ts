@@ -800,5 +800,22 @@
  *          merge 時のみ実行 ( 不要な crop 処理を回避 ) 。 これにより、
  *          form で iconRect 未設定で merge ドラフトに反映 → bulk save で
  *          throw、 という不整合が起こらない。
+ * 0.27.4 v0.27.3 の merge UX の調整 2 件:
+ *        (a) アイコンの CropSlot を消すと grid 2 列のメイン画像が
+ *            full width にスケールしてしまっていたので、 grid を維持
+ *            したまま アイコン位置に DisabledSlot ( 「登録不要 / 既存
+ *            を使用」 と表示する placeholder ) を出すように変更。
+ *            メイン画像の枠サイズが従来と同じ。
+ *        (b) bulk / inbox 一覧の行が `bulkEntryMissingFields` で
+ *            アイコン / カテゴリ / 最低価格 / 参考価格 を全て要求して
+ *            いたため、 form 側で merge UI に倒れた行が「未入力」で
+ *            登録できなかった。 bulkEntryMissingFields に optional の
+ *            `allItems` を追加し、 同名 + 同 isReplica の existingItem
+ *            が居るときは アイコン / カテゴリ / 最低価格 を missing
+ *            扱いから除外。 caller ( BulkRow / register/bulk /
+ *            register/inbox / register form 自身 ) には allItems を
+ *            渡すよう更新し、 これで /register/inbox 一覧でも merge
+ *            行のチェックボックスが解禁され、 「登録するアイテムを
+ *            選択」フローでそのまま saveBulkEntry に流れる。
  */
-export const APP_VERSION = "0.27.3";
+export const APP_VERSION = "0.27.4";

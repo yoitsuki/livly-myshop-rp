@@ -1,5 +1,5 @@
 import type { CropRect } from "@/lib/image";
-import type { ItemCropRecord, ShopPeriodRecord } from "@/lib/firebase/types";
+import type { Item, ItemCropRecord, ShopPeriodRecord } from "@/lib/firebase/types";
 
 export type BulkEntryStatus = "processing" | "ready" | "failed";
 
@@ -67,14 +67,36 @@ export interface BulkEntry {
   savedAt?: number;
 }
 
-/** Required fields for createItem(). Used for row-level validation. */
-export function bulkEntryMissingFields(e: BulkEntry): string[] {
+/**
+ * Required fields for createItem(). Used for row-level validation.
+ *
+ * `allItems` を渡すと、 既存同名 ( + 同 isReplica ) アイテムへの追記
+ * ( merge ) に倒れる行については、 mergeItemPriceEntry が参照しない
+ * カテゴリ / 最低価格 / アイコンの未入力は missing 扱いしない
+ * ( v0.27.4 ) 。 allItems を渡さない呼出は従来通り全 field 必須で
+ * 判定する ( 後方互換 ) 。
+ */
+export function bulkEntryMissingFields(
+  e: BulkEntry,
+  allItems?: Item[],
+): string[] {
   const missing: string[] = [];
-  if (!e.name.trim()) missing.push("名前");
-  if (!e.category.trim()) missing.push("カテゴリ");
-  if (!Number.isFinite(e.minPrice) || e.minPrice <= 0) missing.push("最低価格");
+  const trimmedName = e.name.trim();
+  if (!trimmedName) missing.push("名前");
+  const mergeTarget =
+    trimmedName && allItems
+      ? allItems.find(
+          (i) =>
+            i.name === trimmedName && !!i.isReplica === !!e.isReplica,
+        )
+      : undefined;
+  if (!mergeTarget) {
+    if (!e.category.trim()) missing.push("カテゴリ");
+    if (!Number.isFinite(e.minPrice) || e.minPrice <= 0)
+      missing.push("最低価格");
+    if (!e.iconRect) missing.push("アイコン");
+  }
   if (!Number.isFinite(e.refPriceMin) || e.refPriceMin <= 0)
     missing.push("参考価格");
-  if (!e.iconRect) missing.push("アイコン");
   return missing;
 }

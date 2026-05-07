@@ -463,7 +463,7 @@ function RegisterPageInner() {
           }
         }
         const merged = { ...bulkEntry, ...updates };
-        const valid = bulkEntryMissingFields(merged).length === 0;
+        const valid = bulkEntryMissingFields(merged, allItems ?? []).length === 0;
         bulk.updateEntry(bulkEntry.id, {
           ...updates,
           checked: valid ? true : bulkEntry.checked,
@@ -702,8 +702,10 @@ function RegisterPageInner() {
             )}
           </div>
 
-          <div className={mergeTarget ? "" : "grid grid-cols-2 gap-3"}>
-            {!mergeTarget && (
+          <div className="grid grid-cols-2 gap-3">
+            {mergeTarget ? (
+              <DisabledSlot label="アイコン" hint="登録不要" />
+            ) : (
               <CropSlot
                 label="アイコン"
                 imageUrl={iconUrl}
@@ -1286,6 +1288,33 @@ function CropSlot({
           <X size={14} strokeWidth={1.8} />
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * CropSlot と同じ枠サイズ ( aspect-square + label 行 ) で「登録不要」と
+ * 示すプレースホルダ。merge 時にアイコン側で出すので、 メイン画像の
+ * CropSlot のサイズが既存と同じまま grid 2 列を維持できる ( v0.27.4 ) 。
+ */
+function DisabledSlot({ label, hint }: { label: string; hint: string }) {
+  return (
+    <div className="relative border border-dashed border-[var(--color-line-strong)] bg-white/40 overflow-hidden opacity-80">
+      <div className="aspect-square bg-[var(--color-line-soft)]/40 flex items-center justify-center text-[var(--color-muted)]">
+        <span
+          className="text-[11px] tracking-wider"
+          style={{
+            fontFamily: "var(--font-label)",
+            letterSpacing: "0.18em",
+          }}
+        >
+          {hint}
+        </span>
+      </div>
+      <div className="px-2 py-1.5 text-[11px] font-medium text-text/60 text-center tracking-wide">
+        {label}
+        <span className="text-[10px] text-muted ml-1">既存を使用</span>
+      </div>
     </div>
   );
 }
