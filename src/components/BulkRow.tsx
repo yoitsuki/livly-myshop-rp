@@ -40,8 +40,11 @@ export default function BulkRow({
   const processing = entry.status === "processing";
   const failed = entry.status === "failed";
   const saved = savedAt !== undefined;
-  const checkboxDisabled =
-    processing || failed || missing.length > 0 || saved;
+  // saved ( inbox の "登録済み" ) は badge を残しつつブロックは外す。
+  // 同一画像から複数アイテムを切り出すケースのため、再 check / preset
+  // 変更 / 再登録を許容する ( inbox の onSave 側も savedAt フィルタを
+  // 外して同じ前提で動く ) 。
+  const checkboxDisabled = processing || failed || missing.length > 0;
 
   const periodTier = entry.shopPeriod
     ? roundAgeIndex(entry.shopPeriod.yearMonth)
@@ -123,6 +126,7 @@ export default function BulkRow({
               タグ未設定
             </span>
           )}
+          {entry.isReplica === true && <ReplicaBadge />}
         </div>
 
         <div
@@ -182,7 +186,7 @@ export default function BulkRow({
         <select
           value={entry.presetId ?? ""}
           onChange={(e) => onChangePreset(e.target.value)}
-          disabled={processing || saved}
+          disabled={processing}
           className="flex-1 min-w-0 h-8 px-2 text-[12px] bg-white border border-[var(--color-line)] disabled:opacity-50"
           style={{ borderRadius: 0, fontFamily: "var(--font-body)" }}
         >
@@ -232,6 +236,27 @@ function SavedBadge() {
     >
       <Check size={9} strokeWidth={2.4} />
       登録済み
+    </span>
+  );
+}
+
+function ReplicaBadge() {
+  return (
+    <span
+      className="shrink-0 inline-flex items-center leading-none whitespace-nowrap"
+      style={{
+        fontFamily: "var(--font-label)",
+        fontSize: 8.5,
+        fontWeight: 500,
+        letterSpacing: "0.14em",
+        padding: "2px 6px",
+        borderRadius: 0,
+        background: "transparent",
+        color: "var(--color-gold-deep)",
+        border: "1px solid var(--color-gold-deep)",
+      }}
+    >
+      レプリカ
     </span>
   );
 }

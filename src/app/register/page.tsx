@@ -16,7 +16,8 @@ import {
   createItem,
   createTag,
   getSettings,
-  isNewestYearMonth,
+  resolveEntryPriceSource,
+  shouldReplaceMainImage,
   mergeItemPriceEntry,
   patchSettings,
   uid,
@@ -58,6 +59,7 @@ import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 import PresetForm from "@/components/PresetForm";
 import { Button, Field, inputClass } from "@/components/ui";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 interface FormState {
   name: string;
@@ -142,6 +144,13 @@ function RegisterPageInner() {
   const [presets, setPresets] = useState<{ icon: CropRect; main?: CropRect } | null>(
     null
   );
+  /**
+   * The preset id the current crop was sourced from ( vanilla flow:
+   * findMatchingPreset の結果 / bulk-edit: bulkEntry.presetId ) 。
+   * "クロップ結果をプリセットに登録" を開くとき、この id から名前を逆引き
+   * してフォームの初期値に入れる ( ユーザーがその上で編集 OK ) 。
+   */
+  const [matchedPresetId, setMatchedPresetId] = useState<string | undefined>();
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [ocrProgress, setOcrProgress] = useState<number>(0);
   const [error, setError] = useState<string | undefined>();
@@ -153,6 +162,23 @@ function RegisterPageInner() {
   const cloudSettings = useSettings();
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
+
+  // Bulk-edit mode (?entryId=xxx) hydrates the form from a draft entry that
+  // already persists in BulkDraftProvider — leaving the page doesn't truly
+  // lose data, so skip the warning there. In standalone register, treat the
+  // form as dirty once the user has picked a screenshot or filled any field.
+  const dirty =
+    !isBulk &&
+    (sourceBlob !== undefined ||
+      form.name.trim() !== "" ||
+      form.category.trim() !== "" ||
+      form.refPriceMin.trim() !== "" ||
+      form.refPriceMax.trim() !== "" ||
+      form.minPrice.trim() !== "" ||
+      form.shopYearMonth !== "" ||
+      form.tagIds.length > 0 ||
+      form.isReplica);
+  useDirtyTracker(dirty);
   const [presetModalInitial, setPresetModalInitial] =
     useState<CropPreset | null>(null);
   const [mergeDialog, setMergeDialog] = useState<{
@@ -207,6 +233,7 @@ function RegisterPageInner() {
     if (bulkEntry.iconRect) {
       setPresets({ icon: bulkEntry.iconRect, main: bulkEntry.mainRect });
     }
+    setMatchedPresetId(bulkEntry.presetId);
     if (bulkEntry.iconCrop) setIconCrop(bulkEntry.iconCrop);
     if (bulkEntry.mainCrop) setMainCrop(bulkEntry.mainCrop);
 
@@ -222,9 +249,7 @@ function RegisterPageInner() {
       shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
       shopAuto: bulkEntry.shopPeriod?.auto ?? false,
       priceSource: bulkEntry.priceSource ?? "なんおし",
-      // BulkEntry never carries isReplica — bulk / inbox flows always create
-      // 原本 by default; user opts in here explicitly.
-      isReplica: false,
+      isReplica: bulkEntry.isReplica === true,
     });
     setOcrDone(true); // fields are filled — the OCR button becomes 'rerun'
 
@@ -268,6 +293,7 @@ function RegisterPageInner() {
     setIconCrop(undefined);
     setMainCrop(undefined);
     setPresets(null);
+    setMatchedPresetId(undefined);
     setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
     setAutoFilled(new Set());
     setOcrDone(false);
@@ -298,6 +324,7 @@ function RegisterPageInner() {
             : SEED_PRESETS;
         const matched = await findMatchingPreset(file, list);
         setPresets(matched ? { icon: matched.icon, main: matched.main } : null);
+        setMatchedPresetId(matched?.preset.id);
       } catch (e) {
         setError(
           `プリセット判定に失敗: ${e instanceof Error ? e.message : String(e)}`,
@@ -404,6 +431,7 @@ function RegisterPageInner() {
           mainCrop,
           iconRect: iconCrop?.rect,
           mainRect: mainCrop?.rect,
+          isReplica: form.isReplica ? true : undefined,
         };
         const source = bulk.getSourceBlob(bulkEntry.id);
         if (source && iconCrop?.rect) {
@@ -452,7 +480,7 @@ function RegisterPageInner() {
           (e) => e.shopPeriod?.yearMonth === newYearMonth,
         );
       const defaultReplaceMain =
-        !!mainBlob && isNewestYearMonth(existingItem, newYearMonth);
+        !!mainBlob && shouldReplaceMainImage(existingItem, newYearMonth);
       setMergeDialog({ existing: existingItem, willReplaceEntry, defaultReplaceMain });
       return;
     }
@@ -473,8 +501,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
-        priceSource:
-          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
         createdAt: now,
       };
       await createItem({
@@ -514,8 +541,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
-        priceSource:
-          !mainBlob && form.priceSource ? form.priceSource.trim() : undefined,
+        priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
       };
       await mergeItemPriceEntry({
         itemId: mergeDialog.existing.id,
@@ -538,9 +564,18 @@ function RegisterPageInner() {
     }
     try {
       const hex = await sampleTopLeftHex(sourceBlob);
+      // 現在使っているプリセットの名前を初期値に流し込む。
+      // ユーザーが上書きで編集してもOK ( PresetForm 側で自由入力可能 ) 。
+      const list =
+        cloudSettings?.cropPresets && cloudSettings.cropPresets.length > 0
+          ? cloudSettings.cropPresets
+          : SEED_PRESETS;
+      const sourcePresetName = matchedPresetId
+        ? list.find((p) => p.id === matchedPresetId)?.name ?? ""
+        : "";
       const initial: CropPreset = {
         id: newPresetId(),
-        name: "",
+        name: sourcePresetName,
         width: iconCrop.source.width,
         height: iconCrop.source.height,
         colorMode: hex ? "match" : "none",
@@ -579,6 +614,17 @@ function RegisterPageInner() {
             {bulkEntry.fileName}
           </span>
         </div>
+      )}
+
+      {isBulk && (
+        <Button
+          variant="secondary"
+          size="md"
+          fullWidth
+          onClick={() => router.replace(backHref)}
+        >
+          {isInbox ? "受信BOXに戻る" : "リストに戻る"}
+        </Button>
       )}
 
       <input
@@ -836,43 +882,38 @@ function RegisterPageInner() {
         onChange={(ids) => setForm({ ...form, tagIds: ids })}
       />
 
-      {/* Bulk-edit (entryId) doesn't persist isReplica back to the BulkEntry,
-          so the checkbox is hidden in that mode — user can flip it on the
-          per-item edit page after registration. */}
-      {!isBulk && (
-        <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={form.isReplica}
-            onChange={(e) =>
-              setForm({ ...form, isReplica: e.target.checked })
-            }
-            className="w-4 h-4 accent-[var(--color-gold-deep)]"
-          />
-          <span
-            className="text-[13px] text-[var(--color-text)]"
-            style={{ fontFamily: "var(--font-body)" }}
-          >
-            レプリカ
-          </span>
-          <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
-            ( 原本でない場合のみ ON )
-          </span>
-        </label>
-      )}
+      <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={form.isReplica}
+          onChange={(e) =>
+            setForm({ ...form, isReplica: e.target.checked })
+          }
+          className="w-4 h-4 accent-[var(--color-gold-deep)]"
+        />
+        <span
+          className="text-[13px] text-[var(--color-text)]"
+          style={{ fontFamily: "var(--font-body)" }}
+        >
+          レプリカ
+        </span>
+        <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
+          ( 原本でない場合のみ ON )
+        </span>
+      </label>
 
       <div className="flex gap-2 pt-2">
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() =>
-            isBulk ? router.replace(backHref) : router.back()
-          }
-          className="flex-1"
-        >
-          {isBulk ? (isInbox ? "受信BOXに戻る" : "リストに戻る") : "キャンセル"}
-        </Button>
-        <div className="flex-[2]">
+        {!isBulk && (
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => router.back()}
+            className="flex-1"
+          >
+            キャンセル
+          </Button>
+        )}
+        <div className={isBulk ? "flex-1" : "flex-[2]"}>
           <Button
             variant="primary"
             size="lg"

@@ -21,6 +21,7 @@ import { SEED_PRESETS, type CropPreset } from "@/lib/preset";
 import { useLocalSettings } from "@/lib/localSettings";
 import { Button, ConfirmDialog } from "@/components/ui";
 import BulkRow from "@/components/BulkRow";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 export default function BulkRegisterPage() {
   const router = useRouter();
@@ -56,6 +57,13 @@ export default function BulkRegisterPage() {
     name: string;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Bulk-draft entries live in BulkDraftProvider (mounted on /register/layout).
+  // Leaving the /register tree unmounts the provider and discards in-memory
+  // source blobs + per-row edits, so warn whenever there's still an unsaved
+  // bulk row. saveBulkEntry removes the row on success, so length>0 already
+  // means "unsaved".
+  useDirtyTracker(bulkOnlyEntries.length > 0);
 
   // If we land here with stale bulk entries whose source Blobs are gone
   // (browser refresh), wipe them — fresh-start on refresh.  Inbox-sourced

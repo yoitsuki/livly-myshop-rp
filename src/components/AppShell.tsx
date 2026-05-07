@@ -6,6 +6,7 @@ import AppHeader from "./AppHeader";
 import DrawerNav from "./DrawerNav";
 import LoginScreen from "./LoginScreen";
 import { useAuth } from "@/lib/firebase/auth";
+import { UnsavedChangesProvider } from "@/lib/unsavedChanges";
 
 /**
  * Resolves the "parent" path for the back button. We avoid router.back()
@@ -39,15 +40,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh flex flex-col">
-      <AppHeader
-        onMenuClick={() => setOpen(true)}
-        back={!!backHref}
-        backHref={backHref ?? undefined}
-      />
-      <DrawerNav open={open} onClose={() => setOpen(false)} />
-      <main className="flex-1 w-full max-w-screen-sm mx-auto px-4 pb-24 pt-2 overflow-x-hidden">
-        {children}
-      </main>
+      <UnsavedChangesProvider>
+        <AppHeader
+          onMenuClick={() => setOpen(true)}
+          back={!!backHref}
+          backHref={backHref ?? undefined}
+        />
+        <DrawerNav open={open} onClose={() => setOpen(false)} />
+        <main className="flex-1 w-full max-w-screen-sm mx-auto px-4 pb-24 pt-2 overflow-x-hidden">
+          {children}
+        </main>
+      </UnsavedChangesProvider>
     </div>
   );
 }

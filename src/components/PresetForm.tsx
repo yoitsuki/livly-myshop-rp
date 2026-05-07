@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
@@ -13,6 +13,7 @@ import {
   type CropPreset,
 } from "@/lib/preset";
 import { Button, Field, inputClass } from "@/components/ui";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 const COLOR_MODES: Array<{ value: ColorCondition; label: string }> = [
   { value: "none", label: "なし" },
@@ -63,6 +64,13 @@ export default function PresetForm({
   );
   const [error, setError] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+
+  // Snapshot of the initial draft (frozen at mount) used to detect edits.
+  // For new presets the snapshot is the default seed values; for edits it's
+  // the saved preset that was passed in.
+  const baselineRef = useRef(JSON.stringify(draft));
+  const dirty = JSON.stringify(draft) !== baselineRef.current;
+  useDirtyTracker(dirty);
 
   const setIconRect = (patch: Partial<CropRect>) => {
     setDraft({ ...draft, icon: { ...draft.icon, ...patch } });

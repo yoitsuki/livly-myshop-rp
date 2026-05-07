@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GuardedLink } from "@/lib/unsavedChanges";
 import {
   ChevronRight,
   Crop,
@@ -209,7 +209,7 @@ export default function DrawerNav({
                     {it.children.map((c) => {
                       const childActive = pathname === c.href;
                       return (
-                        <Link
+                        <GuardedLink
                           key={c.href}
                           href={c.href}
                           onClick={onClose}
@@ -226,7 +226,7 @@ export default function DrawerNav({
                             />
                           )}
                           {c.label}
-                        </Link>
+                        </GuardedLink>
                       );
                     })}
                   </div>
@@ -262,7 +262,7 @@ function NavLinkRow({
 }) {
   const Icon = item.icon;
   return (
-    <Link
+    <GuardedLink
       href={item.href}
       onClick={onClick}
       className={`relative flex items-center gap-3 pl-4 pr-4 py-3 text-[14px] transition-colors ${
@@ -285,6 +285,6 @@ function NavLinkRow({
         }
       />
       {item.label}
-    </Link>
+    </GuardedLink>
   );
 }

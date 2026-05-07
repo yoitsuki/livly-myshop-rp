@@ -1,7 +1,8 @@
 import {
   createItem,
-  isNewestYearMonth,
   mergeItemPriceEntry,
+  resolveEntryPriceSource,
+  shouldReplaceMainImage,
   uid,
   type Item,
   type PriceEntry,
@@ -56,8 +57,11 @@ export async function saveBulkEntry({
 
   if (existingItem) {
     const newYearMonth = entry.shopPeriod?.yearMonth;
+    // v0.26.0+ : item に画像が無いケースでも、新エントリが画像を持てば
+    // 期間に関わらず採用 ( shouldReplaceMainImage 経由 )。priceSource は
+    // 画像の有無で resolveEntryPriceSource が "マイショ" / fallback を決定。
     const replaceMain =
-      !!mainBlob && isNewestYearMonth(existingItem, newYearMonth);
+      !!mainBlob && shouldReplaceMainImage(existingItem, newYearMonth);
     await mergeItemPriceEntry({
       itemId: existingItem.id,
       newEntry: {
@@ -65,8 +69,7 @@ export async function saveBulkEntry({
         refPriceMin: entry.refPriceMin,
         refPriceMax: entry.refPriceMax || entry.refPriceMin,
         checkedAt: entry.checkedAt,
-        priceSource:
-          !mainBlob && entry.priceSource ? entry.priceSource : undefined,
+        priceSource: resolveEntryPriceSource(!!mainBlob, entry.priceSource),
       },
       replaceMainImage:
         replaceMain && mainBlob
@@ -82,8 +85,7 @@ export async function saveBulkEntry({
     refPriceMin: entry.refPriceMin,
     refPriceMax: entry.refPriceMax || entry.refPriceMin,
     checkedAt: entry.checkedAt,
-    priceSource:
-      !mainBlob && entry.priceSource ? entry.priceSource : undefined,
+    priceSource: resolveEntryPriceSource(!!mainBlob, entry.priceSource),
     createdAt: Date.now(),
   };
 
@@ -97,6 +99,7 @@ export async function saveBulkEntry({
     tagIds: entry.tagIds,
     minPrice: entry.minPrice,
     priceEntries: [initialEntry],
+    isReplica: entry.isReplica,
   });
   return { itemId, merged: false };
 }

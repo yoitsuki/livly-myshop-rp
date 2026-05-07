@@ -32,6 +32,7 @@ export interface InboxFile {
 
 const INBOX_PREFIX = "inbox";
 const OCR_CACHE_KEY = "cachedOcr";
+const SAVED_AT_KEY = "savedAt";
 
 /** Shape of the JSON we serialise into customMetadata.cachedOcr. */
 export interface InboxOcrCache {
@@ -128,6 +129,28 @@ export async function writeOcrCache(
 ): Promise<void> {
   await updateMetadata(ref(storage(), path), {
     customMetadata: { [OCR_CACHE_KEY]: JSON.stringify(value) },
+  });
+}
+
+/** Read the persisted "登録済み" timestamp from customMetadata. */
+export function readInboxSavedAt(file: InboxFile): number | undefined {
+  const raw = file.customMetadata?.[SAVED_AT_KEY];
+  if (!raw) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/**
+ * Mark an inbox object as 登録済み by writing the timestamp into
+ * customMetadata. Like writeOcrCache, the merge-semantics of updateMetadata
+ * keep unrelated keys ( cachedOcr / originalLastModified ) intact.
+ */
+export async function writeInboxSavedAt(
+  path: string,
+  ts: number,
+): Promise<void> {
+  await updateMetadata(ref(storage(), path), {
+    customMetadata: { [SAVED_AT_KEY]: String(ts) },
   });
 }
 

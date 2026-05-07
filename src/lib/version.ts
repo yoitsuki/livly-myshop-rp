@@ -546,5 +546,160 @@
  *        only holds Firebase's local cache (and is harmless to keep
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
+ * 0.21.0 編集中ナビゲーション ガード。これまで編集画面で入力中でも
+ *        ヘッダのロゴ / 戻るアロー / ドロワーから別画面に飛んでしまい
+ *        入力が失われていた問題を解消。
+ *        src/lib/unsavedChanges.tsx に UnsavedChangesProvider /
+ *        useDirtyTracker / GuardedLink を新設。Provider は dirty 源を
+ *        Set<id> で多重登録 ( OR 評価 ) し、requestNavigate が 1 つでも
+ *        dirty な源が登録されていれば ConfirmDialog ( "編集中のデータ
+ *        があります — 移動してよろしいですか？" / 移動する / 戻る ) を
+ *        出してから router.push する。AppHeader の戻る + ロゴ Link、
+ *        DrawerNav の親 + 子 Link を全て GuardedLink に差し替え。
+ *        編集画面側は useDirtyTracker(dirty) で baseline 比較した
+ *        boolean を流すだけ:
+ *          /items/[id]/edit ( name/category/minPrice/tagIds/isReplica
+ *            と pendingIcon/pendingMain/pendingClearMain で判定 ) ,
+ *          /items/[id]/prices/new ( 値が入った時のみ ) ,
+ *          /items/[id]/prices/[entryId]/edit ( 元 entry との差分 ) ,
+ *          /register ( bulk-edit モード以外で sourceBlob または form の
+ *            非デフォルト値 ) ,
+ *          /register/bulk ( bulkOnlyEntries.length > 0 — saveBulkEntry が
+ *            成功すると行が消えるので length > 0 = 未保存 ) ,
+ *          /register/inbox ( inboxEntries.some(e => savedAt === undefined)
+ *            — 保存後も行が残るので savedAt フラグで未保存判定 ) ,
+ *          PresetForm ( JSON.stringify ベースの baselineRef 比較 — new /
+ *            edit 両方で動作 ) 。
+ *        bulk / inbox はどちらも BulkDraftProvider の in-memory state +
+ *        ソース Blob が /register/* を抜けると消えるため対象に含める。
+ *        modifier-click ( cmd / ctrl / shift / 中ボタン ) は新規タブ
+ *        遷移としてそのまま通す。/register の キャンセル / 詳細
+ *        ページの 編集 ボタン等の通常 Link は意図的にガード対象外
+ *        ( save / cancel は明示操作なので確認不要 ) 。
+ * 0.22.0 bulk / inbox レプリカ ON 経路 + inbox 登録済み状態の永続化。
+ *        (a) BulkEntry に isReplica?: boolean を追加し、saveBulkEntry の
+ *        createItem 呼び出しで転送 ( merge 経路は据え置き — 既存
+ *        アイテム側の replica 状態を変えない方針 ) 。/register?entryId=xxx
+ *        ( inbox / bulk 両方の詳細編集 ) のレプリカチェックボックスから
+ *        !isBulk ガードを外し、bulkEntry.isReplica で hydrate、onSave で
+ *        updates に isReplica: form.isReplica ? true : undefined を載せて
+ *        BulkDraft に書き戻す。BulkRow ( bulk / inbox 共通の行 ) の
+ *        タグ未設定 隣に レプリカ 表示バッジ ( solid hairline +
+ *        gold-deep、詳細ページの REPLICA バッジと同系 ) を常時表示
+ *        ( saved / processing / failed どれでも ) 。
+ *        (b) 受信BOX の "登録済み" ( savedAt ) を Storage customMetadata
+ *        の savedAt キーに保存して、リロード後も 登録済み バッジ +
+ *        checkbox locked が維持されるように。writeOcrCache と同パターン
+ *        ( updateMetadata は customMetadata をマージするので cachedOcr /
+ *        viewer 側 originalLastModified を破壊しない ) 。
+ *        listInboxFiles 結果の BulkEntry 化で readInboxSavedAt(f) を
+ *        savedAt の初期値に。saveBulkEntry 成功直後に
+ *        writeInboxSavedAt(path, ts) を try/catch で呼び、失敗時は
+ *        Toast ( tone="warn"、6 秒で自動 dismiss ) で
+ *        「N 件は登録済み状態の保存に失敗しました。リロードすると
+ *        未登録表示に戻ります」を出す ( アイテム自体は Firestore に
+ *        登録済みなので致命的ではない ) 。inline info の
+ *        「N 件登録しました」メッセージは並走で温存。
+ * 0.23.0 ImageCropper の "枠が出ない時がある" 不具合修正 + ±1px 微調整
+ *        コントロール追加。
+ *        (a) crop 枠が出ない症状: dispRect 計算が render 中に
+ *        `imgRef.current.getBoundingClientRect()` を呼ぶ実装で、画像
+ *        decode/layout が render 後に終わると 0×0 が返って枠が透明扱いに
+ *        なる、画像 cache hit / miss 等のタイミング差で表示有無が
+ *        ばらつく状態だった。layoutTick state を追加し、<img onLoad>
+ *        で setLayoutTick(t => t + 1) して強制再 render → 正しい
+ *        bounding box を読む。あわせて r.width / r.height === 0 を
+ *        早期 null return するガード、window resize / orientationchange
+ *        listener も追加してビューポート変化に追従。
+ *        (b) 微調整 UI: タイトル直下に NudgeBar を追加。3×3 の十字
+ *        矢印 ( 上下左右 1px、サイズ維持 ) と 横幅 / 縦幅 の −1 / +1
+ *        ボタン。ハンドラは画像範囲 + MIN_SIZE で clamp、リサイズは
+ *        x/y 固定で右下方向に伸縮 ( ドラッグの "w/n ハンドル" 系の挙動
+ *        とは独立 ) 。背景は cropper の deep-teal、Atelier 統一の
+ *        warm hairline + 角丸ゼロ + tracked-out ラベル ( "横幅" / "縦幅" )
+ *        で、dialog を開いてすぐ片手で 1px 単位の追い込みができる。
+ * 0.23.1 ImageCropper の NudgeBar の見た目修正 ( ボタン中身が描画
+ *        されていなかった ) と inbox 登録済み行のブロック解除。
+ *        (a) NudgeBtn / SizeBtn を self-closing tag で書いていて
+ *        children を destructure しても使っていなかったため、矢印
+ *        アイコンと −1 / +1 文字が render されていなかった。
+ *        通常の <button>{children}</button> 形式に直し、border 不透明度
+ *        を /30 → /60 に上げてコントラスト強化。
+ *        (b) inbox の "登録済み" 行のチェックボックス / preset select
+ *        を unblock。BulkRow の checkboxDisabled から saved を除外、
+ *        select の disabled も processing のみに。inbox onSave の
+ *        targets / checkedCount から savedAt === undefined の filter を
+ *        外す。同一画像から複数アイテムを切り出すケースに対応 — 一度
+ *        登録した行を再 check + preset 変更 + 再保存できる。badge は
+ *        引き続き出る ( "一度は登録した" 印として残す ) 。
+ * 0.24.0 entryId 編集画面のナビ強化 + プリセット名 prefill +
+ *        ConfirmDialog の busy 表示崩れ修正。
+ *        (a) /register?entryId=xxx ( bulk / inbox の詳細編集 ) で
+ *        「受信BOXに戻る」/「リストに戻る」ボタンをページ上部 ( BULK
+ *        chip の直下 ) に full-width 配置。下部からは bulk-edit モード
+ *        時のみ消し、保存ボタンを横一杯に。非 bulk の /register は
+ *        引き続き下部に「キャンセル」ボタンが残る。
+ *        (b) 「クロップ結果をプリセットに登録」モーダルが、これまで
+ *        プリセット名を空欄で開いていたのを、現在使っているプリセット
+ *        名で初期化。matchedPresetId state を新設し、vanilla flow では
+ *        findMatchingPreset の結果から、bulk-edit では bulkEntry.presetId
+ *        から流し込む。openPresetFromCrop でこの id を cropPresets /
+ *        SEED_PRESETS から逆引きして PresetForm の name に渡す ( ユーザー
+ *        は引き続きフィールド上で編集可 ) 。
+ *        (c) ConfirmDialog の busy 表示崩れ修正: 確定ボタンが busy
+ *        中に label を "..." に差し替えていた実装が iOS Safari で
+ *        テキスト二重描画 ( "EI" + "..." の重なり ) を起こす場合があった。
+ *        label は元のまま固定し、busy 中は左に Loader2 ( animate-spin )
+ *        を並べる方式に。inline-flex + gap-1.5 でレイアウトを安定化。
+ * 0.25.0 ホーム絞込みパネルの「クリア」ボタン追加。activeFilterCount
+ *        ( q を除く 原本・レプリカ / カテゴリ / タグ の合計 ) が 1 以上
+ *        の時だけパネル先頭に「絞込み中 N 件 [× クリア]」バーが出る。
+ *        clearFilters は replicaFilter='all' / activeCategory=null /
+ *        activeTagIds=[] にリセット。q ( SearchBar ) は独立した入力
+ *        なので意図的に触らない ( 検索文字列を保ったまま絞込みだけ
+ *        リセットしたい場面に対応 ) 。クリア後は activeFilterCount が
+ *        0 になるのでバー自身も自動で消える。
+ * 0.26.0 情報元 ( priceSource ) を完全に per-entry 化 + 価格追加に画像
+ *        アップロード対応 + メイン画像の更新ルール明文化。
+ *        (a) `infoSourceLabel(item)` が item.mainImageUrl を最優先に
+ *        参照していた挙動を撤去。最新エントリの `priceSource` をそのまま
+ *        表示する `entryInfoSourceLabel` を新設、`infoSourceLabel` は
+ *        latestPriceEntry にディスパッチするだけのシンが薄いラッパに。
+ *        新規エントリの priceSource は `resolveEntryPriceSource(hasMain,
+ *        fallback)` で `"マイショ" | "なんおし" | "その他"` の 3 値に
+ *        正規化 ( /register / bulk save / /prices/new で共通利用 ) 。
+ *        (b) メイン画像の更新ルールを `shouldReplaceMainImage` に集約:
+ *          - item に画像が無い → 採用 ( 期間に関わらず 1 枚目 )
+ *          - 画像あり + 新エントリ yearMonth >= 既存最新 → 上書き
+ *          - 画像あり + 古い期間 → 既存維持 ( 新画像は破棄 )
+ *        bulk save の `replaceMain` 判定と `/register` の MergeDialog
+ *        既定値もこのヘルパに切替。
+ *        (c) `addPriceEntry` を mainImage オプション引数を受け取る形に
+ *        拡張。pre-fetch で should-replace を判定 → true なら
+ *        Storage に upload 後に runTransaction で URL 反映、false なら
+ *        blob を破棄 ( per-entry 画像は保持しない方針 ) 。
+ *        (d) /items/[id]/prices/new を全面リフォーム: 画像ファイル
+ *        ピッカー + EXIF auto-fill + プリセット自動判定 + 手動プリセット
+ *        select + ImageCropper での再クロップ + OCR ボタン ( ref price
+ *        のみ抽出 ) 。`useDirtyTracker` で離脱ガードも入れる。「クロップ
+ *        結果をプリセットに登録」は /register 側にだけ残す方針 ( 価格
+ *        追加では不要 ) 。
+ *        (e) /items/[id]/prices/[entryId]/edit は priceSource ピッカー
+ *        の出し分け条件を `entry.priceSource !== "マイショ"` に変更。
+ *        マイショ entry は画像と紐付くので picker 非表示・値固定。
+ *        (f) 旧データ ( priceSource undefined ) を埋める一回限りの
+ *        マイグレーション関数 `migrateInfoSources` を repo.ts に追加し、
+ *        /settings 末尾の「情報元データ移行」inline ボタンから実行。
+ *        item.mainImageUrl の有無で `"マイショ"` か `"なんおし"` を
+ *        差し込む。実行後は次の clean-up コミットでボタン + 関数とも
+ *        ソースから削除する想定 ( TODO コメント付き ) 。
+ * 0.26.1 マイグレーション UI / 関数の clean-up。0.26.0 で追加した
+ *        /settings 末尾の「情報元データ移行」ボタンと repo.ts の
+ *        migrateInfoSources 関数を、ユーザー側で 1 回実行が完了した
+ *        ことを確認したので削除。関連 state ( migrateConfirm /
+ *        migrateBusy / migrateResult ) と ConfirmDialog import も合わせて
+ *        除去。今後 priceSource undefined の旧データは出ない前提
+ *        ( 表示時の "設定無し" フォールバックは残してあるので、もし出ても
+ *        無害 ) 。
  */
-export const APP_VERSION = "0.20.0";
+export const APP_VERSION = "0.26.1";

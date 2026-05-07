@@ -183,9 +183,28 @@ export type PriceEntryInput = Omit<PriceEntry, "id" | "createdAt">;
 export async function addPriceEntry(
   itemId: string,
   entry: PriceEntryInput,
+  mainImage?: { blob: Blob; crop?: ItemCropRecord },
 ): Promise<string> {
   const id = uid();
   const ref = doc(firestore(), "items", itemId);
+
+  // Pre-fetch to decide whether to replace the item-level main image. The
+  // entry's blob is uploaded only when it wins ( newest period or item had
+  // no image ) ; otherwise it's discarded ( per spec — we don't store a
+  // per-entry image ). Single-user app, so reading-then-writing outside
+  // a strict txn is acceptable.
+  let uploadedMain: { url: string; path: string } | undefined;
+  let willReplace = false;
+  if (mainImage) {
+    const preSnap = await getDoc(ref);
+    if (!preSnap.exists()) throw new Error("アイテムが見つかりませんでした");
+    const preItem = itemFromFs(preSnap.id, preSnap.data());
+    willReplace = shouldReplaceMainImage(preItem, entry.shopPeriod?.yearMonth);
+    if (willReplace) {
+      uploadedMain = await uploadItemImage(itemId, "main", mainImage.blob);
+    }
+  }
+
   await runTransaction(firestore(), async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("アイテムが見つかりませんでした");
@@ -197,6 +216,11 @@ export async function addPriceEntry(
       priceEntries: [...current.priceEntries, newEntry],
       updatedAt: now,
     };
+    if (willReplace && uploadedMain) {
+      next.mainImageUrl = uploadedMain.url;
+      next.mainImageStoragePath = uploadedMain.path;
+      if (mainImage?.crop) next.mainCrop = mainImage.crop;
+    }
     tx.set(ref, itemToFs(next));
   });
   return id;
@@ -491,17 +515,45 @@ export function latestPriceEntry(
   return sortedPriceEntries(item)[0];
 }
 
-/** Resolved 情報元 label for list/detail display.
- *  - メイン画像あり → "マイショ" ( implicit )
- *  - メイン画像なし + priceSource あり → "なんおし" / "その他"
- *  - メイン画像なし + priceSource なし ( 旧データ ) → "設定無し"
- *  登録 form 側の選択肢は なんおし / その他 の 2 択のままで、ここは
- *  既存データを区別するための表示専用のフォールバック。 */
-export function infoSourceLabel(
-  item: Pick<Item, "priceEntries" | "mainImageUrl">,
-): string {
-  if (item.mainImageUrl) return "マイショ";
-  const latest = latestPriceEntry(item);
-  return latest?.priceSource?.trim() || "設定無し";
+/** v0.26.0+ : 情報元はあくまで PriceEntry 単位の事実 ( 登録時に画像を伴ったか
+ *  / なんおし / その他 ) で表示する。item.mainImageUrl は item-level の
+ *  画像保管先でしかなく、最新エントリの 情報元 とは独立。
+ *  - entry.priceSource が "マイショ" / "なんおし" / "その他" → そのまま
+ *  - undefined (legacy 未マイグレーション) → "設定無し"
+ *    /settings の「情報元を移行する」ボタンで一度埋めてもらう前提。 */
+export function entryInfoSourceLabel(entry: PriceEntry): string {
+  return entry.priceSource?.trim() || "設定無し";
 }
+
+export function infoSourceLabel(
+  item: Pick<Item, "priceEntries">,
+): string {
+  const latest = latestPriceEntry(item);
+  return latest ? entryInfoSourceLabel(latest) : "設定無し";
+}
+
+/** 価格エントリ作成時の priceSource 決定ヘルパ。
+ *  - メイン画像あり → "マイショ" ( フォーム入力に依らず固定 )
+ *  - メイン画像なし → form の選択値 ( なんおし / その他 ) 、空なら なんおし */
+export function resolveEntryPriceSource(
+  hasMainImage: boolean,
+  fallback: string | undefined,
+): string {
+  if (hasMainImage) return "マイショ";
+  const trimmed = fallback?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : "なんおし";
+}
+
+/** item.mainImageUrl を新エントリの画像で更新すべきか。
+ *  - item に画像が無い → true ( 期間に関わらず最初の 1 枚を採用 )
+ *  - 画像あり + 新エントリ yearMonth >= 既存最新 → true ( 上書き )
+ *  - 画像あり + 古い期間 → false ( 既存維持 ) */
+export function shouldReplaceMainImage(
+  item: Pick<Item, "mainImageUrl" | "priceEntries">,
+  newCandidateYearMonth: string | undefined,
+): boolean {
+  if (!item.mainImageUrl) return true;
+  return isNewestYearMonth(item, newCandidateYearMonth);
+}
+
 
