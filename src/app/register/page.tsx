@@ -36,10 +36,8 @@ import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
 import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import {
-  formatRoundDateRange,
   formatShopPeriod,
   resolveShopPeriod,
-  SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
 import {
@@ -61,6 +59,7 @@ import {
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 import PresetForm from "@/components/PresetForm";
+import ShopPeriodPicker from "@/components/ShopPeriodPicker";
 import { Button, Field, inputClass } from "@/components/ui";
 import { useDirtyTracker } from "@/lib/unsavedChanges";
 
@@ -939,13 +938,19 @@ function RegisterPageInner() {
         </Field>
       </div>
 
-      <ShopPeriodField
+      <ShopPeriodPicker
         yearMonth={form.shopYearMonth}
         phase={form.shopPhase}
         auto={form.shopAuto && !!mainBlob}
-        hasMainImage={!!mainBlob}
-        onChange={(yearMonth, phase) =>
-          setForm({ ...form, shopYearMonth: yearMonth, shopPhase: phase, shopAuto: false })
+        showManualHint={!mainBlob}
+        highlight={form.shopAuto && !!mainBlob}
+        onChange={({ yearMonth, phase }) =>
+          setForm({
+            ...form,
+            shopYearMonth: yearMonth,
+            shopPhase: phase,
+            shopAuto: false,
+          })
         }
       />
 
@@ -1484,77 +1489,6 @@ function DisabledSlot({ label, hint }: { label: string; hint: string }) {
         <span className="text-[10px] text-muted ml-1">既存を使用</span>
       </div>
     </div>
-  );
-}
-
-function ShopPeriodField({
-  yearMonth,
-  phase,
-  auto,
-  hasMainImage,
-  onChange,
-}: {
-  yearMonth: string;
-  phase: ShopPhase;
-  auto: boolean;
-  hasMainImage: boolean;
-  onChange: (yearMonth: string, phase: ShopPhase) => void;
-}) {
-  const adornment = auto ? (
-    <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
-      <Sparkles size={11} />
-      画像から自動判定
-    </span>
-  ) : !hasMainImage ? (
-    <span className="text-[10px] text-muted normal-case tracking-normal">
-      手動選択
-    </span>
-  ) : undefined;
-
-  return (
-    <Field
-      label="マイショップ時期"
-      labelAdornment={adornment}
-      hint={
-        yearMonth
-          ? `表示: [${formatShopPeriod(yearMonth, phase)}]`
-          : undefined
-      }
-    >
-      <div className="flex items-center gap-2 flex-wrap">
-        <select
-          value={yearMonth}
-          onChange={(e) => onChange(e.target.value, phase)}
-          className={`${inputClass({ highlighted: auto })} flex-1 min-w-[10rem] text-[13px]`}
-        >
-          <option value="">未指定</option>
-          {SHOP_ROUNDS.map((r) => (
-            <option key={r.yearMonth} value={r.yearMonth}>
-              {r.yearMonth} (第{r.roundNumber}回) {formatRoundDateRange(r)}
-            </option>
-          ))}
-        </select>
-        <div className="inline-flex bg-white border border-[var(--color-line)] p-0.5">
-          {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => {
-            const active = phase === p;
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onChange(yearMonth, p)}
-                className={`px-3 h-9 text-[12px] transition-colors ${
-                  active
-                    ? "bg-gold text-white"
-                    : "text-text/70 hover:text-text"
-                }`}
-              >
-                {p === "ongoing" ? "開催中" : "最終日"}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </Field>
   );
 }
 

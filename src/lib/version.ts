@@ -943,5 +943,20 @@
  *        `PriceEntryForm.tsx` 側を見落としていた。 同じ option text
  *        ( `{yearMonth} (第{N}回) {formatRoundDateRange}` ) を適用し
  *        全画面で表示が揃う。
+ * 0.27.15 v0.27.14 で再発した「同じ UI が 2 箇所に重複していて片方だけ
+ *        更新する」事故を構造的に防ぐ。 register/page.tsx の
+ *        ShopPeriodField と PriceEntryForm.tsx 内の inline
+ *        マイショップ時期ブロックを `src/components/ShopPeriodPicker.tsx`
+ *        ( 新規 ) に集約。 props 形 ( register: 個別 / PriceEntryForm:
+ *        value object ) と highlight / showManualHint の有無を吸収する
+ *        統一 API ( `{ yearMonth, phase, auto, showManualHint?, highlight?,
+ *        onChange({yearMonth, phase}) }` ) で両呼出をラップ。 register
+ *        form は auto/highlight/showManualHint を mainBlob 有無で渡し分け、
+ *        PriceEntryForm 側は auto = value.shopAuto のみ渡す ( 手動選択
+ *        前提のため hint / highlight 不要 ) 。 旧 ShopPeriodField 関数
+ *        ~70 行と inline ブロック ~50 行を削除し、 共通 component
+ *        ~80 行に集約 ( 全体で 40 行強の縮小 ) 。 不要になった
+ *        Sparkles / formatShopPeriod / formatRoundDateRange / SHOP_ROUNDS /
+ *        inputClass の import も両 file から撤去。
  */
-export const APP_VERSION = "0.27.14";
+export const APP_VERSION = "0.27.15";
