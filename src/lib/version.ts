@@ -765,5 +765,20 @@
  *        v0.27.0 の `{isAdmin && <DrawerNav .../>}` gate により、 logout
  *        後は drawer 自体が unmount されるので明示的な open=false 操作は
  *        onClose() の 1 回で十分。
+ * 0.27.2 価格 entry の dedup key を `yearMonth` 単独から
+ *        `( yearMonth + checkedAt )` の tuple に変更。 同期間でも別時刻の
+ *        entry は別々に保存される ( 例: 朝に開催中、 夕方に再チェック →
+ *        2 entry ) 。 同じ画像の再 OCR は EXIF が一致するので idempotent
+ *        ( 上書き ) のまま、 重複は発生しない。 変更点は以下:
+ *        - `src/lib/firebase/repo.ts` の mergeItemPriceEntry の filter を
+ *          `e.shopPeriod?.yearMonth === newYearMonth` から
+ *          `e.shopPeriod?.yearMonth === newYearMonth && e.checkedAt === newCheckedAt`
+ *          に変更。 個別登録 ( same-name merge ) / bulk save / inbox の
+ *          3 経路すべてが本関数を経由するので一箇所で揃う。
+ *        - `src/app/register/page.tsx` の `willReplaceEntry` 判定式も
+ *          同じ tuple key に合わせ、 MergeDialog の "UPDATE" / "ADD"
+ *          表示と実保存の挙動が同期するように。
+ *        既存データには触れていない ( filter ロジックの変更のみ ) ので
+ *        マイグレーション不要。
  */
-export const APP_VERSION = "0.27.1";
+export const APP_VERSION = "0.27.2";

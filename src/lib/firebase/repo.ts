@@ -283,9 +283,16 @@ export interface MergePriceEntryInput {
 }
 
 /**
- * Adds a new price entry to an existing item. If the new entry's
- * shopPeriod.yearMonth matches an existing entry's yearMonth, that older
- * entry is dropped (the new one wins — "1 件扱い" per yearMonth).
+ * Adds a new price entry to an existing item. Used by 個別登録 ( same-name
+ * merge ) , bulk save, and inbox processing — the dedup key is therefore
+ * shared across all three flows.
+ *
+ * Replace key is `(shopPeriod.yearMonth + checkedAt)` exact match: an
+ * existing entry is dropped only when both the period and the checked
+ * timestamp match the new one. Same period at a different time keeps both
+ * entries side by side ( v0.27.2 — previously the period alone was enough
+ * to overwrite ) . When the new entry has no shopPeriod, the dedup is
+ * skipped entirely and the entry is just appended.
  *
  * Optionally replaces the main image. The icon is never touched.
  */
@@ -306,10 +313,15 @@ export async function mergeItemPriceEntry(
     if (!snap.exists()) throw new Error("アイテムが見つかりませんでした");
     const current = itemFromFs(snap.id, snap.data());
     const newYearMonth = input.newEntry.shopPeriod?.yearMonth;
+    const newCheckedAt = input.newEntry.checkedAt;
 
     const filtered = newYearMonth
       ? current.priceEntries.filter(
-          (e) => e.shopPeriod?.yearMonth !== newYearMonth,
+          (e) =>
+            !(
+              e.shopPeriod?.yearMonth === newYearMonth &&
+              e.checkedAt === newCheckedAt
+            ),
         )
       : current.priceEntries;
 

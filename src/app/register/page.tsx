@@ -477,10 +477,16 @@ function RegisterPageInner() {
     );
     if (existingItem) {
       const newYearMonth = form.shopYearMonth || undefined;
+      // mergeItemPriceEntry の dedup と同じ key ( yearMonth + checkedAt ) で
+      // willReplaceEntry を判定。 ここがズレると MergeDialog の文言と
+      // 実際の保存挙動が食い違うので必ず repo.ts と一緒に動かす ( v0.27.2 ) 。
+      const newCheckedAt = fromLocalInput(form.checkedAt);
       const willReplaceEntry =
         !!newYearMonth &&
         existingItem.priceEntries.some(
-          (e) => e.shopPeriod?.yearMonth === newYearMonth,
+          (e) =>
+            e.shopPeriod?.yearMonth === newYearMonth &&
+            e.checkedAt === newCheckedAt,
         );
       const defaultReplaceMain =
         !!mainBlob && shouldReplaceMainImage(existingItem, newYearMonth);
