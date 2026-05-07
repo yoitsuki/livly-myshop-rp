@@ -10,10 +10,15 @@ import { useEffect, useState } from "react";
  * cropPresets are intentionally NOT here — those benefit from cross-device
  * sync and live on the Firestore settings doc.
  */
+export type InboxPageSize = 5 | 10 | 20;
+
 export interface LocalSettings {
   ocrProvider: "tesseract" | "claude";
   claudeApiKey?: string;
   claudeModel?: string;
+  /** /register/inbox の 1 ページあたり件数。OCR / image download は表示中の
+   *  ページ分のみ走る ( 大量画像で初期読み込みが詰まらないように ) 。 */
+  inboxPageSize?: InboxPageSize;
 }
 
 const STORAGE_KEY = "livly-myshop-rp:local-settings";
@@ -21,6 +26,7 @@ const STORAGE_KEY = "livly-myshop-rp:local-settings";
 const DEFAULTS: LocalSettings = {
   ocrProvider: "tesseract",
   claudeModel: "claude-sonnet-4-6",
+  inboxPageSize: 10,
 };
 
 function read(): LocalSettings {

@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { Inbox as InboxIcon, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Inbox as InboxIcon,
+  RefreshCw,
+} from "lucide-react";
 import { useItems, useSettings } from "@/lib/firebase/hooks";
 import { uid } from "@/lib/firebase/repo";
 import { saveBulkEntry } from "@/lib/bulk/save";
@@ -74,6 +79,54 @@ export default function InboxRegisterPage() {
     entryId: string;
     name: string;
   } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  /** Keep the InboxFile ref around so the visible-page queue can resolve
+   *  it back when an entry actually scrolls into view.  We don't store
+   *  this on BulkEntry itself ( BulkEntry is shared with /register/bulk
+   *  which has no concept of an InboxFile ) . */
+  const inboxFilesRef = useRef<Map<string, InboxFile>>(new Map());
+  /** entry.id set: rows we've already kicked off processRow for.  Prevents
+   *  double-processing when pages overlap or when an entry is re-rendered
+   *  while still processing. */
+  const queuedRef = useRef<Set<string>>(new Set());
+
+  const pageSize: number = local.inboxPageSize ?? 10;
+  const totalPages = Math.max(1, Math.ceil(inboxEntries.length / pageSize));
+
+  // Clamp currentPage when the entry list shrinks below it ( e.g. user
+  // deletes the last row of the last page ) .
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const pagedEntries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return inboxEntries.slice(start, start + pageSize);
+  }, [inboxEntries, currentPage, pageSize]);
+
+  // Visible-only OCR queue: kick off processRow for rows on the current
+  // page that we haven't queued yet.  Runs sequentially in the background
+  // ( shared tesseract worker, Claude rate limits ) .
+  useEffect(() => {
+    const targets = pagedEntries.filter(
+      (e) =>
+        !queuedRef.current.has(e.id) &&
+        e.status === "processing" &&
+        inboxFilesRef.current.has(e.id),
+    );
+    if (targets.length === 0) return;
+    targets.forEach((e) => queuedRef.current.add(e.id));
+    setProcessingCount((c) => c + targets.length);
+    void (async () => {
+      for (const entry of targets) {
+        const file = inboxFilesRef.current.get(entry.id);
+        if (!file) continue;
+        await processRow(entry, file);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagedEntries]);
 
   // Initial fetch on mount.
   useEffect(() => {
@@ -190,6 +243,7 @@ export default function InboxRegisterPage() {
           minPrice: 0,
           refPriceMin: 0,
           refPriceMax: 0,
+          priceSource: "なんおし",
           checkedAt: f.uploadedAt,
           checked: false,
           inboxStoragePath: f.path,
@@ -198,15 +252,18 @@ export default function InboxRegisterPage() {
       }),
     );
 
-    bulk.setEntries((prev) => [...prev, ...created.map((c) => c.entry)]);
-    setProcessingCount((c) => c + created.length);
-    // List is in the DOM — drop the page-level "loading" before the slow
-    // OCR loop starts so the user sees rows + per-row spinners.
-    setLoading(false);
+    // Stash the InboxFile keyed by the entry id so the visible-page queue
+    // effect can resolve it later ( we don't kick off processRow here —
+    // only the entries on the current page get processed, see useEffect
+    // on pagedEntries above ) .
+    created.forEach(({ entry, file }) => {
+      inboxFilesRef.current.set(entry.id, file);
+    });
 
-    for (const item of created) {
-      await processRow(item.entry, item.file);
-    }
+    bulk.setEntries((prev) => [...prev, ...created.map((c) => c.entry)]);
+    // List is in the DOM — drop the page-level "loading" so the visible-only
+    // OCR queue can take over.
+    setLoading(false);
   };
 
   const onChangePreset = async (entryId: string, presetId: string) => {
@@ -252,17 +309,24 @@ export default function InboxRegisterPage() {
 
   const onConfirmRemove = async () => {
     if (!confirmRemove) return;
-    const entry = bulk.entries.find((e) => e.id === confirmRemove.entryId);
+    const entryId = confirmRemove.entryId;
+    const entry = bulk.entries.find((e) => e.id === entryId);
     const path = entry?.inboxStoragePath;
+    const cleanupRefs = () => {
+      inboxFilesRef.current.delete(entryId);
+      queuedRef.current.delete(entryId);
+    };
     if (!path) {
-      bulk.removeEntry(confirmRemove.entryId);
+      cleanupRefs();
+      bulk.removeEntry(entryId);
       setConfirmRemove(null);
       return;
     }
     setBusy(true);
     try {
       await deleteInboxFile(path);
-      bulk.removeEntry(confirmRemove.entryId);
+      cleanupRefs();
+      bulk.removeEntry(entryId);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Storage からの削除に失敗しました",
@@ -368,6 +432,11 @@ export default function InboxRegisterPage() {
           style={{ fontFamily: "var(--font-label)", letterSpacing: "0.08em" }}
         >
           {totalCount} 件 / 登録済み {savedCount} 件
+          {totalPages > 1 && (
+            <span className="ml-2">
+              ・ ページ {currentPage} / {totalPages}
+            </span>
+          )}
           {processingCount > 0 && (
             <span className="ml-2 text-[var(--color-gold-deep)]">
               ・ 解析中 {processingCount} 件
@@ -390,26 +459,33 @@ export default function InboxRegisterPage() {
       {inboxEntries.length === 0 ? (
         <EmptyState loading={loading} />
       ) : (
-        <ul className="-mx-2 border-t border-[var(--color-line)]">
-          {inboxEntries.map((e) => (
-            <li key={e.id}>
-              <BulkRow
-                entry={e}
-                presets={presets}
-                editHref={`/register?entryId=${e.id}`}
-                onToggleCheck={(next) => onToggleCheck(e, next)}
-                onChangePreset={(pid) => void onChangePreset(e.id, pid)}
-                onRemove={() =>
-                  setConfirmRemove({
-                    entryId: e.id,
-                    name: e.name || e.fileName || "(名称未取得)",
-                  })
-                }
-                savedAt={e.savedAt}
-              />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="-mx-2 border-t border-[var(--color-line)]">
+            {pagedEntries.map((e) => (
+              <li key={e.id}>
+                <BulkRow
+                  entry={e}
+                  presets={presets}
+                  editHref={`/register?entryId=${e.id}`}
+                  onToggleCheck={(next) => onToggleCheck(e, next)}
+                  onChangePreset={(pid) => void onChangePreset(e.id, pid)}
+                  onRemove={() =>
+                    setConfirmRemove({
+                      entryId: e.id,
+                      name: e.name || e.fileName || "(名称未取得)",
+                    })
+                  }
+                  savedAt={e.savedAt}
+                />
+              </li>
+            ))}
+          </ul>
+          <Pagination
+            current={currentPage}
+            total={totalPages}
+            onChange={setCurrentPage}
+          />
+        </>
       )}
 
       <ConfirmDialog
@@ -453,6 +529,100 @@ export default function InboxRegisterPage() {
       )}
     </div>
   );
+}
+
+/** Compact numbered pagination ( ‹ 1 2 3 ... N › ) .  Hides itself when
+ *  there's only one page.  Mobile-friendly: 32px hit targets, current page
+ *  picked out with the deep-teal accent. */
+function Pagination({
+  current,
+  total,
+  onChange,
+}: {
+  current: number;
+  total: number;
+  onChange: (next: number) => void;
+}) {
+  if (total <= 1) return null;
+
+  const pages = computeVisiblePages(current, total);
+
+  const navBtnBase =
+    "w-8 h-8 inline-flex items-center justify-center text-[12px] tabular-nums " +
+    "border border-[var(--color-line)] bg-white text-[var(--color-text)] " +
+    "transition-colors hover:bg-[var(--color-line-soft)] " +
+    "disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white";
+
+  return (
+    <nav
+      className="flex items-center justify-center gap-1 mt-4 flex-wrap"
+      aria-label="ページ送り"
+      style={{ fontFamily: "var(--font-label)" }}
+    >
+      <button
+        type="button"
+        onClick={() => onChange(current - 1)}
+        disabled={current === 1}
+        className={navBtnBase}
+        aria-label="前のページ"
+      >
+        <ChevronLeft size={14} strokeWidth={1.8} />
+      </button>
+      {pages.map((p, idx) =>
+        p === "…" ? (
+          <span
+            key={`ellipsis-${idx}`}
+            className="px-1 text-[var(--color-muted)] text-[12px]"
+          >
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onChange(p)}
+            aria-current={p === current ? "page" : undefined}
+            className={
+              p === current
+                ? "w-8 h-8 inline-flex items-center justify-center text-[12px] tabular-nums " +
+                  "bg-[var(--color-gold-deep)] text-white border border-[var(--color-gold-deep)]"
+                : navBtnBase
+            }
+          >
+            {p}
+          </button>
+        ),
+      )}
+      <button
+        type="button"
+        onClick={() => onChange(current + 1)}
+        disabled={current === total}
+        className={navBtnBase}
+        aria-label="次のページ"
+      >
+        <ChevronRight size={14} strokeWidth={1.8} />
+      </button>
+    </nav>
+  );
+}
+
+/** Generate "1, …, current-1, current, current+1, …, total" with at most
+ *  ~7 entries.  Always includes 1 and total; ellipses fill the gaps. */
+function computeVisiblePages(
+  current: number,
+  total: number,
+): Array<number | "…"> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: Array<number | "…"> = [1];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  if (left > 2) pages.push("…");
+  for (let p = left; p <= right; p++) pages.push(p);
+  if (right < total - 1) pages.push("…");
+  pages.push(total);
+  return pages;
 }
 
 function EmptyState({ loading }: { loading: boolean }) {

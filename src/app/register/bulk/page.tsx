@@ -85,6 +85,9 @@ export default function BulkRegisterPage() {
       minPrice: 0,
       refPriceMin: 0,
       refPriceMax: 0,
+      // メイン画像なし時の 情報元 既定値。saveBulkEntry が mainBlob ありなら
+      // 捨てる ので、メイン画像が出てきたケースでも書き込みには影響しない。
+      priceSource: "なんおし",
       checkedAt: f.lastModified || Date.now(),
       checked: false,
     }));

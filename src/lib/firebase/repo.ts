@@ -491,3 +491,17 @@ export function latestPriceEntry(
   return sortedPriceEntries(item)[0];
 }
 
+/** Resolved 情報元 label for list/detail display.
+ *  - メイン画像あり → "マイショ" ( implicit )
+ *  - メイン画像なし + priceSource あり → "なんおし" / "その他"
+ *  - メイン画像なし + priceSource なし ( 旧データ ) → "設定無し"
+ *  登録 form 側の選択肢は なんおし / その他 の 2 択のままで、ここは
+ *  既存データを区別するための表示専用のフォールバック。 */
+export function infoSourceLabel(
+  item: Pick<Item, "priceEntries" | "mainImageUrl">,
+): string {
+  if (item.mainImageUrl) return "マイショ";
+  const latest = latestPriceEntry(item);
+  return latest?.priceSource?.trim() || "設定無し";
+}
+

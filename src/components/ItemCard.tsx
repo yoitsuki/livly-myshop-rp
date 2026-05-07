@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { ImageIcon } from "lucide-react";
-import { latestPriceEntry, type Item, type Tag } from "@/lib/firebase/repo";
+import {
+  infoSourceLabel,
+  latestPriceEntry,
+  type Item,
+  type Tag,
+} from "@/lib/firebase/repo";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
+import InfoSourceChip from "./InfoSourceChip";
 
 /** Atelier period badge — 3 tiers based on round age. */
 function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
@@ -33,13 +39,13 @@ function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string })
 
   return (
     <span
-      className="shrink-0 inline-flex items-center px-2 leading-none whitespace-nowrap"
+      className="shrink-0 inline-flex items-center leading-none whitespace-nowrap"
       style={{
         fontFamily: "var(--font-label)",
-        fontSize: 9.5,
+        fontSize: 9,
         fontWeight: 500,
-        letterSpacing: "0.16em",
-        padding: "2px 8px",
+        letterSpacing: "0.08em",
+        padding: "2px 5px",
         borderRadius: 0,
         ...styles[tier],
       }}
@@ -133,25 +139,34 @@ export default function ItemCard({
           {item.name || "(名称未設定)"}
         </h3>
 
-        {/* 参考価格 + period badge */}
-        <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1 mt-[7px]">
+        {/* 参考価格 — 2 段構成: ラベル単独行 + 価格 + GP + period badge.
+            ラベルと価格を同じ "塊" に見せるため、両行とも lineHeight: 1
+            にして Cormorant 18px の暗黙 line-height による上余白を殺し、
+            行間は marginTop で 1px だけ取る。価格セルは min-w-0 で長さを
+            許容、badge は ml-auto + shrink-0 で右端を死守。 */}
+        <div
+          className="text-[var(--color-muted)] mt-[7px]"
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 11,
+            letterSpacing: "0.04em",
+            lineHeight: 1,
+          }}
+        >
+          参考価格
+        </div>
+        <div
+          className="flex items-baseline gap-x-1.5 min-w-0"
+          style={{ marginTop: 3, lineHeight: 1 }}
+        >
           <span
-            className="text-[var(--color-muted)]"
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 11,
-              letterSpacing: "0.04em",
-            }}
-          >
-            参考価格
-          </span>
-          <span
-            className="text-[var(--color-gold-deep)] tabular-nums"
+            className="text-[var(--color-gold-deep)] tabular-nums min-w-0 truncate"
             style={{
               fontFamily: "var(--font-display)",
               fontSize: 18,
               fontWeight: 500,
               letterSpacing: "0.01em",
+              lineHeight: 1,
             }}
           >
             {latest
@@ -159,17 +174,18 @@ export default function ItemCard({
               : "—"}
           </span>
           <span
-            className="text-[var(--color-muted)]"
+            className="text-[var(--color-muted)] shrink-0"
             style={{
               fontFamily: "var(--font-label)",
               fontSize: 9,
               letterSpacing: "0.18em",
+              lineHeight: 1,
             }}
           >
             GP
           </span>
           {latest?.shopPeriod && (
-            <span className="ml-auto self-center">
+            <span className="ml-auto self-center shrink-0">
               <PeriodBadge
                 yearMonth={latest.shopPeriod.yearMonth}
                 phase={latest.shopPeriod.phase}
@@ -178,27 +194,28 @@ export default function ItemCard({
           )}
         </div>
 
-        {/* 最低価格 */}
+        {/* 最低価格 — 価格クラスタが lineHeight: 1 で締まったので、
+            ここは "別の指標" として読み分けられるよう余白を 8px 取る。 */}
         <div
-          className="text-[var(--color-muted)] mt-px tabular-nums"
+          className="text-[var(--color-muted)] tabular-nums"
           style={{
             fontFamily: "var(--font-body)",
             fontSize: 11,
             letterSpacing: "0.04em",
+            marginTop: 8,
           }}
         >
           <span>最低価格</span>{" "}
           {formatPrice(item.minPrice)} GP
         </div>
 
-        {/* tags */}
-        {itemTags.length > 0 && (
-          <div className="flex items-center flex-wrap gap-[5px] mt-[7px]">
-            {itemTags.map((t) => (
-              <TagChip key={t.id} tag={t} />
-            ))}
-          </div>
-        )}
+        {/* tags + 情報元 chip */}
+        <div className="flex items-center flex-wrap gap-[5px] mt-[7px]">
+          {itemTags.map((t) => (
+            <TagChip key={t.id} tag={t} />
+          ))}
+          <InfoSourceChip label={infoSourceLabel(item)} />
+        </div>
       </div>
     </Link>
   );

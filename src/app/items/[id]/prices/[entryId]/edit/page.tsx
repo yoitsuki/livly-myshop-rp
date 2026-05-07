@@ -42,7 +42,7 @@ export default function EditPriceEntryPage({
       shopPhase: entry.shopPeriod?.phase ?? "ongoing",
       shopAuto: entry.shopPeriod?.auto ?? false,
       checkedAt: toLocalInput(entry.checkedAt),
-      priceSource: entry.priceSource ?? "",
+      priceSource: entry.priceSource ?? "なんおし",
     });
   }, [entryId, entry?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

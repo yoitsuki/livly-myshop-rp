@@ -284,6 +284,42 @@
  *        /register?entryId=xxx は entry の inboxStoragePath 有無で
  *        戻り先を /register/inbox or /register/bulk に分岐。
  *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.20.0 受信BOX ( /register/inbox ) にページネーションを導入。
+ *        listInboxFiles() は据え置きで全件 metadata + URL を一括取得
+ *        ( newest-first ソート維持 ) するが、image download + OCR は
+ *        **表示中ページの行のみ** 順次実行するように変更。useRef で
+ *        InboxFile を id キーで保持しつつ、useEffect が pagedEntries の
+ *        変化を検知して未キュー分だけ processRow に流す。queuedRef で
+ *        多重実行を防止、行 × 削除時に inboxFilesRef + queuedRef を
+ *        同期クリーン。ページ番号 UI は ‹ 1 … 4 [5] 6 … 20 › の
+ *        コンパクトナビ ( current は gold-deep 塗り、その他は warm
+ *        hairline outline ) 。1 ページあたり件数は localSettings の
+ *        inboxPageSize ( 5 / 10 / 20、既定 10 ) で切替、設定画面に
+ *        「受信BOX 表示件数」 Section を追加。
+ * 0.19.1 一覧 ( ItemCard ) の参考価格行を 2 段構成に分解。
+ *        Row 1 = 「参考価格」ラベル単独 / Row 2 = 価格 + GP + period badge
+ *        ( ml-auto 右寄せ ) 。価格セルに min-w-0 + truncate を入れて、
+ *        5〜6 桁 ( 例: 120,000-180,000 / 999,999-999,999 ) でも badge が
+ *        次行に折り返さず、カード高さがバラつかないようにした。
+ *        あわせて PeriodBadge ( ItemCard / 詳細ページ items/[id] ) を
+ *        fontSize 9.5→9 / tracking 0.16→0.08em / padding 8→5px で
+ *        1 段コンパクト化 ( 配色 / 3 tier 分岐は不変 ) 。
+ * 0.19.0 情報元 ( priceSource ) の取り方と見え方を整理。
+ *        (1) 一覧 ( ItemCard ) と詳細 ( /items/[id] ) のタグ列の末尾に
+ *            「情報元: ◯◯」のタグ形 chip ( 背景白 / 文字 muted / 0.5px
+ *            hairline border / 角丸ゼロ ) を常時表示する InfoSourceChip を
+ *            追加。値は infoSourceLabel(item) で算出 — メイン画像あり
+ *            なら "マイショ"、なければ最新 priceEntry の priceSource
+ *            ( "なんおし" / "その他" )、priceSource 未設定の旧データは
+ *            "設定無し" で出す ( 表示専用フォールバック ) 。
+ *        (2) 登録系の初期値を統一。register / register/bulk /
+ *            register/inbox / 価格追加 (PriceEntryForm) で priceSource の
+ *            既定を "なんおし" に。SOURCE_PRESETS / PRICE_SOURCE_PRESETS
+ *            から「選択しない」を削除し、なんおし / その他 の 2 択に。
+ *            メイン画像ありなら従来通り Field 自体を非表示 + onSave で
+ *            undefined に倒すので、データ書き込みには影響しない。
+ *        (3) 既存の per-entry priceSource 表示 ( 詳細ページ
+ *            MARKET REFERENCE 行の Calendar | priceSource ) は触らず温存。
  * 0.18.3 詳細ページ ( /items/[id] ) のタイトルブロック左に 64px の
  *        corner-tick `AtelierThumb` を追加。viewer は v0.1.0 から既に
  *        この構成で、admin だけアイコンが出ていない状態だったので
@@ -511,4 +547,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.18.3";
+export const APP_VERSION = "0.20.0";

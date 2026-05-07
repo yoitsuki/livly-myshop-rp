@@ -138,6 +138,27 @@ export default function SettingsPage() {
       </Section>
 
       <Section
+        title="受信BOX 表示件数"
+        hint="1 ページに並べる件数。OCR は表示中のページ分のみ走るので、件数を減らすと初期読み込みが軽くなります。"
+      >
+        <Field label="1 ページあたり">
+          <select
+            value={local.inboxPageSize ?? 10}
+            onChange={(e) =>
+              updateLocal({
+                inboxPageSize: Number(e.target.value) as 5 | 10 | 20,
+              })
+            }
+            className={fieldInputClass}
+          >
+            <option value={5}>5 件</option>
+            <option value={10}>10 件</option>
+            <option value={20}>20 件</option>
+          </select>
+        </Field>
+      </Section>
+
+      <Section
         title="切り抜きプリセット"
         hint="画像取り込み時のクロップ範囲を保存します。詳細は専用画面で編集します。"
       >
