@@ -88,6 +88,19 @@ function jstDateKey(ms: number): string {
 }
 
 /**
+ * "MMDD-MMDD" の形式で round の開催日範囲を返す ( JST ) 。
+ * 例 : round 10 ( 2026-02-09 12:00 JST → 2026-02-16 23:59 JST ) → "0209-0216" 。
+ * register form の <option> や hint 等で round 番号と並べて表示する想定 ( v0.27.13 ) 。
+ */
+export function formatRoundDateRange(round: ShopRound): string {
+  const md = (ms: number) => {
+    const k = jstDateKey(ms); // "YYYY-MM-DD"
+    return k.slice(5, 7) + k.slice(8, 10); // "MMDD"
+  };
+  return `${md(round.start)}-${md(round.end)}`;
+}
+
+/**
  * Map an epoch ms (typically the EXIF / lastModified time) to a shop round
  * and its phase. Returns null if the timestamp falls outside any known round.
  */

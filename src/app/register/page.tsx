@@ -7,6 +7,7 @@ import {
   Crop,
   ImagePlus,
   Loader2,
+  RotateCcw,
   ScanText,
   Sparkles,
   X,
@@ -35,6 +36,7 @@ import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
 import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import {
+  formatRoundDateRange,
   formatShopPeriod,
   resolveShopPeriod,
   SHOP_ROUNDS,
@@ -51,6 +53,7 @@ import {
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import { useBulkDraft } from "@/lib/bulk/context";
 import { applyPresetRects, renderIconThumb } from "@/lib/bulk/process";
+import { normalizeTagType, TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
 import {
   bulkEntryMissingFields,
   type BulkEntry,
@@ -197,6 +200,11 @@ function RegisterPageInner() {
   useDirtyTracker(dirty);
   const [presetModalInitial, setPresetModalInitial] =
     useState<CropPreset | null>(null);
+  // 「クロップ結果で既存プリセットを更新」用 ( v0.27.13 ) 。 picker を出すだけで、
+  // 上書き対象 id を選んで「上書き」を押すと patchSettings する。
+  const [presetUpdateOpen, setPresetUpdateOpen] = useState(false);
+  const [presetUpdateTargetId, setPresetUpdateTargetId] = useState<string>("");
+  const [presetUpdateBusy, setPresetUpdateBusy] = useState(false);
   const [mergeDialog, setMergeDialog] = useState<{
     existing: Item;
     willReplaceEntry: boolean;
@@ -725,15 +733,46 @@ function RegisterPageInner() {
           </div>
 
           {iconCrop && !mergeTarget && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              icon={<BookmarkPlus size={14} />}
-              onClick={openPresetFromCrop}
-            >
-              クロップ結果をプリセットに登録
-            </Button>
+            <div className="flex flex-col items-start gap-1.5">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<BookmarkPlus size={14} />}
+                onClick={openPresetFromCrop}
+              >
+                クロップ結果をプリセットに登録
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<RotateCcw size={14} />}
+                onClick={() => {
+                  // デフォルト選択 = 現在マッチしているプリセット ( あれば ) 。
+                  // 無ければ最初の compatible preset。
+                  const list =
+                    cloudSettings?.cropPresets &&
+                    cloudSettings.cropPresets.length > 0
+                      ? cloudSettings.cropPresets
+                      : SEED_PRESETS;
+                  const sw = iconCrop.source.width;
+                  const sh = iconCrop.source.height;
+                  const compatible = list.filter(
+                    (p) => p.width === sw && p.height === sh,
+                  );
+                  const initial =
+                    matchedPresetId &&
+                    compatible.some((p) => p.id === matchedPresetId)
+                      ? matchedPresetId
+                      : compatible[0]?.id ?? "";
+                  setPresetUpdateTargetId(initial);
+                  setPresetUpdateOpen(true);
+                }}
+              >
+                クロップ結果で既存プリセットを更新
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -1122,6 +1161,132 @@ function RegisterPageInner() {
         </div>
       )}
 
+      {presetUpdateOpen && iconCrop && (() => {
+        const list =
+          cloudSettings?.cropPresets &&
+          cloudSettings.cropPresets.length > 0
+            ? cloudSettings.cropPresets
+            : SEED_PRESETS;
+        const sw = iconCrop.source.width;
+        const sh = iconCrop.source.height;
+        const compatible = list.filter(
+          (p) => p.width === sw && p.height === sh,
+        );
+        const target = compatible.find((p) => p.id === presetUpdateTargetId);
+        return (
+          <div
+            className="fixed inset-0 z-40 flex items-start justify-center px-4 py-6 overflow-y-auto"
+            style={{ background: "rgba(20,40,38,0.55)" }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setPresetUpdateOpen(false);
+            }}
+          >
+            <div
+              className="w-full max-w-md bg-[var(--color-cream)] border border-[var(--color-line-strong)]"
+              style={{ borderRadius: 0 }}
+            >
+              <div className="px-4 pt-3 pb-2 border-b border-[var(--color-line)] flex items-center gap-2">
+                <h2
+                  className="text-[16px] flex-1 text-[var(--color-gold-deep)]"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  既存プリセットを更新
+                </h2>
+                <button
+                  type="button"
+                  aria-label="閉じる"
+                  onClick={() => setPresetUpdateOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                <p
+                  className="text-[11px] text-[var(--color-muted)] leading-relaxed"
+                  style={{ fontFamily: "var(--font-label)", letterSpacing: "0.04em" }}
+                >
+                  現在のクロップ結果 ( アイコン{mainCrop ? " + メイン画像" : ""} の矩形 ) で
+                  既存のプリセットを上書きします。 名前 / 色判定設定はそのまま。
+                  画像サイズ {sw}×{sh} に対応するプリセットのみが対象です。
+                </p>
+                {compatible.length === 0 ? (
+                  <div
+                    className="border border-dashed border-[var(--color-line)] px-3 py-4 text-center text-[12px] text-[var(--color-muted)]"
+                    style={{ fontFamily: "var(--font-label)" }}
+                  >
+                    対応するプリセットがありません ({sw}×{sh})
+                  </div>
+                ) : (
+                  <Field label="更新するプリセット">
+                    <select
+                      value={presetUpdateTargetId}
+                      onChange={(e) => setPresetUpdateTargetId(e.target.value)}
+                      className={`${inputClass()} text-[13px]`}
+                    >
+                      {compatible.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={() => setPresetUpdateOpen(false)}
+                    disabled={presetUpdateBusy}
+                  >
+                    キャンセル
+                  </Button>
+                  <div className="flex-1">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="md"
+                      fullWidth
+                      loading={presetUpdateBusy}
+                      disabled={!target || presetUpdateBusy}
+                      onClick={async () => {
+                        if (!target) return;
+                        setPresetUpdateBusy(true);
+                        try {
+                          const settings = await getSettings();
+                          const next = (settings.cropPresets ?? []).map((p) =>
+                            p.id === target.id
+                              ? {
+                                  ...p,
+                                  icon: { ...iconCrop.rect },
+                                  main: mainCrop ? { ...mainCrop.rect } : p.main,
+                                }
+                              : p,
+                          );
+                          await patchSettings({ cropPresets: next });
+                          setPresetUpdateOpen(false);
+                        } catch (e) {
+                          setError(
+                            e instanceof Error
+                              ? e.message
+                              : "プリセット更新に失敗",
+                          );
+                        } finally {
+                          setPresetUpdateBusy(false);
+                        }
+                      }}
+                    >
+                      上書き
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {mergeDialog && (
         <MergeDialog
           existingName={mergeDialog.existing.name}
@@ -1365,7 +1530,7 @@ function ShopPeriodField({
           <option value="">未指定</option>
           {SHOP_ROUNDS.map((r) => (
             <option key={r.yearMonth} value={r.yearMonth}>
-              {r.yearMonth} (第{r.roundNumber}回)
+              {r.yearMonth} (第{r.roundNumber}回) {formatRoundDateRange(r)}
             </option>
           ))}
         </select>
@@ -1437,28 +1602,55 @@ function TagPicker({
     setAdding(false);
   };
 
+  // タグを type 別にグルーピング ( v0.27.13 ) 。 ホーム一覧の絞込みパネルと
+  // 同じく TYPE_ORDER 固定順 + TYPE_LABEL を section 見出しに使い、
+  // 該当タグが 0 件の type は出さない。 normalizeTagType で legacy / unknown
+  // type も "other" に倒す。
+  const groupedTags = TYPE_ORDER.map((type) => ({
+    type,
+    list: tags.filter((t) => normalizeTagType(t.type) === type),
+  })).filter((g) => g.list.length > 0);
+
+  const renderChip = (t: Tag) => {
+    const on = selected.includes(t.id);
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => toggle(t.id)}
+        className={`px-2.5 h-7 text-[12px] border transition-colors ${
+          on
+            ? "bg-gold text-white border-gold"
+            : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
+        }`}
+      >
+        #{t.name}
+      </button>
+    );
+  };
+
   return (
     <Field label="タグ">
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          {tags.map((t) => {
-            const on = selected.includes(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => toggle(t.id)}
-                className={`px-2.5 h-7 text-[12px] border transition-colors ${
-                  on
-                    ? "bg-gold text-white border-gold"
-                    : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
-                }`}
-              >
-                #{t.name}
-              </button>
-            );
-          })}
-          {!adding && (
+      <div className="space-y-3">
+        {groupedTags.map(({ type, list }) => (
+          <section key={type} className="space-y-1.5">
+            <h4
+              className="px-1 text-[var(--color-gold-deep)] uppercase"
+              style={{
+                fontFamily: "var(--font-label)",
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                fontWeight: 500,
+              }}
+            >
+              {TYPE_LABEL[type]}
+            </h4>
+            <div className="flex flex-wrap gap-1.5">{list.map(renderChip)}</div>
+          </section>
+        ))}
+
+        {!adding && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
             <button
               type="button"
               onClick={() => setAdding(true)}
@@ -1466,8 +1658,8 @@ function TagPicker({
             >
               ＋ 新規タグ
             </button>
-          )}
-        </div>
+          </div>
+        )}
         {adding && (
           <div className="flex items-center gap-1.5">
             <input

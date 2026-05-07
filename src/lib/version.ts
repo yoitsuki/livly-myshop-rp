@@ -911,5 +911,30 @@
  *        で右に長く伸ばす。 結果、 register form の bottom nav
  *        ( 戻る / 保存 ) と詳細ページの bottom nav ( DELETE / EDIT ) が
  *        同じ幅比率で揃う。
+ * 0.27.13 通常仕様改善 4 件:
+ *        (a) ShopPeriodField の <option> に開催日 ( MMDD-MMDD, JST ) を
+ *            並記。 例: `202602 (第10回) 0209-0216`。 lib/shopPeriods.ts
+ *            に formatRoundDateRange を追加し、 SHOP_ROUNDS の start/end
+ *            ( epoch ms ) から JST の MMDD を切り出す。
+ *        (b) /register form の「クロップ結果をプリセットに登録」
+ *            ボタンの下に「クロップ結果で既存プリセットを更新」ボタンを
+ *            追加 ( inbox / bulk / 単発 全モード共通 ) 。 押下で modal が
+ *            開き、 現在の crop source 寸法 (W × H) と一致するプリセット
+ *            だけを select に並べる。 上書きは icon と main 矩形のみ
+ *            ( 名前 / 色判定 / width / height は維持 ) なので、 別寸法の
+ *            プリセットを誤上書きする事故を物理的に防ぐ。
+ *        (c) /presets ( 切り抜きプリセット一覧 ) を tags page と同じ
+ *            DnD pattern に揃える。 行頭に GripVertical ハンドル、
+ *            PointerSensor (4px) + TouchSensor (180ms long-press) で
+ *            誤起動防止。 onDragEnd で `arrayMove` した cropPresets を
+ *            patchSettings → snapshot listener で再描画。 SEED_PRESETS
+ *            も並び順を反映できる ( 旧仕様では作成順固定 ) 。
+ *        (d) /register form の TagPicker ( タグ選択 ) を type 別に
+ *            グループ化。 各 type の見出しは TYPE_LABEL ( 「ニューマハ
+ *            ラショップ」「バザール」「ナッツ」 etc. ) を Atelier label
+ *            ( 10px / 0.18em / gold-deep ) で出し、 該当タグが 0 件の
+ *            type は出さない。 ホーム絞込みパネル ( v0.18.2 ) と同じ
+ *            グルーピングルール ( TYPE_ORDER + normalizeTagType ) を
+ *            適用。
  */
-export const APP_VERSION = "0.27.12";
+export const APP_VERSION = "0.27.13";
