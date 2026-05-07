@@ -701,5 +701,10 @@
  *        除去。今後 priceSource undefined の旧データは出ない前提
  *        ( 表示時の "設定無し" フォールバックは残してあるので、もし出ても
  *        無害 ) 。
+ * 0.26.2 inbox / bulk の個別編集画面 ( /register?entryId=xxx ) 上部の
+ *        「受信BOXに戻る」/「リストに戻る」ボタンを secondary ( 白地 +
+ *        gold-deep 文字 ) → primary ( gold 塗りつぶし + 白文字 ) に変更。
+ *        白背景に白ボタンで見落とすという指摘を受けて、戻り導線を
+ *        視認しやすいゴールド塗りに格上げ。
  */
-export const APP_VERSION = "0.26.1";
+export const APP_VERSION = "0.26.2";

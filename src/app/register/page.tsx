@@ -618,7 +618,7 @@ function RegisterPageInner() {
 
       {isBulk && (
         <Button
-          variant="secondary"
+          variant="primary"
           size="md"
           fullWidth
           onClick={() => router.replace(backHref)}
