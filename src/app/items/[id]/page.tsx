@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Calendar, ImageIcon } from "lucide-react";
@@ -123,13 +123,28 @@ export default function ItemDetailPage({
   const allTags = useTags() ?? [];
   const { isAdmin } = useAuth();
 
-  // 詳細ページに来た瞬間は常にトップから読みたい。 価格追加 → router.replace
-  // で戻ってきたケース等で前の scrollY が引きずられる事象があったため
-  // mount 時に明示的に top に戻す ( v0.27.5 ) 。 [id] が変わる遷移
-  // ( 別アイテムへ ) でも先頭に戻す。
+  // 詳細ページは常に先頭から読みたい。 単発の scrollTo(0, 0) では
+  // (1) ブラウザの自動 scroll restoration が後発で前回の scrollY を
+  //     復元するケース、
+  // (2) Firestore の useItem(id) 初回 undefined → データ到着で
+  //     placeholder から本文に化け、 ページが伸びた直後の位置ズレ、
+  // を取り切れず「時を刻まない時計」のような長尺 item で先頭に
+  // 戻らない事象があった ( v0.27.5 → v0.27.6 ) 。 [id] mount 時に
+  // 直ちに + 次フレームで scrollTo を 2 度打ち、 さらに item が
+  // undefined → 本物に切り替わった瞬間にも一度だけ top に戻す。
+  const initialScrollDoneRef = useRef(false);
   useEffect(() => {
+    initialScrollDoneRef.current = false;
     window.scrollTo(0, 0);
+    const raf = requestAnimationFrame(() => window.scrollTo(0, 0));
+    return () => cancelAnimationFrame(raf);
   }, [id]);
+  useEffect(() => {
+    if (item !== undefined && !initialScrollDoneRef.current) {
+      window.scrollTo(0, 0);
+      initialScrollDoneRef.current = true;
+    }
+  }, [item]);
 
   const mainUrl = item?.mainImageUrl;
 

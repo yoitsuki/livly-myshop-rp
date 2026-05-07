@@ -829,5 +829,17 @@
  *        からの再訪問で前回の scrollY が引きずられて中途半端な位置に
  *        着地する事象があり、 useEffect deps を [id] にしておくことで
  *        別アイテムへの遷移でも先頭から読める。
+ * 0.27.6 v0.27.5 の scrollTo(0, 0) が一部 item ( 価格 entry が複数あって
+ *        本文が長い "時を刻まない時計" 等 ) で先頭に戻らない事象を
+ *        修正。 単発の scrollTo では
+ *        (a) ブラウザ自動 scroll restoration が後発で前回 scrollY を
+ *            復元する、
+ *        (b) `useItem(id)` の初回 undefined → 本物に切り替わる
+ *            タイミングで本文が伸び、 placeholder 時点の位置から
+ *            ズレる、
+ *        を取り切れない。 mount 直後 + `requestAnimationFrame` の 2 度
+ *        打ちに加えて、 `item` が undefined から定まった瞬間に 1 度だけ
+ *        scrollTo(0, 0) を再実行 ( ref で多重発火を防ぎ、 後続の
+ *        Firestore snapshot 更新では再 scroll しない ) 。
  */
-export const APP_VERSION = "0.27.5";
+export const APP_VERSION = "0.27.6";
