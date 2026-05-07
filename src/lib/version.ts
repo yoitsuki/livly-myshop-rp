@@ -693,5 +693,13 @@
  *        item.mainImageUrl の有無で `"マイショ"` か `"なんおし"` を
  *        差し込む。実行後は次の clean-up コミットでボタン + 関数とも
  *        ソースから削除する想定 ( TODO コメント付き ) 。
+ * 0.26.1 マイグレーション UI / 関数の clean-up。0.26.0 で追加した
+ *        /settings 末尾の「情報元データ移行」ボタンと repo.ts の
+ *        migrateInfoSources 関数を、ユーザー側で 1 回実行が完了した
+ *        ことを確認したので削除。関連 state ( migrateConfirm /
+ *        migrateBusy / migrateResult ) と ConfirmDialog import も合わせて
+ *        除去。今後 priceSource undefined の旧データは出ない前提
+ *        ( 表示時の "設定無し" フォールバックは残してあるので、もし出ても
+ *        無害 ) 。
  */
-export const APP_VERSION = "0.26.0";
+export const APP_VERSION = "0.26.1";

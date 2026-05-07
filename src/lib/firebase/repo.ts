@@ -556,41 +556,4 @@ export function shouldReplaceMainImage(
   return isNewestYearMonth(item, newCandidateYearMonth);
 }
 
-// ---- One-time migration ( 0.26.0 ) -----------------------------------------
-// TODO: remove after one-time migration. /settings の inline ボタンと合わせて
-// 削除する想定 ( ユーザーの方針 ) 。
-export async function migrateInfoSources(): Promise<{
-  scanned: number;
-  itemsUpdated: number;
-  entriesUpdated: number;
-}> {
-  const snap = await getDocs(collection(firestore(), "items"));
-  let scanned = 0;
-  let itemsUpdated = 0;
-  let entriesUpdated = 0;
-  for (const d of snap.docs) {
-    scanned++;
-    const item = itemFromFs(d.id, d.data());
-    let dirty = false;
-    const next = item.priceEntries.map((e) => {
-      if (e.priceSource !== undefined) return e;
-      dirty = true;
-      entriesUpdated++;
-      return {
-        ...e,
-        priceSource: item.mainImageUrl ? "マイショ" : "なんおし",
-      };
-    });
-    if (dirty) {
-      itemsUpdated++;
-      const merged: Item = {
-        ...item,
-        priceEntries: next,
-        updatedAt: Date.now(),
-      };
-      await setDoc(d.ref, itemToFs(merged));
-    }
-  }
-  return { scanned, itemsUpdated, entriesUpdated };
-}
 
