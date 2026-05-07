@@ -39,13 +39,13 @@ function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string })
 
   return (
     <span
-      className="shrink-0 inline-flex items-center px-2 leading-none whitespace-nowrap"
+      className="shrink-0 inline-flex items-center leading-none whitespace-nowrap"
       style={{
         fontFamily: "var(--font-label)",
-        fontSize: 9.5,
+        fontSize: 9,
         fontWeight: 500,
-        letterSpacing: "0.16em",
-        padding: "2px 8px",
+        letterSpacing: "0.08em",
+        padding: "2px 5px",
         borderRadius: 0,
         ...styles[tier],
       }}
@@ -139,20 +139,23 @@ export default function ItemCard({
           {item.name || "(名称未設定)"}
         </h3>
 
-        {/* 参考価格 + period badge */}
-        <div className="flex items-baseline flex-wrap gap-x-1.5 gap-y-1 mt-[7px]">
+        {/* 参考価格 — 2 段構成: ラベル単独行 + 価格 + GP + period badge.
+            5〜6 桁の長い価格でも badge が折り返さないよう、価格セルに
+            min-w-0 を入れて flex の押し出しに任せる ( truncate しない =
+            数字を切らない ) 。badge は ml-auto で右端、shrink-0 で死守。 */}
+        <div
+          className="text-[var(--color-muted)] mt-[7px]"
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 11,
+            letterSpacing: "0.04em",
+          }}
+        >
+          参考価格
+        </div>
+        <div className="flex items-baseline gap-x-1.5 mt-0.5 min-w-0">
           <span
-            className="text-[var(--color-muted)]"
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 11,
-              letterSpacing: "0.04em",
-            }}
-          >
-            参考価格
-          </span>
-          <span
-            className="text-[var(--color-gold-deep)] tabular-nums"
+            className="text-[var(--color-gold-deep)] tabular-nums min-w-0 truncate"
             style={{
               fontFamily: "var(--font-display)",
               fontSize: 18,
@@ -165,7 +168,7 @@ export default function ItemCard({
               : "—"}
           </span>
           <span
-            className="text-[var(--color-muted)]"
+            className="text-[var(--color-muted)] shrink-0"
             style={{
               fontFamily: "var(--font-label)",
               fontSize: 9,
@@ -175,7 +178,7 @@ export default function ItemCard({
             GP
           </span>
           {latest?.shopPeriod && (
-            <span className="ml-auto self-center">
+            <span className="ml-auto self-center shrink-0">
               <PeriodBadge
                 yearMonth={latest.shopPeriod.yearMonth}
                 phase={latest.shopPeriod.phase}

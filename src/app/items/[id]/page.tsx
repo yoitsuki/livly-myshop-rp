@@ -43,11 +43,11 @@ function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string })
       style={{
         display: "inline-flex",
         alignItems: "center",
-        padding: "2px 8px",
+        padding: "2px 5px",
         fontFamily: "var(--font-label)",
-        fontSize: 9.5,
+        fontSize: 9,
         fontWeight: 500,
-        letterSpacing: "0.16em",
+        letterSpacing: "0.08em",
         borderRadius: 0,
         ...tierStyle[tier],
       }}

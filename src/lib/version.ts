@@ -284,6 +284,14 @@
  *        /register?entryId=xxx は entry の inboxStoragePath 有無で
  *        戻り先を /register/inbox or /register/bulk に分岐。
  *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.19.1 一覧 ( ItemCard ) の参考価格行を 2 段構成に分解。
+ *        Row 1 = 「参考価格」ラベル単独 / Row 2 = 価格 + GP + period badge
+ *        ( ml-auto 右寄せ ) 。価格セルに min-w-0 + truncate を入れて、
+ *        5〜6 桁 ( 例: 120,000-180,000 / 999,999-999,999 ) でも badge が
+ *        次行に折り返さず、カード高さがバラつかないようにした。
+ *        あわせて PeriodBadge ( ItemCard / 詳細ページ items/[id] ) を
+ *        fontSize 9.5→9 / tracking 0.16→0.08em / padding 8→5px で
+ *        1 段コンパクト化 ( 配色 / 3 tier 分岐は不変 ) 。
  * 0.19.0 情報元 ( priceSource ) の取り方と見え方を整理。
  *        (1) 一覧 ( ItemCard ) と詳細 ( /items/[id] ) のタグ列の末尾に
  *            「情報元: ◯◯」のタグ形 chip ( 背景白 / 文字 muted / 0.5px
@@ -527,4 +535,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.19.0";
+export const APP_VERSION = "0.19.1";
