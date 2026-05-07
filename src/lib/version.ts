@@ -936,5 +936,12 @@
  *            type は出さない。 ホーム絞込みパネル ( v0.18.2 ) と同じ
  *            グルーピングルール ( TYPE_ORDER + normalizeTagType ) を
  *            適用。
+ * 0.27.14 v0.27.13 (a) の取り込み漏れ修正。 register form 側の <select>
+ *        には開催日 ( MMDD-MMDD ) を反映していたが、 価格 entry の
+ *        個別編集画面 ( /items/[id]/prices/new と
+ *        /items/[id]/prices/[entryId]/edit ) で使われている共通の
+ *        `PriceEntryForm.tsx` 側を見落としていた。 同じ option text
+ *        ( `{yearMonth} (第{N}回) {formatRoundDateRange}` ) を適用し
+ *        全画面で表示が揃う。
  */
-export const APP_VERSION = "0.27.13";
+export const APP_VERSION = "0.27.14";

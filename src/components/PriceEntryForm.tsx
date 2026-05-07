@@ -9,6 +9,7 @@ import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
 import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import {
+  formatRoundDateRange,
   formatShopPeriod,
   resolveShopPeriod,
   SHOP_ROUNDS,
@@ -299,7 +300,7 @@ export default function PriceEntryForm({
             <option value="">未指定</option>
             {SHOP_ROUNDS.map((r) => (
               <option key={r.yearMonth} value={r.yearMonth}>
-                {r.yearMonth} (第{r.roundNumber}回)
+                {r.yearMonth} (第{r.roundNumber}回) {formatRoundDateRange(r)}
               </option>
             ))}
           </select>
