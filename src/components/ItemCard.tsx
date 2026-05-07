@@ -140,20 +140,25 @@ export default function ItemCard({
         </h3>
 
         {/* 参考価格 — 2 段構成: ラベル単独行 + 価格 + GP + period badge.
-            5〜6 桁の長い価格でも badge が折り返さないよう、価格セルに
-            min-w-0 を入れて flex の押し出しに任せる ( truncate しない =
-            数字を切らない ) 。badge は ml-auto で右端、shrink-0 で死守。 */}
+            ラベルと価格を同じ "塊" に見せるため、両行とも lineHeight: 1
+            にして Cormorant 18px の暗黙 line-height による上余白を殺し、
+            行間は marginTop で 1px だけ取る。価格セルは min-w-0 で長さを
+            許容、badge は ml-auto + shrink-0 で右端を死守。 */}
         <div
           className="text-[var(--color-muted)] mt-[7px]"
           style={{
             fontFamily: "var(--font-body)",
             fontSize: 11,
             letterSpacing: "0.04em",
+            lineHeight: 1,
           }}
         >
           参考価格
         </div>
-        <div className="flex items-baseline gap-x-1.5 mt-0.5 min-w-0">
+        <div
+          className="flex items-baseline gap-x-1.5 min-w-0"
+          style={{ marginTop: 3, lineHeight: 1 }}
+        >
           <span
             className="text-[var(--color-gold-deep)] tabular-nums min-w-0 truncate"
             style={{
@@ -161,6 +166,7 @@ export default function ItemCard({
               fontSize: 18,
               fontWeight: 500,
               letterSpacing: "0.01em",
+              lineHeight: 1,
             }}
           >
             {latest
@@ -173,6 +179,7 @@ export default function ItemCard({
               fontFamily: "var(--font-label)",
               fontSize: 9,
               letterSpacing: "0.18em",
+              lineHeight: 1,
             }}
           >
             GP
@@ -187,13 +194,15 @@ export default function ItemCard({
           )}
         </div>
 
-        {/* 最低価格 */}
+        {/* 最低価格 — 価格クラスタが lineHeight: 1 で締まったので、
+            ここは "別の指標" として読み分けられるよう余白を 8px 取る。 */}
         <div
-          className="text-[var(--color-muted)] mt-px tabular-nums"
+          className="text-[var(--color-muted)] tabular-nums"
           style={{
             fontFamily: "var(--font-body)",
             fontSize: 11,
             letterSpacing: "0.04em",
+            marginTop: 8,
           }}
         >
           <span>最低価格</span>{" "}
