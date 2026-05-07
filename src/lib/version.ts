@@ -757,5 +757,13 @@
  *        と `src/app/inbox/page.tsx` ( upload queue + Toast + beforeunload
  *        ガード ) を移植。Storage rules ( inbox public create + admin
  *        delete ) は既に対応済みで変更なし。
+ * 0.27.1 admin DrawerNav の footer ( ver. label の上 ) に「ログアウト」
+ *        ボタンを追加。 押下で `signOutCurrent()` ( signOut(firebaseAuth())
+ *        ラッパ ) → `router.push("/")` で public ホームに着地し、 admin
+ *        がそのまま利用者画面を確認できる動線に。 再ログインは admin URL
+ *        ( /tags / /register など ) を踏むと従来通り LoginScreen が出る。
+ *        v0.27.0 の `{isAdmin && <DrawerNav .../>}` gate により、 logout
+ *        後は drawer 自体が unmount されるので明示的な open=false 操作は
+ *        onClose() の 1 回で十分。
  */
-export const APP_VERSION = "0.27.0";
+export const APP_VERSION = "0.27.1";

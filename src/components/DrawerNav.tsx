@@ -1,12 +1,13 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { GuardedLink } from "@/lib/unsavedChanges";
 import {
   ChevronRight,
   Crop,
   Home,
   Inbox,
+  LogOut,
   PlusCircle,
   Tag,
   Settings,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ComponentType } from "react";
 import { APP_VERSION } from "@/lib/version";
+import { signOutCurrent } from "@/lib/firebase/auth";
 
 interface IconProps {
   size?: number;
@@ -69,7 +71,17 @@ export default function DrawerNav({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const onLogout = async () => {
+    onClose();
+    await signOutCurrent();
+    // Land on the public home so the admin can immediately verify the
+    // visitor view. Re-login is just a matter of typing any admin URL
+    // (e.g. /tags) — the LoginScreen pops up on admin routes.
+    router.push("/");
+  };
 
   useEffect(() => {
     onClose();
@@ -237,6 +249,19 @@ export default function DrawerNav({
             );
           })}
         </nav>
+
+        <button
+          type="button"
+          onClick={onLogout}
+          className="flex items-center gap-3 w-full pl-4 pr-4 py-3 text-[14px] text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors border-t border-[var(--color-line)]"
+        >
+          <LogOut
+            size={18}
+            strokeWidth={1.8}
+            className="text-[var(--color-muted)]"
+          />
+          ログアウト
+        </button>
 
         <div
           className="px-4 py-3 text-[var(--color-muted)] border-t border-[var(--color-line)] tabular-nums"
