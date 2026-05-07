@@ -716,5 +716,16 @@
  *        の label も "−10 / +10" に切替。NudgeBar 末尾に "1px" / "10px"
  *        を表示する StepToggle ボタンを追加 ( タップで切替、aria-pressed
  *        対応 )。素早く荒削り → 1px 微調整の流れが片手で完結する。
+ * 0.26.4 ImageCropper のステップトグルを 10px → 30px に変更 + 同名アイテム
+ *        の同一判定に isReplica 比較を追加。(a) StepToggle / NudgeBar /
+ *        SizeRow の step 型を `1 | 10` → `1 | 30` に。 step=30 のとき
+ *        Chevrons* ( double ) icon と "−30 / +30" 表記に切替。1 タップで
+ *        画面の大半をカバーする荒い移動が可能に。(b) v0.18.0 で導入した
+ *        Item.isReplica の同一判定漏れを修正: /register ( 単発 ) の
+ *        same-name 検出と src/lib/bulk/save.ts ( bulk / inbox の silent
+ *        merge ) の find 条件に `!!i.isReplica === !!form.isReplica`
+ *        ( 単発 ) / `!!i.isReplica === !!entry.isReplica` ( bulk ) を
+ *        追加。原本 と レプリカ は同名でも別 item として共存可能になる。
+ *        現状そのような同居データは存在しないのでマイグレーションは不要。
  */
-export const APP_VERSION = "0.26.3";
+export const APP_VERSION = "0.26.4";

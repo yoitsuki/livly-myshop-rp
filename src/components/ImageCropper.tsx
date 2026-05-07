@@ -90,7 +90,7 @@ export default function ImageCropper({
    */
   const [layoutTick, setLayoutTick] = useState(0);
 
-  const [nudgeStep, setNudgeStep] = useState<1 | 10>(1);
+  const [nudgeStep, setNudgeStep] = useState<1 | 30>(1);
 
   // Manage object URL for the preview image
   useEffect(() => {
@@ -448,7 +448,7 @@ export default function ImageCropper({
 
 /**
  * Fine-tune control row rendered above the image — a 3×3 directional pad
- * (1px or 10px nudge depending on step toggle, keeps size) plus width/height
+ * (1px or 30px nudge depending on step toggle, keeps size) plus width/height
  * ±step buttons. Anchored on the cropper's dark teal background; matches
  * the Atelier square / hairline idiom (no rounded corners). The middle
  * (left/right) row is half-height of the up/down rows so the bar fits in
@@ -462,15 +462,15 @@ function NudgeBar({
   onResize,
 }: {
   disabled: boolean;
-  step: 1 | 10;
-  onStepChange: (s: 1 | 10) => void;
+  step: 1 | 30;
+  onStepChange: (s: 1 | 30) => void;
   onNudge: (dx: number, dy: number) => void;
   onResize: (dw: number, dh: number) => void;
 }) {
-  const Up = step === 10 ? ChevronsUp : ChevronUp;
-  const Down = step === 10 ? ChevronsDown : ChevronDown;
-  const Left = step === 10 ? ChevronsLeft : ChevronLeft;
-  const Right = step === 10 ? ChevronsRight : ChevronRight;
+  const Up = step === 30 ? ChevronsUp : ChevronUp;
+  const Down = step === 30 ? ChevronsDown : ChevronDown;
+  const Left = step === 30 ? ChevronsLeft : ChevronLeft;
+  const Right = step === 30 ? ChevronsRight : ChevronRight;
   return (
     <div className="px-3 py-2 border-b border-white/10 flex items-center justify-center gap-3 flex-wrap">
       <div className="grid grid-cols-3 gap-0.5">
@@ -566,7 +566,7 @@ function SizeRow({
   onPlus,
 }: {
   label: string;
-  step: 1 | 10;
+  step: 1 | 30;
   disabled: boolean;
   onMinus: () => void;
   onPlus: () => void;
@@ -596,15 +596,15 @@ function StepToggle({
   step,
   onChange,
 }: {
-  step: 1 | 10;
-  onChange: (s: 1 | 10) => void;
+  step: 1 | 30;
+  onChange: (s: 1 | 30) => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onChange(step === 1 ? 10 : 1)}
-      aria-label={step === 1 ? "10px モードに切替" : "1px モードに切替"}
-      aria-pressed={step === 10}
+      onClick={() => onChange(step === 1 ? 30 : 1)}
+      aria-label={step === 1 ? "30px モードに切替" : "1px モードに切替"}
+      aria-pressed={step === 30}
       className="h-7 px-2.5 text-white text-[11px] tabular-nums border border-white/60 hover:bg-white/15 active:bg-white/25 transition-colors"
       style={{
         borderRadius: 0,

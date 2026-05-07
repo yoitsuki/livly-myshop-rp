@@ -53,7 +53,11 @@ export async function saveBulkEntry({
     : undefined;
 
   const trimmedName = entry.name.trim();
-  const existingItem = allItems.find((i) => i.name === trimmedName);
+  // Replica と原本は同名でも別 item として扱う ( v0.18.0 で追加した
+  // isReplica の同一判定漏れを v0.26.4 で修正 ) 。
+  const existingItem = allItems.find(
+    (i) => i.name === trimmedName && !!i.isReplica === !!entry.isReplica,
+  );
 
   if (existingItem) {
     const newYearMonth = entry.shopPeriod?.yearMonth;

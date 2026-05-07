@@ -468,10 +468,13 @@ function RegisterPageInner() {
     }
     setError(undefined);
 
-    // Same-name detection: if an item with the same trimmed name already
-    // exists, surface the merge dialog instead of creating a duplicate.
+    // Same-name + same isReplica detection: only treat as the same item
+    // when both the trimmed name AND the replica/original flag match —
+    // a replica and an original with the same name are distinct items.
     const trimmedName = form.name.trim();
-    const existingItem = (allItems ?? []).find((i) => i.name === trimmedName);
+    const existingItem = (allItems ?? []).find(
+      (i) => i.name === trimmedName && !!i.isReplica === !!form.isReplica,
+    );
     if (existingItem) {
       const newYearMonth = form.shopYearMonth || undefined;
       const willReplaceEntry =
