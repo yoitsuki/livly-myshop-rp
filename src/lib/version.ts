@@ -651,5 +651,13 @@
  *        テキスト二重描画 ( "EI" + "..." の重なり ) を起こす場合があった。
  *        label は元のまま固定し、busy 中は左に Loader2 ( animate-spin )
  *        を並べる方式に。inline-flex + gap-1.5 でレイアウトを安定化。
+ * 0.25.0 ホーム絞込みパネルの「クリア」ボタン追加。activeFilterCount
+ *        ( q を除く 原本・レプリカ / カテゴリ / タグ の合計 ) が 1 以上
+ *        の時だけパネル先頭に「絞込み中 N 件 [× クリア]」バーが出る。
+ *        clearFilters は replicaFilter='all' / activeCategory=null /
+ *        activeTagIds=[] にリセット。q ( SearchBar ) は独立した入力
+ *        なので意図的に触らない ( 検索文字列を保ったまま絞込みだけ
+ *        リセットしたい場面に対応 ) 。クリア後は activeFilterCount が
+ *        0 になるのでバー自身も自動で消える。
  */
-export const APP_VERSION = "0.24.0";
+export const APP_VERSION = "0.25.0";

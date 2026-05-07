@@ -8,7 +8,7 @@ import type { TagType, Tag } from "@/lib/firebase/types";
 import SearchBar from "@/components/SearchBar";
 import ItemCard from "@/components/ItemCard";
 import Fab from "@/components/Fab";
-import { ChevronRight, ListFilter, PackageOpen, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, ListFilter, PackageOpen, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui";
 import Link from "next/link";
 
@@ -114,6 +114,16 @@ export default function Home() {
 
   const hasAnyFilterUI = totalCount > 0 || (tags?.length ?? 0) > 0;
 
+  /** Reset every panel-level filter back to defaults. q ( SearchBar ) は
+   *  独立した入力なのであえて触らない — ユーザーは検索文字列を保ったまま
+   *  絞込みだけリセットしたいことが多い。activeFilterCount === 0 になる
+   *  ので「クリア」バーも自動で消える。 */
+  const clearFilters = () => {
+    setReplicaFilter("all");
+    setActiveCategory(null);
+    setActiveTagIds([]);
+  };
+
   return (
     <div className="space-y-3 pt-3">
       <div className="flex items-stretch gap-2">
@@ -134,6 +144,30 @@ export default function Home() {
           id="home-filter-panel"
           className="space-y-3 border border-[var(--color-line)] bg-white px-3 py-3"
         >
+          {activeFilterCount > 0 && (
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span
+                className="text-[10.5px] tracking-[0.18em] uppercase text-[var(--color-muted)]"
+                style={{ fontFamily: "var(--font-label)" }}
+              >
+                絞込み中 {activeFilterCount} 件
+              </span>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 px-2.5 h-7 border border-[var(--color-line)] bg-white text-[var(--color-text)]/80 text-[11px] hover:border-[var(--color-line-strong)] hover:text-[var(--color-text)] transition-colors"
+                style={{
+                  borderRadius: 0,
+                  fontFamily: "var(--font-label)",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                <X size={12} strokeWidth={1.8} />
+                クリア
+              </button>
+            </div>
+          )}
+
           {/* 1. 原本・レプリカ */}
           {totalCount > 0 && (
             <section className="space-y-1">
