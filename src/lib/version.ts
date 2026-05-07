@@ -727,5 +727,15 @@
  *        ( 単発 ) / `!!i.isReplica === !!entry.isReplica` ( bulk ) を
  *        追加。原本 と レプリカ は同名でも別 item として共存可能になる。
  *        現状そのような同居データは存在しないのでマイグレーションは不要。
+ * 0.26.5 ホーム一覧の初回ロードで「まだアイテムがありません」が一瞬表示される
+ *        問題を修正。useItems() は初回スナップショットが届くまで undefined を
+ *        返すが、`items?.length ?? 0` で 0 に潰されて EmptyState の "hasItems"
+ *        判定が false になり、ロード中のごく短い時間でも空状態のメッセージが
+ *        差し込まれていた。`loading = items === undefined` を導入し、loading
+ *        中は count + sort row + EmptyState/list を `LoadingState`
+ *        ( Loader2 animate-spin + "読み込み中…" Atelier label ) に置換。本当に
+ *        items が空のときだけ EmptyState を出す。SearchBar / 絞込みボタンは
+ *        従来通り上部に残す ( hasAnyFilterUI は totalCount + tags 由来なので
+ *        loading 中は自動で非表示 )。
  */
-export const APP_VERSION = "0.26.4";
+export const APP_VERSION = "0.26.5";

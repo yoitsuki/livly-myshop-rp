@@ -8,7 +8,14 @@ import type { TagType, Tag } from "@/lib/firebase/types";
 import SearchBar from "@/components/SearchBar";
 import ItemCard from "@/components/ItemCard";
 import Fab from "@/components/Fab";
-import { ChevronRight, ListFilter, PackageOpen, SlidersHorizontal, X } from "lucide-react";
+import {
+  ChevronRight,
+  ListFilter,
+  Loader2,
+  PackageOpen,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui";
 import Link from "next/link";
 
@@ -99,6 +106,7 @@ export default function Home() {
     return sorted;
   }, [preReplicaFiltered, replicaFilter, sort]);
 
+  const loading = items === undefined;
   const totalCount = items?.length ?? 0;
 
   /** Active-filter count shown as a badge on the toggle button so the user
@@ -249,37 +257,43 @@ export default function Home() {
         </div>
       )}
 
-      <div
-        className="flex items-center justify-between px-1 pt-1 text-[var(--color-muted)]"
-        style={{ fontFamily: "var(--font-label)", fontSize: 11.5 }}
-      >
-        <span className="tabular-nums">
-          {filtered.length} 件 / 全 {totalCount} 件
-        </span>
-        <label className="flex items-center gap-1">
-          <ListFilter size={14} />
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="bg-transparent outline-none border-none text-[var(--color-text)]/80"
-          >
-            <option value="checkedAt">確認日時順</option>
-            <option value="createdAt">登録日順</option>
-            <option value="price">参考価格順</option>
-          </select>
-        </label>
-      </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState hasItems={totalCount > 0} />
+      {loading ? (
+        <LoadingState />
       ) : (
-        <ul className="-mx-2">
-          {filtered.map((item) => (
-            <li key={item.id}>
-              <ItemCard item={item} tags={tags ?? []} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <div
+            className="flex items-center justify-between px-1 pt-1 text-[var(--color-muted)]"
+            style={{ fontFamily: "var(--font-label)", fontSize: 11.5 }}
+          >
+            <span className="tabular-nums">
+              {filtered.length} 件 / 全 {totalCount} 件
+            </span>
+            <label className="flex items-center gap-1">
+              <ListFilter size={14} />
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                className="bg-transparent outline-none border-none text-[var(--color-text)]/80"
+              >
+                <option value="checkedAt">確認日時順</option>
+                <option value="createdAt">登録日順</option>
+                <option value="price">参考価格順</option>
+              </select>
+            </label>
+          </div>
+
+          {filtered.length === 0 ? (
+            <EmptyState hasItems={totalCount > 0} />
+          ) : (
+            <ul className="-mx-2">
+              {filtered.map((item) => (
+                <li key={item.id}>
+                  <ItemCard item={item} tags={tags ?? []} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
 
       <Fab />
@@ -511,6 +525,24 @@ function ReplicaSegmentButton({
         {count}
       </span>
     </button>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="mt-12 px-4 py-10 text-center">
+      <Loader2
+        size={28}
+        strokeWidth={1.4}
+        className="mx-auto text-muted mb-3 animate-spin"
+      />
+      <div
+        className="text-[12.5px] text-[var(--color-muted)]"
+        style={{ fontFamily: "var(--font-label)", letterSpacing: "0.12em" }}
+      >
+        読み込み中…
+      </div>
+    </div>
   );
 }
 
