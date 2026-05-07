@@ -304,7 +304,7 @@ function RegisterPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [bulkEntry, bulk, router]);
+  }, [bulkEntry, bulk, router, backHref]);
 
   const onPick = () => fileInput.current?.click();
 

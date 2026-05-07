@@ -48,10 +48,12 @@ export default function NewPriceEntryPage({
   const item = useItem(id);
   const cloudSettings = useSettings();
 
-  const [form, setForm] = useState<PriceEntryFormValue>({
+  // lazy initializer で Date.now() を mount 時 1 回だけ評価する。
+  // render 中の Date.now() は impure ( strict mode で flag される ) 。
+  const [form, setForm] = useState<PriceEntryFormValue>(() => ({
     ...EMPTY_PRICE_ENTRY_FORM,
     checkedAt: toLocalInput(Date.now()),
-  });
+  }));
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [error, setError] = useState<string | undefined>();
   const [ocrProgress, setOcrProgress] = useState(0);

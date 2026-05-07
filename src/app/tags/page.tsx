@@ -36,8 +36,13 @@ import { TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
 import { Button, ConfirmDialog, Field, inputClass, IconButton } from "@/components/ui";
 
 export default function TagsPage() {
-  const tags = useTags() ?? [];
-  const items = useItems() ?? [];
+  // useTags() / useItems() は loading 中 undefined を返す。 `?? []` を
+  // 直接書くと毎 render で新しい配列インスタンスが生まれて useMemo の
+  // deps が振動するので、 useMemo で stabilize する。
+  const tagsRaw = useTags();
+  const itemsRaw = useItems();
+  const tags = useMemo(() => tagsRaw ?? [], [tagsRaw]);
+  const items = useMemo(() => itemsRaw ?? [], [itemsRaw]);
   const [name, setName] = useState("");
   const [type, setType] = useState<TagType>("other");
   const [addStatus, setAddStatus] = useState<
