@@ -958,5 +958,25 @@
  *        ~80 行に集約 ( 全体で 40 行強の縮小 ) 。 不要になった
  *        Sparkles / formatShopPeriod / formatRoundDateRange / SHOP_ROUNDS /
  *        inputClass の import も両 file から撤去。
+ * 0.27.16 React 19 lint baseline を 26 → 19 件に削減 ( easy-fix 7 件、
+ *        全て局所修正で動作影響なし ) :
+ *        - register/bulk/page.tsx の未使用 Link import 撤去。
+ *        - prices/new/page.tsx の useState 初期値 ( Date.now() を含む ) を
+ *          lazy initializer 形式に。 strict mode の "Cannot call impure
+ *          function during render" 解消。
+ *        - tags/page.tsx で `useTags() ?? []` / `useItems() ?? []` を
+ *          tagsRaw / itemsRaw 経由 → useMemo で stabilize。 useMemo deps
+ *          が毎 render で振動しなくなる。
+ *        - register/page.tsx の bulk-edit init useEffect の deps に
+ *          backHref を追加 ( router.replace(backHref) を呼んでいる ) 。
+ *        - register/inbox/page.tsx の processRow / refresh を const arrow
+ *          → function 宣言に変更。 関数宣言は scope 内で hoist されるので
+ *          上の useEffect から TDZ なしに参照できる ( "Cannot access
+ *          variable before it is declared" 解消 ) 。 関数本体の semantics
+ *          は不変。
+ *        残り 19 件は React 18 で idiomatic だった set-state-in-effect /
+ *        refs-during-render 系で、 ファイルを触る機会のついでに少しずつ
+ *        パターン書換 ( useSyncExternalStore / render-time derive 等 )
+ *        していく方針。
  */
-export const APP_VERSION = "0.27.15";
+export const APP_VERSION = "0.27.16";
