@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  X,
+} from "lucide-react";
 import { cropAndEncode, getImageSize, type CropRect } from "@/lib/image";
 
 export interface CropperResult {
@@ -70,6 +77,14 @@ export default function ImageCropper({
   const [imgSize, setImgSize] = useState<{ width: number; height: number } | null>(null);
   const [rect, setRect] = useState<CropRect | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * Bumped on <img> onLoad so dispRect (which reads getBoundingClientRect on
+   * render) recomputes once the image has actually laid out. Without this
+   * the crop frame can render at 0×0 — invisible — when the source image
+   * hasn't finished decoding by the time React commits the first render
+   * after setRect.
+   */
+  const [layoutTick, setLayoutTick] = useState(0);
 
   // Manage object URL for the preview image
   useEffect(() => {
@@ -77,10 +92,12 @@ export default function ImageCropper({
       setPreviewUrl(undefined);
       setImgSize(null);
       setRect(null);
+      setLayoutTick(0);
       return;
     }
     const url = URL.createObjectURL(source);
     setPreviewUrl(url);
+    setLayoutTick(0);
     getImageSize(source).then((size) => {
       setImgSize(size);
       const init = initialRect
@@ -92,6 +109,18 @@ export default function ImageCropper({
     });
     return () => URL.revokeObjectURL(url);
   }, [source, aspect, initialRect, fillExtent]);
+
+  // Re-measure on viewport resize so the overlay tracks the image position.
+  useEffect(() => {
+    if (!open) return;
+    const onResize = () => setLayoutTick((t) => t + 1);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, [open]);
 
   // Drag handlers
   useEffect(() => {
@@ -217,14 +246,45 @@ export default function ImageCropper({
     rectRef.current = rect;
   }, [rect]);
 
+  // Fine-tune helpers used by the on-screen ±1px buttons. Both clamp to
+  // image bounds + MIN_SIZE; resize keeps the rect anchored at top-left so
+  // a user can grow the box rightward / downward without the position
+  // drifting.
+  const nudgeRect = (dx: number, dy: number) => {
+    if (!rect || !imgSize) return;
+    const W = imgSize.width;
+    const H = imgSize.height;
+    setRect({
+      x: Math.max(0, Math.min(W - rect.w, rect.x + dx)),
+      y: Math.max(0, Math.min(H - rect.h, rect.y + dy)),
+      w: rect.w,
+      h: rect.h,
+    });
+  };
+  const resizeRect = (dw: number, dh: number) => {
+    if (!rect || !imgSize) return;
+    const W = imgSize.width;
+    const H = imgSize.height;
+    setRect({
+      x: rect.x,
+      y: rect.y,
+      w: Math.max(MIN_SIZE, Math.min(W - rect.x, rect.w + dw)),
+      h: Math.max(MIN_SIZE, Math.min(H - rect.y, rect.h + dh)),
+    });
+  };
+
   if (!open || !source) return null;
 
+  // Read layoutTick so this block re-evaluates after the image fires onLoad
+  // (its only side-effect is bumping layoutTick to force a re-render).
+  void layoutTick;
   const dispRect =
     rect && imgSize && imgRef.current
       ? (() => {
           const r = imgRef.current!.getBoundingClientRect();
           const wrap = wrapperRef.current?.getBoundingClientRect();
           if (!wrap) return null;
+          if (r.width === 0 || r.height === 0) return null;
           const offX = r.left - wrap.left;
           const offY = r.top - wrap.top;
           const sx = r.width / imgSize.width;
@@ -282,6 +342,12 @@ export default function ImageCropper({
         </button>
       </div>
 
+      <NudgeBar
+        disabled={!rect || !imgSize}
+        onNudge={nudgeRect}
+        onResize={resizeRect}
+      />
+
       <div className="flex-1 relative flex items-center justify-center p-3">
         <div
           ref={wrapperRef}
@@ -296,11 +362,12 @@ export default function ImageCropper({
               alt="切り抜き対象"
               className="max-w-full max-h-[70vh] object-contain block"
               draggable={false}
-              onLoad={(e) => {
-                // Trigger a re-render so dispRect can use bounding box
-                const el = e.currentTarget;
-                if (imgSize == null) return;
-                el.style.opacity = "1";
+              onLoad={() => {
+                // Force a re-render now that the image has laid out — the
+                // first render after setRect can fire before the <img>
+                // bounding box is real, leaving dispRect at 0×0 (invisible
+                // crop frame).
+                setLayoutTick((t) => t + 1);
               }}
             />
           )}
@@ -368,6 +435,138 @@ export default function ImageCropper({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Fine-tune control row rendered above the image — a 3×3 directional pad
+ * (1px nudge, keeps size) plus width/height ±1px buttons. Anchored on the
+ * cropper's dark teal background; matches the Atelier square / hairline
+ * idiom (no rounded corners).
+ */
+function NudgeBar({
+  disabled,
+  onNudge,
+  onResize,
+}: {
+  disabled: boolean;
+  onNudge: (dx: number, dy: number) => void;
+  onResize: (dw: number, dh: number) => void;
+}) {
+  return (
+    <div className="px-3 py-2 border-b border-white/10 flex items-center justify-center gap-3 flex-wrap">
+      <div className="grid grid-cols-3 grid-rows-3 gap-0.5">
+        <span aria-hidden />
+        <NudgeBtn aria-label="上に1px" disabled={disabled} onClick={() => onNudge(0, -1)}>
+          <ChevronUp size={16} strokeWidth={1.8} />
+        </NudgeBtn>
+        <span aria-hidden />
+        <NudgeBtn aria-label="左に1px" disabled={disabled} onClick={() => onNudge(-1, 0)}>
+          <ChevronLeft size={16} strokeWidth={1.8} />
+        </NudgeBtn>
+        <span aria-hidden />
+        <NudgeBtn aria-label="右に1px" disabled={disabled} onClick={() => onNudge(1, 0)}>
+          <ChevronRight size={16} strokeWidth={1.8} />
+        </NudgeBtn>
+        <span aria-hidden />
+        <NudgeBtn aria-label="下に1px" disabled={disabled} onClick={() => onNudge(0, 1)}>
+          <ChevronDown size={16} strokeWidth={1.8} />
+        </NudgeBtn>
+        <span aria-hidden />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <SizeRow
+          label="横幅"
+          disabled={disabled}
+          onMinus={() => onResize(-1, 0)}
+          onPlus={() => onResize(1, 0)}
+        />
+        <SizeRow
+          label="縦幅"
+          disabled={disabled}
+          onMinus={() => onResize(0, -1)}
+          onPlus={() => onResize(0, 1)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function NudgeBtn({
+  children,
+  disabled,
+  onClick,
+  ...rest
+}: {
+  children: React.ReactNode;
+  disabled: boolean;
+  onClick: () => void;
+  "aria-label": string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="w-8 h-8 flex items-center justify-center text-white border border-white/30 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
+      style={{ borderRadius: 0 }}
+      {...rest}
+    />
+  );
+}
+
+function SizeRow({
+  label,
+  disabled,
+  onMinus,
+  onPlus,
+}: {
+  label: string;
+  disabled: boolean;
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span
+        className="text-white/85 text-[11px] w-9 shrink-0"
+        style={{
+          fontFamily: "var(--font-label)",
+          letterSpacing: "0.1em",
+        }}
+      >
+        {label}
+      </span>
+      <SizeBtn aria-label={`${label}を1px小さく`} disabled={disabled} onClick={onMinus}>
+        −1
+      </SizeBtn>
+      <SizeBtn aria-label={`${label}を1px大きく`} disabled={disabled} onClick={onPlus}>
+        +1
+      </SizeBtn>
+    </div>
+  );
+}
+
+function SizeBtn({
+  children,
+  disabled,
+  onClick,
+  ...rest
+}: {
+  children: React.ReactNode;
+  disabled: boolean;
+  onClick: () => void;
+  "aria-label": string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="h-8 min-w-[2.5rem] px-2 text-white text-[12px] tabular-nums border border-white/30 hover:bg-white/15 active:bg-white/25 disabled:opacity-30 transition-colors"
+      style={{ borderRadius: 0 }}
+      {...rest}
+    />
   );
 }
 

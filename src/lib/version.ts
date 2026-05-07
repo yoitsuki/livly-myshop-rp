@@ -600,5 +600,23 @@
  *        未登録表示に戻ります」を出す ( アイテム自体は Firestore に
  *        登録済みなので致命的ではない ) 。inline info の
  *        「N 件登録しました」メッセージは並走で温存。
+ * 0.23.0 ImageCropper の "枠が出ない時がある" 不具合修正 + ±1px 微調整
+ *        コントロール追加。
+ *        (a) crop 枠が出ない症状: dispRect 計算が render 中に
+ *        `imgRef.current.getBoundingClientRect()` を呼ぶ実装で、画像
+ *        decode/layout が render 後に終わると 0×0 が返って枠が透明扱いに
+ *        なる、画像 cache hit / miss 等のタイミング差で表示有無が
+ *        ばらつく状態だった。layoutTick state を追加し、<img onLoad>
+ *        で setLayoutTick(t => t + 1) して強制再 render → 正しい
+ *        bounding box を読む。あわせて r.width / r.height === 0 を
+ *        早期 null return するガード、window resize / orientationchange
+ *        listener も追加してビューポート変化に追従。
+ *        (b) 微調整 UI: タイトル直下に NudgeBar を追加。3×3 の十字
+ *        矢印 ( 上下左右 1px、サイズ維持 ) と 横幅 / 縦幅 の −1 / +1
+ *        ボタン。ハンドラは画像範囲 + MIN_SIZE で clamp、リサイズは
+ *        x/y 固定で右下方向に伸縮 ( ドラッグの "w/n ハンドル" 系の挙動
+ *        とは独立 ) 。背景は cropper の deep-teal、Atelier 統一の
+ *        warm hairline + 角丸ゼロ + tracked-out ラベル ( "横幅" / "縦幅" )
+ *        で、dialog を開いてすぐ片手で 1px 単位の追い込みができる。
  */
-export const APP_VERSION = "0.22.0";
+export const APP_VERSION = "0.23.0";
