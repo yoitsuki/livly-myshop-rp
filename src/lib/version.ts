@@ -546,5 +546,29 @@
  *        only holds Firebase's local cache (and is harmless to keep
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
+ * 0.21.0 編集中ナビゲーション ガード。これまで編集画面で入力中でも
+ *        ヘッダのロゴ / 戻るアロー / ドロワーから別画面に飛んでしまい
+ *        入力が失われていた問題を解消。
+ *        src/lib/unsavedChanges.tsx に UnsavedChangesProvider /
+ *        useDirtyTracker / GuardedLink を新設。Provider は dirty 源を
+ *        Set<id> で多重登録 ( OR 評価 ) し、requestNavigate が 1 つでも
+ *        dirty な源が登録されていれば ConfirmDialog ( "編集中のデータ
+ *        があります — 移動してよろしいですか？" / 移動する / 戻る ) を
+ *        出してから router.push する。AppHeader の戻る + ロゴ Link、
+ *        DrawerNav の親 + 子 Link を全て GuardedLink に差し替え。
+ *        編集画面側は useDirtyTracker(dirty) で baseline 比較した
+ *        boolean を流すだけ:
+ *          /items/[id]/edit ( name/category/minPrice/tagIds/isReplica
+ *            と pendingIcon/pendingMain/pendingClearMain で判定 ) ,
+ *          /items/[id]/prices/new ( 値が入った時のみ ) ,
+ *          /items/[id]/prices/[entryId]/edit ( 元 entry との差分 ) ,
+ *          /register ( bulk-edit モード以外で sourceBlob または form の
+ *            非デフォルト値 ) ,
+ *          PresetForm ( JSON.stringify ベースの baselineRef 比較 — new /
+ *            edit 両方で動作 ) 。
+ *        modifier-click ( cmd / ctrl / shift / 中ボタン ) は新規タブ
+ *        遷移としてそのまま通す。/register の キャンセル / 詳細
+ *        ページの 編集 ボタン等の通常 Link は意図的にガード対象外
+ *        ( save / cancel は明示操作なので確認不要 ) 。
  */
-export const APP_VERSION = "0.20.0";
+export const APP_VERSION = "0.21.0";

@@ -16,6 +16,7 @@ import PriceEntryForm, {
   type PriceEntryFormValue,
 } from "@/components/PriceEntryForm";
 import { Button } from "@/components/ui";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 export default function NewPriceEntryPage({
   params,
@@ -32,6 +33,16 @@ export default function NewPriceEntryPage({
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
+
+  // Treat the form as dirty as soon as the user has touched any of the
+  // free-text/period fields. checkedAt is auto-filled with "now" so it is
+  // ignored — it always differs from "" in EMPTY_PRICE_ENTRY_FORM.
+  const dirty =
+    form.refPriceMin.trim() !== "" ||
+    form.refPriceMax.trim() !== "" ||
+    form.shopYearMonth !== "" ||
+    form.priceSource !== EMPTY_PRICE_ENTRY_FORM.priceSource;
+  useDirtyTracker(dirty);
 
   if (item === undefined) {
     return <div className="pt-6 text-center text-muted">読み込み中…</div>;

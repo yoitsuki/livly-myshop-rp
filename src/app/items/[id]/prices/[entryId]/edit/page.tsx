@@ -16,6 +16,7 @@ import PriceEntryForm, {
   type PriceEntryFormValue,
 } from "@/components/PriceEntryForm";
 import { Button } from "@/components/ui";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 export default function EditPriceEntryPage({
   params,
@@ -45,6 +46,19 @@ export default function EditPriceEntryPage({
       priceSource: entry.priceSource ?? "なんおし",
     });
   }, [entryId, entry?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dirty = !!(
+    form &&
+    entry &&
+    (form.refPriceMin !== String(entry.refPriceMin ?? "") ||
+      form.refPriceMax !== String(entry.refPriceMax ?? "") ||
+      form.shopYearMonth !== (entry.shopPeriod?.yearMonth ?? "") ||
+      form.shopPhase !== (entry.shopPeriod?.phase ?? "ongoing") ||
+      form.shopAuto !== (entry.shopPeriod?.auto ?? false) ||
+      form.checkedAt !== toLocalInput(entry.checkedAt) ||
+      form.priceSource !== (entry.priceSource ?? "なんおし"))
+  );
+  useDirtyTracker(dirty);
 
   if (item === undefined || (item && !entry) || !form) {
     if (item && !entry) {

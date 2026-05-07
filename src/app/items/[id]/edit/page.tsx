@@ -16,6 +16,7 @@ import {
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 import { Button, Field, inputClass } from "@/components/ui";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 interface FormState {
   name: string;
@@ -89,6 +90,20 @@ export default function EditItemPage({
     }
     setMainUrl(showSaved ? savedMainUrl : undefined);
   }, [pendingMainBlob, pendingClearMain, savedMainUrl]);
+
+  const dirty = useMemo(() => {
+    if (!form || !item) return false;
+    if (pendingIcon || pendingMain || pendingClearMain) return true;
+    if (form.name !== item.name) return true;
+    if (form.category !== item.category) return true;
+    if (form.minPrice !== String(item.minPrice ?? "")) return true;
+    if (form.isReplica !== (item.isReplica === true)) return true;
+    const a = [...form.tagIds].sort();
+    const b = [...(item.tagIds ?? [])].sort();
+    if (a.length !== b.length || a.some((x, i) => x !== b[i])) return true;
+    return false;
+  }, [form, item, pendingIcon, pendingMain, pendingClearMain]);
+  useDirtyTracker(dirty);
 
   if (item === undefined || !form) {
     return <div className="pt-6 text-center text-muted">読み込み中…</div>;

@@ -58,6 +58,7 @@ import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 import PresetForm from "@/components/PresetForm";
 import { Button, Field, inputClass } from "@/components/ui";
+import { useDirtyTracker } from "@/lib/unsavedChanges";
 
 interface FormState {
   name: string;
@@ -153,6 +154,23 @@ function RegisterPageInner() {
   const cloudSettings = useSettings();
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
+
+  // Bulk-edit mode (?entryId=xxx) hydrates the form from a draft entry that
+  // already persists in BulkDraftProvider — leaving the page doesn't truly
+  // lose data, so skip the warning there. In standalone register, treat the
+  // form as dirty once the user has picked a screenshot or filled any field.
+  const dirty =
+    !isBulk &&
+    (sourceBlob !== undefined ||
+      form.name.trim() !== "" ||
+      form.category.trim() !== "" ||
+      form.refPriceMin.trim() !== "" ||
+      form.refPriceMax.trim() !== "" ||
+      form.minPrice.trim() !== "" ||
+      form.shopYearMonth !== "" ||
+      form.tagIds.length > 0 ||
+      form.isReplica);
+  useDirtyTracker(dirty);
   const [presetModalInitial, setPresetModalInitial] =
     useState<CropPreset | null>(null);
   const [mergeDialog, setMergeDialog] = useState<{

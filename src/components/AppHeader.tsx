@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { ArrowLeft, Menu } from "lucide-react";
+import { GuardedLink } from "@/lib/unsavedChanges";
 
 interface Props {
   onMenuClick: () => void;
@@ -20,16 +20,16 @@ export default function AppHeader({
     <header className="sticky top-0 z-30 bg-[var(--color-cream)] border-b border-[var(--color-line)]">
       <div className="max-w-screen-sm mx-auto px-4 flex items-center gap-3 pt-4 pb-3.5">
         {back ? (
-          <Link
+          <GuardedLink
             href={backHref}
             aria-label="戻る"
             className="-ml-1.5 w-8 h-8 flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
           >
             <ArrowLeft size={20} strokeWidth={1.6} />
-          </Link>
+          </GuardedLink>
         ) : null}
 
-        <Link
+        <GuardedLink
           href="/"
           aria-label="ホームに戻る"
           className="flex-1 min-w-0 flex flex-col gap-[3px] -my-1 py-1"
@@ -46,7 +46,7 @@ export default function AppHeader({
           >
             MY-SHOP REF
           </span>
-        </Link>
+        </GuardedLink>
 
         <button
           aria-label="メニューを開く"
