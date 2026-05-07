@@ -25,13 +25,15 @@ import {
   deleteInboxFile,
   fetchInboxBlob,
   listInboxFiles,
+  readInboxSavedAt,
   readOcrCache,
+  writeInboxSavedAt,
   writeOcrCache,
   type InboxFile,
 } from "@/lib/firebase/inbox";
 import { SEED_PRESETS, type CropPreset } from "@/lib/preset";
 import { useLocalSettings } from "@/lib/localSettings";
-import { Button, ConfirmDialog } from "@/components/ui";
+import { Button, ConfirmDialog, Toast } from "@/components/ui";
 import BulkRow from "@/components/BulkRow";
 import { useDirtyTracker } from "@/lib/unsavedChanges";
 
@@ -76,6 +78,12 @@ export default function InboxRegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [info, setInfo] = useState<string | undefined>();
+  /**
+   * Non-fatal warning surfaced via Toast when the saved-state customMetadata
+   * write fails ( the item is already in Firestore — only the inbox badge
+   * persistence broke ) .
+   */
+  const [metaWarn, setMetaWarn] = useState<string | undefined>();
   const [confirmRemove, setConfirmRemove] = useState<{
     entryId: string;
     name: string;
@@ -141,6 +149,13 @@ export default function InboxRegisterPage() {
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-dismiss the metadata-write warning Toast after 6s.
+  useEffect(() => {
+    if (!metaWarn) return;
+    const t = setTimeout(() => setMetaWarn(undefined), 6000);
+    return () => clearTimeout(t);
+  }, [metaWarn]);
 
   /** Process one row.  Reads the OCR cache first; only calls Claude when the
    *  cache is empty, then writes the result back so the next page load is
@@ -255,6 +270,11 @@ export default function InboxRegisterPage() {
           checkedAt: f.uploadedAt,
           checked: false,
           inboxStoragePath: f.path,
+          // Persisted via writeInboxSavedAt → keeps the 登録済み badge +
+          // locked checkbox across reloads. processRow still runs ( cachedOcr
+          // hit so no Claude call ) so the thumbnail / fields populate as
+          // usual; only the saved-state survives.
+          savedAt: readInboxSavedAt(f),
         },
         file: f,
       }),
@@ -352,20 +372,39 @@ export default function InboxRegisterPage() {
     if (targets.length === 0) return;
     setError(undefined);
     setInfo(undefined);
+    setMetaWarn(undefined);
     setBusy(true);
     let succeeded = 0;
     let failed = 0;
+    let metaFailed = 0;
     for (const entry of targets) {
       try {
         const source = bulk.getSourceBlob(entry.id);
         if (!source) throw new Error("元画像が見つかりません");
         await saveBulkEntry({ entry, source, allItems: allItems ?? [] });
+        const ts = Date.now();
         // Inbox flow: do NOT remove. Mark saved + uncheck so it doesn't
         // get included again, and BulkRow shows the 登録済み badge.
         bulk.updateEntry(entry.id, {
-          savedAt: Date.now(),
+          savedAt: ts,
           checked: false,
         });
+        // Persist the saved-state into Storage customMetadata so the badge
+        // survives a reload. updateMetadata is merge-semantic so cachedOcr
+        // and any viewer-set keys stay intact. Failures are non-fatal —
+        // the item was already created in Firestore — surface a Toast.
+        if (entry.inboxStoragePath) {
+          try {
+            await writeInboxSavedAt(entry.inboxStoragePath, ts);
+          } catch (metaErr) {
+            console.warn(
+              "[inbox] writeInboxSavedAt failed:",
+              entry.inboxStoragePath,
+              metaErr,
+            );
+            metaFailed++;
+          }
+        }
         succeeded++;
       } catch (e) {
         const msg = e instanceof Error ? e.message : "保存に失敗しました";
@@ -382,6 +421,11 @@ export default function InboxRegisterPage() {
     } else {
       setError(
         `${succeeded} 件保存・${failed} 件失敗。失敗行を確認してください`,
+      );
+    }
+    if (metaFailed > 0) {
+      setMetaWarn(
+        `${metaFailed} 件は登録済み状態の保存に失敗しました。リロードすると未登録表示に戻ります`,
       );
     }
   };
@@ -506,6 +550,12 @@ export default function InboxRegisterPage() {
         busy={busy}
         onConfirm={() => void onConfirmRemove()}
         onCancel={() => setConfirmRemove(null)}
+      />
+
+      <Toast
+        open={metaWarn !== undefined}
+        message={metaWarn ?? ""}
+        tone="warn"
       />
 
       {inboxEntries.length > 0 && (

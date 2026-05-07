@@ -50,6 +50,13 @@ export interface BulkEntry {
   /** Whether the row is selected for the bulk-save sweep. */
   checked: boolean;
 
+  /**
+   * 原本でなく レプリカ ( 同名アイテムの色違いなど ) として登録するかどうか。
+   * undefined = 原本扱い、true = レプリカ。entryId モードの編集画面で
+   * トグルでき、saveBulkEntry が createItem に転送する。
+   */
+  isReplica?: boolean;
+
   // ---- Inbox-only fields ----
   // These are set by /register/inbox on rows that originate from the public
   // viewer upload (Storage `inbox/`).  Bulk-sourced rows leave them undefined.

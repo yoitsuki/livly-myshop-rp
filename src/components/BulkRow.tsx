@@ -123,6 +123,7 @@ export default function BulkRow({
               タグ未設定
             </span>
           )}
+          {entry.isReplica === true && <ReplicaBadge />}
         </div>
 
         <div
@@ -232,6 +233,27 @@ function SavedBadge() {
     >
       <Check size={9} strokeWidth={2.4} />
       登録済み
+    </span>
+  );
+}
+
+function ReplicaBadge() {
+  return (
+    <span
+      className="shrink-0 inline-flex items-center leading-none whitespace-nowrap"
+      style={{
+        fontFamily: "var(--font-label)",
+        fontSize: 8.5,
+        fontWeight: 500,
+        letterSpacing: "0.14em",
+        padding: "2px 6px",
+        borderRadius: 0,
+        background: "transparent",
+        color: "var(--color-gold-deep)",
+        border: "1px solid var(--color-gold-deep)",
+      }}
+    >
+      レプリカ
     </span>
   );
 }

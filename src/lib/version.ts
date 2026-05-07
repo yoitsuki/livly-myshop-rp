@@ -576,5 +576,29 @@
  *        遷移としてそのまま通す。/register の キャンセル / 詳細
  *        ページの 編集 ボタン等の通常 Link は意図的にガード対象外
  *        ( save / cancel は明示操作なので確認不要 ) 。
+ * 0.22.0 bulk / inbox レプリカ ON 経路 + inbox 登録済み状態の永続化。
+ *        (a) BulkEntry に isReplica?: boolean を追加し、saveBulkEntry の
+ *        createItem 呼び出しで転送 ( merge 経路は据え置き — 既存
+ *        アイテム側の replica 状態を変えない方針 ) 。/register?entryId=xxx
+ *        ( inbox / bulk 両方の詳細編集 ) のレプリカチェックボックスから
+ *        !isBulk ガードを外し、bulkEntry.isReplica で hydrate、onSave で
+ *        updates に isReplica: form.isReplica ? true : undefined を載せて
+ *        BulkDraft に書き戻す。BulkRow ( bulk / inbox 共通の行 ) の
+ *        タグ未設定 隣に レプリカ 表示バッジ ( solid hairline +
+ *        gold-deep、詳細ページの REPLICA バッジと同系 ) を常時表示
+ *        ( saved / processing / failed どれでも ) 。
+ *        (b) 受信BOX の "登録済み" ( savedAt ) を Storage customMetadata
+ *        の savedAt キーに保存して、リロード後も 登録済み バッジ +
+ *        checkbox locked が維持されるように。writeOcrCache と同パターン
+ *        ( updateMetadata は customMetadata をマージするので cachedOcr /
+ *        viewer 側 originalLastModified を破壊しない ) 。
+ *        listInboxFiles 結果の BulkEntry 化で readInboxSavedAt(f) を
+ *        savedAt の初期値に。saveBulkEntry 成功直後に
+ *        writeInboxSavedAt(path, ts) を try/catch で呼び、失敗時は
+ *        Toast ( tone="warn"、6 秒で自動 dismiss ) で
+ *        「N 件は登録済み状態の保存に失敗しました。リロードすると
+ *        未登録表示に戻ります」を出す ( アイテム自体は Firestore に
+ *        登録済みなので致命的ではない ) 。inline info の
+ *        「N 件登録しました」メッセージは並走で温存。
  */
-export const APP_VERSION = "0.21.0";
+export const APP_VERSION = "0.22.0";

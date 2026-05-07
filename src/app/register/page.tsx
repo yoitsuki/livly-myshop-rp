@@ -240,9 +240,7 @@ function RegisterPageInner() {
       shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
       shopAuto: bulkEntry.shopPeriod?.auto ?? false,
       priceSource: bulkEntry.priceSource ?? "なんおし",
-      // BulkEntry never carries isReplica — bulk / inbox flows always create
-      // 原本 by default; user opts in here explicitly.
-      isReplica: false,
+      isReplica: bulkEntry.isReplica === true,
     });
     setOcrDone(true); // fields are filled — the OCR button becomes 'rerun'
 
@@ -422,6 +420,7 @@ function RegisterPageInner() {
           mainCrop,
           iconRect: iconCrop?.rect,
           mainRect: mainCrop?.rect,
+          isReplica: form.isReplica ? true : undefined,
         };
         const source = bulk.getSourceBlob(bulkEntry.id);
         if (source && iconCrop?.rect) {
@@ -854,30 +853,25 @@ function RegisterPageInner() {
         onChange={(ids) => setForm({ ...form, tagIds: ids })}
       />
 
-      {/* Bulk-edit (entryId) doesn't persist isReplica back to the BulkEntry,
-          so the checkbox is hidden in that mode — user can flip it on the
-          per-item edit page after registration. */}
-      {!isBulk && (
-        <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={form.isReplica}
-            onChange={(e) =>
-              setForm({ ...form, isReplica: e.target.checked })
-            }
-            className="w-4 h-4 accent-[var(--color-gold-deep)]"
-          />
-          <span
-            className="text-[13px] text-[var(--color-text)]"
-            style={{ fontFamily: "var(--font-body)" }}
-          >
-            レプリカ
-          </span>
-          <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
-            ( 原本でない場合のみ ON )
-          </span>
-        </label>
-      )}
+      <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={form.isReplica}
+          onChange={(e) =>
+            setForm({ ...form, isReplica: e.target.checked })
+          }
+          className="w-4 h-4 accent-[var(--color-gold-deep)]"
+        />
+        <span
+          className="text-[13px] text-[var(--color-text)]"
+          style={{ fontFamily: "var(--font-body)" }}
+        >
+          レプリカ
+        </span>
+        <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
+          ( 原本でない場合のみ ON )
+        </span>
+      </label>
 
       <div className="flex gap-2 pt-2">
         <Button

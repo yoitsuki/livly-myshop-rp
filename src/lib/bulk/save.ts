@@ -97,6 +97,7 @@ export async function saveBulkEntry({
     tagIds: entry.tagIds,
     minPrice: entry.minPrice,
     priceEntries: [initialEntry],
+    isReplica: entry.isReplica,
   });
   return { itemId, merged: false };
 }
