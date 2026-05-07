@@ -841,5 +841,10 @@
  *        打ちに加えて、 `item` が undefined から定まった瞬間に 1 度だけ
  *        scrollTo(0, 0) を再実行 ( ref で多重発火を防ぎ、 後続の
  *        Firestore snapshot 更新では再 scroll しない ) 。
+ * 0.27.7 詳細ページのメイン画像 ( AtelierHero ) の真上に viewer 由来の
+ *        「マイショップ画像」見出し ( font-label 9.5px / letterSpacing
+ *        0.18em + 右に h-px 区切り線 ) を追加。 v0.27.0 統合時に
+ *        viewer のみが持っていたこのセクション見出しを取り込み忘れて
+ *        いたので、 MARKET REFERENCE と同じ Atelier ヘッダ表現で揃える。
  */
-export const APP_VERSION = "0.27.6";
+export const APP_VERSION = "0.27.7";

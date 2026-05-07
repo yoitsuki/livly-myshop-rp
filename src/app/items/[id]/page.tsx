@@ -311,6 +311,15 @@ export default function ItemDetailPage({
 
       {/* ── Hero image (supplementary, below market reference) ─── */}
       <div className="mt-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span
+            className="text-[var(--color-muted)]"
+            style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+          >
+            マイショップ画像
+          </span>
+          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
+        </div>
         <AtelierHero src={mainUrl} alt={i.name} />
       </div>
 
