@@ -116,17 +116,14 @@ function BottomNav({ item }: { item: Item }) {
     <>
       <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
         <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
-          <div className="flex-1">
-            <Button
-              variant="danger"
-              size="lg"
-              fullWidth
-              icon={<Trash2 size={16} strokeWidth={1.8} aria-hidden />}
-              onClick={() => setConfirmOpen(true)}
-            >
-              DELETE
-            </Button>
-          </div>
+          <Button
+            variant="danger"
+            size="lg"
+            icon={<Trash2 size={16} strokeWidth={1.8} aria-hidden />}
+            onClick={() => setConfirmOpen(true)}
+          >
+            DELETE
+          </Button>
           <Link
             href={`/items/${item.id}/edit`}
             className="flex-1"

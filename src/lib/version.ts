@@ -902,5 +902,14 @@
  *            ( Trash2 / Pencil ) を復活。 lg ボタン ( h-12, text-15px ) に
  *            対して 16px の strokeWidth 1.8 で、 inbox / bulk の bottom
  *            nav とテンポが揃う。
+ * 0.27.12 v0.27.11 の bottom-nav の幅バランスを inbox / bulk と完全に
+ *        揃える。 旧: DELETE と EDIT を両方 flex-1 で 50%/50% に
+ *        伸ばしていたが、 inbox 一覧 ( ホーム / 登録 ) や bulk 一覧
+ *        ( キャンセル / 登録 ) の secondary 側は auto-width
+ *        ( content-sized ) なので、 DELETE も flex-1 ラッパを外し
+ *        アイコン + ラベル分の幅にして、 EDIT 側だけ flex-1 fullWidth
+ *        で右に長く伸ばす。 結果、 register form の bottom nav
+ *        ( 戻る / 保存 ) と詳細ページの bottom nav ( DELETE / EDIT ) が
+ *        同じ幅比率で揃う。
  */
-export const APP_VERSION = "0.27.11";
+export const APP_VERSION = "0.27.12";
