@@ -284,6 +284,18 @@
  *        /register?entryId=xxx は entry の inboxStoragePath 有無で
  *        戻り先を /register/inbox or /register/bulk に分岐。
  *        ボタンも「リストに戻る」/「受信BOXに戻る」を切替表示。
+ * 0.20.0 受信BOX ( /register/inbox ) にページネーションを導入。
+ *        listInboxFiles() は据え置きで全件 metadata + URL を一括取得
+ *        ( newest-first ソート維持 ) するが、image download + OCR は
+ *        **表示中ページの行のみ** 順次実行するように変更。useRef で
+ *        InboxFile を id キーで保持しつつ、useEffect が pagedEntries の
+ *        変化を検知して未キュー分だけ processRow に流す。queuedRef で
+ *        多重実行を防止、行 × 削除時に inboxFilesRef + queuedRef を
+ *        同期クリーン。ページ番号 UI は ‹ 1 … 4 [5] 6 … 20 › の
+ *        コンパクトナビ ( current は gold-deep 塗り、その他は warm
+ *        hairline outline ) 。1 ページあたり件数は localSettings の
+ *        inboxPageSize ( 5 / 10 / 20、既定 10 ) で切替、設定画面に
+ *        「受信BOX 表示件数」 Section を追加。
  * 0.19.1 一覧 ( ItemCard ) の参考価格行を 2 段構成に分解。
  *        Row 1 = 「参考価格」ラベル単独 / Row 2 = 価格 + GP + period badge
  *        ( ml-auto 右寄せ ) 。価格セルに min-w-0 + truncate を入れて、
@@ -535,4 +547,4 @@
  *        as a soft indicator). src/lib/db.ts is deleted and the
  *        dexie/dexie-react-hooks dependencies are removed.
  */
-export const APP_VERSION = "0.19.1";
+export const APP_VERSION = "0.20.0";
