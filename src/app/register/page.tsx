@@ -163,6 +163,22 @@ function RegisterPageInner() {
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
 
+  // 既存の同名 + 同 isReplica アイテムがあれば merge 対象として扱う。
+  // form 上では「既存に追記」モードに切り替えてアイコン / カテゴリ / タグ /
+  // 最低価格などの「item レベル」項目を非表示にする ( v0.27.3 ) 。
+  // mergeItemPriceEntry の ( yearMonth + checkedAt ) 同一判定とは独立で、
+  // この検出は「アイテム重複」の判定 ( = 名前 + 原本/レプリカフラグの同一 ) 。
+  const mergeTarget = useMemo<Item | null>(() => {
+    const trimmedName = form.name.trim();
+    if (!trimmedName) return null;
+    return (
+      (allItems ?? []).find(
+        (i) =>
+          i.name === trimmedName && !!i.isReplica === !!form.isReplica,
+      ) ?? null
+    );
+  }, [allItems, form.name, form.isReplica]);
+
   // Bulk-edit mode (?entryId=xxx) hydrates the form from a draft entry that
   // already persists in BulkDraftProvider — leaving the page doesn't truly
   // lose data, so skip the warning there. In standalone register, treat the
@@ -403,7 +419,9 @@ function RegisterPageInner() {
         setError("アイテム名は必須です");
         return;
       }
-      if (!iconBlob && !mainBlob) {
+      // mergeTarget が居れば既存アイテムへの追記なのでアイコン / メイン
+      // 画像は不要 ( v0.27.3 ) 。 居ないときだけ従来通り 1 つは要求する。
+      if (!mergeTarget && !iconBlob && !mainBlob) {
         setError("アイコンかメイン画像のどちらかを切り抜いてください");
         return;
       }
@@ -458,16 +476,10 @@ function RegisterPageInner() {
       return;
     }
 
-    if (!iconBlob && !mainBlob) {
-      setError("アイコンかメイン画像のどちらかを切り抜いてください");
-      return;
-    }
     if (!form.name.trim()) {
       setError("アイテム名は必須です");
       return;
     }
-    setError(undefined);
-
     // Same-name + same isReplica detection: only treat as the same item
     // when both the trimmed name AND the replica/original flag match —
     // a replica and an original with the same name are distinct items.
@@ -475,6 +487,13 @@ function RegisterPageInner() {
     const existingItem = (allItems ?? []).find(
       (i) => i.name === trimmedName && !!i.isReplica === !!form.isReplica,
     );
+    // 既存アイテムへの追記時はアイコン / メイン画像は不要 ( v0.27.3 ) 。
+    // 新規作成のときだけ少なくとも片方の crop を要求する。
+    if (!existingItem && !iconBlob && !mainBlob) {
+      setError("アイコンかメイン画像のどちらかを切り抜いてください");
+      return;
+    }
+    setError(undefined);
     if (existingItem) {
       const newYearMonth = form.shopYearMonth || undefined;
       // mergeItemPriceEntry の dedup と同じ key ( yearMonth + checkedAt ) で
@@ -683,20 +702,22 @@ function RegisterPageInner() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <CropSlot
-              label="アイコン"
-              imageUrl={iconUrl}
-              onClick={() => setCropping("icon")}
-              onClear={
-                iconBlob
-                  ? () => {
-                      setIconBlob(undefined);
-                      setIconCrop(undefined);
-                    }
-                  : undefined
-              }
-            />
+          <div className={mergeTarget ? "" : "grid grid-cols-2 gap-3"}>
+            {!mergeTarget && (
+              <CropSlot
+                label="アイコン"
+                imageUrl={iconUrl}
+                onClick={() => setCropping("icon")}
+                onClear={
+                  iconBlob
+                    ? () => {
+                        setIconBlob(undefined);
+                        setIconCrop(undefined);
+                      }
+                    : undefined
+                }
+              />
+            )}
             <CropSlot
               label="メイン画像"
               imageUrl={mainUrl}
@@ -712,7 +733,7 @@ function RegisterPageInner() {
             />
           </div>
 
-          {iconCrop && (
+          {iconCrop && !mergeTarget && (
             <Button
               type="button"
               variant="secondary"
@@ -779,35 +800,80 @@ function RegisterPageInner() {
         />
       </Field>
 
-      <Field
-        label="カテゴリ"
-        labelAdornment={isAuto("category") ? autoBadge : undefined}
-      >
-        <input
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-          className={inputClass({ highlighted: isAuto("category") })}
-          placeholder="例: 島デコ右前"
-          list="cat-suggestions"
-        />
-        <CategorySuggestions />
-      </Field>
+      {mergeTarget && (
+        <div
+          className="flex items-center gap-3 px-3 py-2.5 bg-[var(--color-line-soft)] border border-[var(--color-line)]"
+          style={{ borderRadius: 0 }}
+        >
+          {mergeTarget.iconUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mergeTarget.iconUrl}
+              alt=""
+              className="w-10 h-10 object-cover border border-[var(--color-line)] shrink-0 bg-white"
+            />
+          ) : (
+            <div className="w-10 h-10 border border-[var(--color-line)] shrink-0 bg-white" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div
+              className="text-[13px] text-[var(--color-text)] truncate"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              既存「{mergeTarget.name}」に追記します
+            </div>
+            <div
+              className="text-[10.5px] text-[var(--color-muted)] mt-0.5"
+              style={{
+                fontFamily: "var(--font-label)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              アイコン・カテゴリ・タグ・最低価格は既存の値を使用
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {!mergeTarget && (
         <Field
-          label="最低販売価格 (GP)"
-          labelAdornment={isAuto("minPrice") ? autoBadge : undefined}
+          label="カテゴリ"
+          labelAdornment={isAuto("category") ? autoBadge : undefined}
         >
           <input
-            inputMode="numeric"
-            value={form.minPrice}
-            onChange={(e) =>
-              setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
-            }
-            className={`${inputClass({ highlighted: isAuto("minPrice") })} tabular-nums`}
-            placeholder="1800"
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            className={inputClass({ highlighted: isAuto("category") })}
+            placeholder="例: 島デコ右前"
+            list="cat-suggestions"
           />
+          <CategorySuggestions />
         </Field>
+      )}
+
+      <div
+        className={
+          mergeTarget
+            ? ""
+            : "grid grid-cols-1 sm:grid-cols-2 gap-3"
+        }
+      >
+        {!mergeTarget && (
+          <Field
+            label="最低販売価格 (GP)"
+            labelAdornment={isAuto("minPrice") ? autoBadge : undefined}
+          >
+            <input
+              inputMode="numeric"
+              value={form.minPrice}
+              onChange={(e) =>
+                setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
+              }
+              className={`${inputClass({ highlighted: isAuto("minPrice") })} tabular-nums`}
+              placeholder="1800"
+            />
+          </Field>
+        )}
         <Field
           label="確認日時"
           labelAdornment={isAuto("checkedAt") ? autoBadge : undefined}
@@ -885,11 +951,13 @@ function RegisterPageInner() {
         </div>
       </Field>
 
-      <TagPicker
-        tags={tags}
-        selected={form.tagIds}
-        onChange={(ids) => setForm({ ...form, tagIds: ids })}
-      />
+      {!mergeTarget && (
+        <TagPicker
+          tags={tags}
+          selected={form.tagIds}
+          onChange={(ids) => setForm({ ...form, tagIds: ids })}
+        />
+      )}
 
       <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
         <input

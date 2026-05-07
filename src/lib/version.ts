@@ -780,5 +780,25 @@
  *          表示と実保存の挙動が同期するように。
  *        既存データには触れていない ( filter ロジックの変更のみ ) ので
  *        マイグレーション不要。
+ * 0.27.3 /register form ( single + bulk + inbox の編集画面 ) で、 入力中の
+ *        ( 名前 + 原本/レプリカ ) が既存アイテムと一致した瞬間に「既存
+ *        アイテムに追記」モードに切り替わるように。 mergeItemPriceEntry
+ *        が item レベルの値 ( アイコン / カテゴリ / タグ / 最低価格 ) を
+ *        参照しないので、 これらのフィールドを画面から自動で隠し、 価格
+ *        エントリ周り ( 確認日時 / 期間 / 情報元 / 参考販売価格 ) と
+ *        メイン画像更新の選択肢だけを残す。 banner で merge target の
+ *        アイコン thumbnail と名前を表示し、 何にマージするかが視覚的に
+ *        分かるように。 変更点:
+ *        - `src/app/register/page.tsx` に useMemo の `mergeTarget` を追加し、
+ *          `(name, isReplica, allItems)` で同名 + 同 isReplica を検索。
+ *          マッチしたら banner + フィールド非表示 ( アイコン CropSlot /
+ *          カテゴリ / 最低販売価格 / TagPicker / 「クロップ結果をプリセットに
+ *          登録」ボタン ) 。 onSave の validation も merge 時はアイコン /
+ *          メイン画像のクロップ要件をスキップ ( bulk path / single path 両方 )。
+ *        - `src/lib/bulk/save.ts` の saveBulkEntry も同様に、 existingItem が
+ *          見つかった時点で iconRect 要件を skip し、 cropAndEncode も非
+ *          merge 時のみ実行 ( 不要な crop 処理を回避 ) 。 これにより、
+ *          form で iconRect 未設定で merge ドラフトに反映 → bulk save で
+ *          throw、 という不整合が起こらない。
  */
-export const APP_VERSION = "0.27.2";
+export const APP_VERSION = "0.27.3";
