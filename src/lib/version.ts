@@ -846,5 +846,15 @@
  *        0.18em + 右に h-px 区切り線 ) を追加。 v0.27.0 統合時に
  *        viewer のみが持っていたこのセクション見出しを取り込み忘れて
  *        いたので、 MARKET REFERENCE と同じ Atelier ヘッダ表現で揃える。
+ * 0.27.8 v0.27.0 統合の re-audit ( 全 30 file を viewer と diff し直し ) で
+ *        見つかったもう 1 件の漏れ — ホーム ( pathname === "/" ) で
+ *        ページ末尾に `ver. X.Y.Z` を出すフッターを AppShell に復元。
+ *        admin は DrawerNav に既に同 表示があるが、 非 admin は drawer
+ *        を持たないので version を確認する手段が無くなっていた。 viewer の
+ *        スタイル ( font-label 10.5px / letterSpacing 0.04em / tabular-nums
+ *        / border-top ) をそのまま移植。 ホーム以外の path では出さない
+ *        ( 詳細ページ等は重要情報を全幅で見せたいので footer は不要 ) 。
+ *        re-audit 時の他の差分はすべて comment 揺れ / フォーマット / 関数
+ *        定義順 / import path の差で、 機能 / UI の漏れは無い。
  */
-export const APP_VERSION = "0.27.7";
+export const APP_VERSION = "0.27.8";

@@ -7,6 +7,7 @@ import DrawerNav from "./DrawerNav";
 import LoginScreen from "./LoginScreen";
 import { useAuth } from "@/lib/firebase/auth";
 import { UnsavedChangesProvider } from "@/lib/unsavedChanges";
+import { APP_VERSION } from "@/lib/version";
 
 /**
  * Resolves the "parent" path for the back button. We avoid router.back()
@@ -59,6 +60,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const backHref = parentHref(pathname);
   const onInbox = pathname === "/inbox" || pathname.startsWith("/inbox/");
+  // viewer から取り込み忘れていた home フッター ( v0.27.8 ) 。 admin は
+  // DrawerNav に同じ ver. 表示があるが、 非 admin は drawer 自体を持たない
+  // ので、 home に居るときだけページ末尾に出して版数が見えるようにする。
+  const showVersionFooter = pathname === "/";
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -73,6 +78,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 w-full max-w-screen-sm mx-auto px-4 pb-24 pt-2 overflow-x-hidden">
           {children}
         </main>
+        {showVersionFooter ? (
+          <footer
+            className="w-full max-w-screen-sm mx-auto px-4 py-3 text-center text-[var(--color-muted)] border-t border-[var(--color-line)] tabular-nums"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10.5,
+              letterSpacing: "0.04em",
+            }}
+          >
+            ver. {APP_VERSION}
+          </footer>
+        ) : null}
       </UnsavedChangesProvider>
     </div>
   );
