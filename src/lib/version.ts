@@ -856,5 +856,14 @@
  *        ( 詳細ページ等は重要情報を全幅で見せたいので footer は不要 ) 。
  *        re-audit 時の他の差分はすべて comment 揺れ / フォーマット / 関数
  *        定義順 / import path の差で、 機能 / UI の漏れは無い。
+ * 0.27.9 詳細ページの MIN PRICE バーを viewer 版の layout に合わせる。
+ *        admin は元から `flex items-center` + `flex-1` ラベル + 縦区切り線
+ *        + 右端 price という Atelier セパレータ表現だったが、 viewer は
+ *        新しく `items-baseline gap-2.5` + ラベルに `minWidth: 96px` を
+ *        指定して price 列を MARKET REFERENCE の price 列 ( period
+ *        badge の右、 約 96px ) と縦揃え する style に進化していた。
+ *        viewer の方がデザイン的に新しいとの方針 ( ユーザー指示 ) に
+ *        従い、 viewer の structure 通りに置換 ( 縦区切り線を撤去、
+ *        price + GP を `<span flex gap-1.5>` で抱きく ) 。
  */
-export const APP_VERSION = "0.27.8";
+export const APP_VERSION = "0.27.9";

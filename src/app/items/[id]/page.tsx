@@ -245,28 +245,33 @@ export default function ItemDetailPage({
       </div>
 
       {/* ── MIN PRICE bar ────────────────────────────────────────── */}
-      <div className="flex items-center py-3">
+      <div className="flex items-baseline gap-2.5 py-3">
         <span
-          className="text-[var(--color-muted)] flex-1 uppercase"
-          style={{ fontFamily: "var(--font-label)", fontSize: 9, letterSpacing: "0.28em" }}
+          className="text-[var(--color-muted)] uppercase shrink-0"
+          style={{
+            fontFamily: "var(--font-label)",
+            fontSize: 9,
+            letterSpacing: "0.28em",
+            // align the value with the MARKET REFERENCE prices that sit
+            // after the period badge (~96px wide column)
+            minWidth: 96,
+          }}
         >
           MIN PRICE
         </span>
-        <span
-          className="w-px h-3 bg-[var(--color-line)] mx-4 shrink-0"
-          aria-hidden
-        />
-        <span
-          className="text-[var(--color-gold-deep)] tabular-nums"
-          style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500 }}
-        >
-          {formatPrice(i.minPrice)}
-        </span>
-        <span
-          className="text-[var(--color-muted)] ml-1.5"
-          style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
-        >
-          GP
+        <span className="flex items-baseline gap-1.5">
+          <span
+            className="text-[var(--color-gold-deep)] tabular-nums"
+            style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500 }}
+          >
+            {formatPrice(i.minPrice)}
+          </span>
+          <span
+            className="text-[var(--color-muted)]"
+            style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+          >
+            GP
+          </span>
         </span>
       </div>
 
