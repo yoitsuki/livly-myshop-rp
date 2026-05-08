@@ -1053,5 +1053,11 @@
  *        union に書き換え、 loading / error / loaded を明示的に分岐表示
  *        ( error 時は「取得に失敗しました」 ) 。 再取得開始時にも loading
  *        へ戻すので、 送信直後の更新中も spinner が出る。
+ * 0.27.24 個別修正画面 ( /items/[id]/edit ) のレプリカ checkbox を、 タグ
+ *        picker の下 ( 保存ボタン直前 ) から アイテム名 field の直下に移動。
+ *        v0.27.5 で /register form 側は同位置に揃えていたが、 個別編集側を
+ *        触り忘れていて inbox / bulk の個別編集と位置が違っていた。 mergeTarget
+ *        判定の入力 ( = 名前 + 原本/レプリカ ) を縦に並べて操作の文脈を
+ *        揃える方針で統一。
  */
-export const APP_VERSION = "0.27.23";
+export const APP_VERSION = "0.27.24";
