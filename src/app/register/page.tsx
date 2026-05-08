@@ -49,6 +49,7 @@ import {
   type CropPreset,
 } from "@/lib/preset";
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
+import { normalizePriceRange } from "@/lib/utils/parsePrice";
 import { useBulkDraft } from "@/lib/bulk/context";
 import { applyPresetRects, renderIconThumb } from "@/lib/bulk/process";
 import { normalizeTagType, TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
@@ -459,13 +460,19 @@ function RegisterPageInner() {
               auto: form.shopAuto,
             }
           : undefined;
+        // v0.27.25 — 片方のみの参考価格入力でも保存可能。 normalize で
+        // 未入力側にもう片方の値を mirror して BulkEntry に渡す。
+        const refRange = normalizePriceRange(
+          Number(form.refPriceMin) || 0,
+          Number(form.refPriceMax) || 0,
+        );
         const updates: Partial<BulkEntry> = {
           name: form.name.trim(),
           category: form.category.trim(),
           tagIds: form.tagIds,
           minPrice: Number(form.minPrice) || 0,
-          refPriceMin: Number(form.refPriceMin) || 0,
-          refPriceMax: Number(form.refPriceMax) || 0,
+          refPriceMin: refRange.min,
+          refPriceMax: refRange.max,
           priceSource: form.priceSource.trim() || undefined,
           checkedAt: fromLocalInput(form.checkedAt),
           checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
@@ -548,11 +555,16 @@ function RegisterPageInner() {
           }
         : undefined;
       const now = Date.now();
+      // v0.27.25 — 片方のみ入力でも mirror して両方に同値を入れる。
+      const refRange = normalizePriceRange(
+        Number(form.refPriceMin) || 0,
+        Number(form.refPriceMax) || 0,
+      );
       const initialEntry: PriceEntry = {
         id: uid(),
         shopPeriod,
-        refPriceMin: Number(form.refPriceMin) || 0,
-        refPriceMax: Number(form.refPriceMax) || 0,
+        refPriceMin: refRange.min,
+        refPriceMax: refRange.max,
         checkedAt: fromLocalInput(form.checkedAt),
         checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
@@ -590,10 +602,15 @@ function RegisterPageInner() {
             auto: !!mainBlob && form.shopAuto,
           }
         : undefined;
+      // v0.27.25 — 片方のみ入力でも mirror。
+      const refRange = normalizePriceRange(
+        Number(form.refPriceMin) || 0,
+        Number(form.refPriceMax) || 0,
+      );
       const newEntry = {
         shopPeriod,
-        refPriceMin: Number(form.refPriceMin) || 0,
-        refPriceMax: Number(form.refPriceMax) || 0,
+        refPriceMin: refRange.min,
+        refPriceMax: refRange.max,
         checkedAt: fromLocalInput(form.checkedAt),
         checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),

@@ -8,7 +8,7 @@ import {
   type Item,
   type Tag,
 } from "@/lib/firebase/repo";
-import { formatPrice } from "@/lib/utils/parsePrice";
+import { formatPrice, formatPriceRange } from "@/lib/utils/parsePrice";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "./TagChip";
 import InfoSourceChip from "./InfoSourceChip";
@@ -170,7 +170,7 @@ export default function ItemCard({
             }}
           >
             {latest
-              ? `${formatPrice(latest.refPriceMin)}–${formatPrice(latest.refPriceMax)}`
+              ? formatPriceRange(latest.refPriceMin, latest.refPriceMax)
               : "—"}
           </span>
           <span

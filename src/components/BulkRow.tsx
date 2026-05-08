@@ -13,7 +13,7 @@ import { bulkEntryMissingFields, type BulkEntry } from "@/lib/bulk/types";
 import type { CropPreset } from "@/lib/preset";
 import type { Item } from "@/lib/firebase/types";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
-import { formatPrice } from "@/lib/utils/parsePrice";
+import { formatPrice, formatPriceRange } from "@/lib/utils/parsePrice";
 import { IconButton } from "@/components/ui";
 
 export interface BulkRowProps {
@@ -140,8 +140,8 @@ export default function BulkRow({
           style={{ fontFamily: "var(--font-body)", fontSize: 11.5 }}
         >
           <span className="text-[var(--color-muted)]">参考</span>{" "}
-          {entry.refPriceMin > 0
-            ? `${formatPrice(entry.refPriceMin)}–${formatPrice(entry.refPriceMax || entry.refPriceMin)}`
+          {entry.refPriceMin > 0 || entry.refPriceMax > 0
+            ? formatPriceRange(entry.refPriceMin, entry.refPriceMax)
             : "—"}
           <span className="text-[var(--color-muted)] ml-2">最低</span>{" "}
           {entry.minPrice > 0 ? formatPrice(entry.minPrice) : "—"}

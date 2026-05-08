@@ -11,6 +11,7 @@ import {
   type ShopPeriodRecord,
 } from "@/lib/firebase/repo";
 import { fromLocalInput, toLocalInput } from "@/lib/utils/date";
+import { normalizePriceRange } from "@/lib/utils/parsePrice";
 import PriceEntryForm, {
   EMPTY_PRICE_ENTRY_FORM,
   type PriceEntryFormValue,
@@ -107,10 +108,15 @@ export default function EditPriceEntryPage({
             auto: form.shopAuto,
           }
         : undefined;
+      // v0.27.25 — 片方のみ入力でも mirror して両方に同値を入れる。
+      const refRange = normalizePriceRange(
+        Number(form.refPriceMin) || 0,
+        Number(form.refPriceMax) || 0,
+      );
       const patch: Partial<PriceEntryInput> = {
         shopPeriod,
-        refPriceMin: Number(form.refPriceMin) || 0,
-        refPriceMax: Number(form.refPriceMax) || 0,
+        refPriceMin: refRange.min,
+        refPriceMax: refRange.max,
         checkedAt: form.checkedAt
           ? fromLocalInput(form.checkedAt)
           : Date.now(),
@@ -154,22 +160,27 @@ export default function EditPriceEntryPage({
         showPriceSource={!isMaisho}
       />
 
-      <div className="flex gap-2 pt-2">
-        <Link href={`/items/${i.id}`} className="flex-1">
-          <Button variant="secondary" size="lg" fullWidth>
+      {/* Fixed bottom nav ( v0.27.25 ) — /register / 詳細ページと同じ枠で揃える。 */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
+        <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => router.push(`/items/${i.id}`)}
+          >
             キャンセル
           </Button>
-        </Link>
-        <div className="flex-[2]">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={onSave}
-            loading={busy}
-          >
-            {busy ? "保存中…" : "保存"}
-          </Button>
+          <div className="flex-1">
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={onSave}
+              loading={busy}
+            >
+              {busy ? "保存中…" : "保存"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

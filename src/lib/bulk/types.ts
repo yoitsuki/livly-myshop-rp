@@ -99,7 +99,11 @@ export function bulkEntryMissingFields(
       missing.push("最低価格");
     if (!e.iconRect) missing.push("アイコン");
   }
-  if (!Number.isFinite(e.refPriceMin) || e.refPriceMin <= 0)
-    missing.push("参考価格");
+  // v0.27.25 — 片方だけの入力でも OK とする ( min OR max のどちらかが
+  // > 0 ならば valid ) 。 0 / NaN を「未入力」と扱い、 両方とも未入力の
+  // ときだけ missing に追加する。
+  const minOk = Number.isFinite(e.refPriceMin) && e.refPriceMin > 0;
+  const maxOk = Number.isFinite(e.refPriceMax) && e.refPriceMax > 0;
+  if (!minOk && !maxOk) missing.push("参考価格");
   return missing;
 }

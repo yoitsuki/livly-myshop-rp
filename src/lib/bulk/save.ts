@@ -8,6 +8,7 @@ import {
   type PriceEntry,
 } from "@/lib/firebase/repo";
 import { cropAndEncode } from "@/lib/image";
+import { normalizePriceRange } from "@/lib/utils/parsePrice";
 import type { BulkEntry } from "./types";
 
 export interface SaveBulkEntryArgs {
@@ -67,6 +68,12 @@ export async function saveBulkEntry({
       })
     : undefined;
 
+  // v0.27.25 — 片方だけの入力 ( min のみ / max のみ ) を mirror して両方に
+  // 同値を入れる。 既存の `refPriceMax || refPriceMin` フォールバックでは
+  // max のみを入れた場合に refPriceMin=0 が残ってしまう問題を normalize で
+  // 解消。
+  const refRange = normalizePriceRange(entry.refPriceMin, entry.refPriceMax);
+
   if (existingItem) {
     const newYearMonth = entry.shopPeriod?.yearMonth;
     // v0.26.0+ : item に画像が無いケースでも、新エントリが画像を持てば
@@ -78,8 +85,8 @@ export async function saveBulkEntry({
       itemId: existingItem.id,
       newEntry: {
         shopPeriod: entry.shopPeriod,
-        refPriceMin: entry.refPriceMin,
-        refPriceMax: entry.refPriceMax || entry.refPriceMin,
+        refPriceMin: refRange.min,
+        refPriceMax: refRange.max,
         checkedAt: entry.checkedAt,
         checkedAtTimeUnknown:
           entry.checkedAtTimeUnknown === true ? true : undefined,
@@ -96,8 +103,8 @@ export async function saveBulkEntry({
   const initialEntry: PriceEntry = {
     id: uid(),
     shopPeriod: entry.shopPeriod,
-    refPriceMin: entry.refPriceMin,
-    refPriceMax: entry.refPriceMax || entry.refPriceMin,
+    refPriceMin: refRange.min,
+    refPriceMax: refRange.max,
     checkedAt: entry.checkedAt,
     checkedAtTimeUnknown:
       entry.checkedAtTimeUnknown === true ? true : undefined,

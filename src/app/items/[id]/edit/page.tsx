@@ -355,22 +355,30 @@ export default function EditItemPage({
         onChange={(ids) => setForm({ ...form, tagIds: ids })}
       />
 
-      <div className="flex gap-2 pt-2">
-        <Link href={`/items/${i.id}`} className="flex-1">
-          <Button variant="secondary" size="lg" fullWidth>
+      {/* Fixed bottom nav ( v0.27.25 ) — /register / 詳細ページと同じ枠で
+          [secondary キャンセル] [primary 保存] を並べる。 AppShell の
+          pb-24 が 96px の余白を確保しているので bottom bar ( 高さ約 72px )
+          に本文末尾が被らない。 */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
+        <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => router.push(`/items/${i.id}`)}
+          >
             キャンセル
           </Button>
-        </Link>
-        <div className="flex-[2]">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={onSave}
-            loading={busy === "save"}
-          >
-            {busy === "save" ? "保存中…" : "保存"}
-          </Button>
+          <div className="flex-1">
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={onSave}
+              loading={busy === "save"}
+            >
+              {busy === "save" ? "保存中…" : "保存"}
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -11,7 +11,7 @@ import {
   type Item,
   type PriceEntry,
 } from "@/lib/firebase/repo";
-import { formatPrice } from "@/lib/utils/parsePrice";
+import { formatPrice, formatPriceRange } from "@/lib/utils/parsePrice";
 import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
@@ -370,7 +370,7 @@ function PriceEntryRow({
               className="text-[var(--color-gold-deep)] tabular-nums"
               style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500 }}
             >
-              {formatPrice(entry.refPriceMin)}–{formatPrice(entry.refPriceMax)}
+              {formatPriceRange(entry.refPriceMin, entry.refPriceMax)}
             </span>
             <span
               className="text-[var(--color-muted)]"

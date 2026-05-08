@@ -1059,5 +1059,28 @@
  *        触り忘れていて inbox / bulk の個別編集と位置が違っていた。 mergeTarget
  *        判定の入力 ( = 名前 + 原本/レプリカ ) を縦に並べて操作の文脈を
  *        揃える方針で統一。
+ * 0.27.25 詳細ページ配下の編集系画面のボタンを 固定 bottom-nav に統一 +
+ *        参考価格を片方のみでも登録できるように緩和。 (a) v0.27.10〜0.27.12
+ *        で /items/[id] 詳細 と /register form ( 全モード ) は固定 bottom-nav
+ *        ( fixed bottom-0 + max-w-screen-sm + flex gap-2 ) に揃えていたが、
+ *        詳細から開く /items/[id]/edit ( アイテム編集 ) と /items/[id]/prices/new
+ *        ( 価格追加 ) と /items/[id]/prices/[entryId]/edit ( 価格編集 ) の
+ *        3 画面が inline `<div className="flex gap-2 pt-2">` のままで揃って
+ *        いなかった。 これを同じ枠 [secondary キャンセル] [primary 保存] の
+ *        固定 bottom-nav に置換。 AppShell の pb-24 ( 96px ) で本文末尾は
+ *        bottom bar に被らない。 cancel は router.push(`/items/${id}`) で
+ *        詳細に戻る。 (b) 参考価格の必須判定を「min > 0 必須」→「min OR max
+ *        どちらかが > 0 ならば valid」に緩和 ( `bulkEntryMissingFields` in
+ *        `src/lib/bulk/types.ts` ) 。 個別 ( /register ) / まとめて
+ *        ( /register/bulk ) / inbox ( /register/inbox ) / 価格追加 / 価格編集
+ *        の全保存経路で `normalizePriceRange(min, max)` を通して 片側 0 の
+ *        ときはもう片方を mirror、 下流の dedup ( yearMonth + checkedAt ) や
+ *        並び替え ( refPriceMin desc ) の前提を保つ。 表示側 ( ItemCard /
+ *        BulkRow / 詳細ページ ) は `formatPriceRange(min, max)` で min == max
+ *        を単一値表示 ( "4100 GP" ) に、 片側 0 を「—」にせず非ゼロ側を表示
+ *        するように切替。 OCR cache / 既存データへの影響なし
+ *        ( 旧データは min == max になっていれば従来通り「X–X」 → 単一値に
+ *        見え方が変わるが意味は同じ ) 。 normalize / formatRange の helper は
+ *        `src/lib/utils/parsePrice.ts` に集約。
  */
-export const APP_VERSION = "0.27.24";
+export const APP_VERSION = "0.27.25";
