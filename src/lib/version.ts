@@ -1038,5 +1038,20 @@
  *        ( 高い順 ) に変更。 比較関数の引数を入れ替え、 価格情報なし
  *        entry のフォールバックを `POSITIVE_INFINITY` → `NEGATIVE_INFINITY`
  *        にして引き続き末尾に寄せる。
+ * 0.27.22 閲覧側 /inbox の「画像を選んで送信」ボタン下の説明文の下に
+ *        「登録待ち件数: N 件」の行を追加。 admin が未登録 ( = customMetadata.savedAt
+ *        未セット ) の inbox file を集計して表示し、 ユーザーに「送った
+ *        分が admin で滞留しているか」が見える化する。 新規
+ *        `countPendingInboxFiles()` を `src/lib/firebase/inbox.ts` に追加
+ *        ( listAll + getMetadata の Promise.all で savedAt 未セットを数える、
+ *        getDownloadURL は不要なので listInboxFiles より軽量 ) 。 storage.rules
+ *        の inbox `read: true` で unauth viewer からも参照可能。 mount 時に
+ *        1 度取得 + 送信成功後に re-fetch して最新化。
+ * 0.27.23 0.27.22 の登録待ち件数表示で、 取得前に「—」のプレースホルダを
+ *        出していたのを「Loader2 + 読み込み中…」に変更。 件数 state を
+ *        number | null から `{kind: "loading"|"error"|"loaded"}` のタグ付き
+ *        union に書き換え、 loading / error / loaded を明示的に分岐表示
+ *        ( error 時は「取得に失敗しました」 ) 。 再取得開始時にも loading
+ *        へ戻すので、 送信直後の更新中も spinner が出る。
  */
-export const APP_VERSION = "0.27.21";
+export const APP_VERSION = "0.27.23";

@@ -9,6 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button, Card, Toast } from "@/components/ui";
+import { countPendingInboxFiles } from "@/lib/firebase/inbox";
 import { uploadToInbox } from "@/lib/inboxUpload";
 
 type ItemStatus = "queued" | "uploading" | "done" | "error";
@@ -108,11 +109,28 @@ function StatusBadge({
 export default function InboxUploadPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
+  const [pendingCount, setPendingCount] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; n: number }
+  >({ kind: "loading" });
   const [toast, setToast] = useState<{
     open: boolean;
     message: string;
     tone: "success" | "info" | "warn";
   }>({ open: false, message: "", tone: "success" });
+
+  const refreshPendingCount = useCallback(async () => {
+    setPendingCount({ kind: "loading" });
+    try {
+      const n = await countPendingInboxFiles();
+      setPendingCount({ kind: "loaded", n });
+    } catch {
+      setPendingCount({ kind: "error" });
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshPendingCount();
+  }, [refreshPendingCount]);
 
   const showToast = useCallback(
     (message: string, tone: "success" | "info" | "warn") => {
@@ -232,8 +250,12 @@ export default function InboxUploadPage() {
       } else {
         showToast(`${successCount} 件送信、${failCount} 件失敗`, "warn");
       }
+
+      if (successCount > 0) {
+        refreshPendingCount();
+      }
     },
-    [showToast],
+    [showToast, refreshPendingCount],
   );
 
   return (
@@ -275,6 +297,21 @@ export default function InboxUploadPage() {
           style={{ fontFamily: "var(--font-label)", letterSpacing: "0.04em" }}
         >
           複数枚まとめて選択できます。選択後すぐに送信が始まります。
+        </p>
+        <p
+          className="text-[11px] text-[var(--color-muted)] tabular-nums inline-flex items-center gap-1"
+          style={{ fontFamily: "var(--font-label)", letterSpacing: "0.04em" }}
+        >
+          {pendingCount.kind === "loading" ? (
+            <>
+              <Loader2 size={12} strokeWidth={1.8} className="animate-spin" aria-hidden />
+              登録待ち件数: 読み込み中…
+            </>
+          ) : pendingCount.kind === "error" ? (
+            <>登録待ち件数: 取得に失敗しました</>
+          ) : (
+            <>登録待ち件数: {pendingCount.n} 件</>
+          )}
         </p>
         <input
           ref={inputRef}
