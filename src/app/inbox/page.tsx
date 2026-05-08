@@ -9,6 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button, Card, Toast } from "@/components/ui";
+import { countPendingInboxFiles } from "@/lib/firebase/inbox";
 import { uploadToInbox } from "@/lib/inboxUpload";
 
 type ItemStatus = "queued" | "uploading" | "done" | "error";
@@ -108,11 +109,25 @@ function StatusBadge({
 export default function InboxUploadPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [toast, setToast] = useState<{
     open: boolean;
     message: string;
     tone: "success" | "info" | "warn";
   }>({ open: false, message: "", tone: "success" });
+
+  const refreshPendingCount = useCallback(async () => {
+    try {
+      const n = await countPendingInboxFiles();
+      setPendingCount(n);
+    } catch {
+      setPendingCount(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshPendingCount();
+  }, [refreshPendingCount]);
 
   const showToast = useCallback(
     (message: string, tone: "success" | "info" | "warn") => {
@@ -232,8 +247,12 @@ export default function InboxUploadPage() {
       } else {
         showToast(`${successCount} 件送信、${failCount} 件失敗`, "warn");
       }
+
+      if (successCount > 0) {
+        refreshPendingCount();
+      }
     },
-    [showToast],
+    [showToast, refreshPendingCount],
   );
 
   return (
@@ -275,6 +294,14 @@ export default function InboxUploadPage() {
           style={{ fontFamily: "var(--font-label)", letterSpacing: "0.04em" }}
         >
           複数枚まとめて選択できます。選択後すぐに送信が始まります。
+        </p>
+        <p
+          className="text-[11px] text-[var(--color-muted)] tabular-nums"
+          style={{ fontFamily: "var(--font-label)", letterSpacing: "0.04em" }}
+        >
+          {pendingCount === null
+            ? "登録待ち件数: —"
+            : `登録待ち件数: ${pendingCount} 件`}
         </p>
         <input
           ref={inputRef}

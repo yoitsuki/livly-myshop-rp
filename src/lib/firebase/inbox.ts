@@ -107,6 +107,21 @@ export async function deleteInboxFile(path: string): Promise<void> {
   await deleteObject(ref(storage(), path));
 }
 
+/**
+ * Count inbox objects that have not been marked 登録済み yet
+ * ( customMetadata.savedAt unset ) . Used by the public viewer's upload
+ * screen to show how many items are still waiting for admin review.
+ *
+ * Storage rules permit list + read on inbox/, so this works for unauth
+ * visitors. Skips the getDownloadURL round-trip that listInboxFiles does.
+ */
+export async function countPendingInboxFiles(): Promise<number> {
+  const folderRef = ref(storage(), INBOX_PREFIX);
+  const result = await listAll(folderRef);
+  const metas = await Promise.all(result.items.map((item) => getMetadata(item)));
+  return metas.filter((m) => !m.customMetadata?.[SAVED_AT_KEY]).length;
+}
+
 /** Read the OCR cache that we previously wrote into customMetadata. */
 export function readOcrCache(file: InboxFile): InboxOcrCache | null {
   const raw = file.customMetadata?.[OCR_CACHE_KEY];
