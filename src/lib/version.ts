@@ -1020,5 +1020,9 @@
  *        `flex-1 min-w-0` を足した flex container で input + buttons を
  *        並べる形 ( ~12 行/呼出 ) 。 inputClass の h-11 にボタンの
  *        h-11 を合わせて視覚的に揃う。
+ * 0.27.19 InputActions のボタン並びを [ × ] [ 📋 ] → [ 📋 ] [ × ] に
+ *        入れ替え。 入力末端 ( 右端 ) に「クリア」が来る方が自然
+ *        ( 値を消す = 入力フローの最終位置 ) というユーザー指示に
+ *        合わせた配置。
  */
-export const APP_VERSION = "0.27.18";
+export const APP_VERSION = "0.27.19";

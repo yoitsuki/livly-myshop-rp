@@ -35,8 +35,19 @@ export default function InputActions({
       // 静かに無視 — ユーザーが手動入力するだけ。
     }
   };
+  // ボタン順は左 = ペースト、 右 = クリア ( v0.27.19 ) 。 入力の右端に
+  // × が来る並びの方が自然 ( 元データを消す動作なので一番外側に置く ) 。
   return (
     <div className="flex items-center gap-1 shrink-0">
+      <button
+        type="button"
+        onClick={handlePaste}
+        aria-label="ペースト"
+        className="w-9 h-11 inline-flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-line-soft)] border border-[var(--color-line)] transition-colors"
+        style={{ borderRadius: 0 }}
+      >
+        <ClipboardPaste size={14} strokeWidth={1.8} />
+      </button>
       <button
         type="button"
         onClick={onClear}
@@ -46,15 +57,6 @@ export default function InputActions({
         style={{ borderRadius: 0 }}
       >
         <X size={14} strokeWidth={1.8} />
-      </button>
-      <button
-        type="button"
-        onClick={handlePaste}
-        aria-label="ペースト"
-        className="w-9 h-11 inline-flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-line-soft)] border border-[var(--color-line)] transition-colors"
-        style={{ borderRadius: 0 }}
-      >
-        <ClipboardPaste size={14} strokeWidth={1.8} />
       </button>
     </div>
   );
