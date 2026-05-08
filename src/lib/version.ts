@@ -737,5 +737,306 @@
  *        items が空のときだけ EmptyState を出す。SearchBar / 絞込みボタンは
  *        従来通り上部に残す ( hasAnyFilterUI は totalCount + tags 由来なので
  *        loading 中は自動で非表示 )。
+ * 0.27.0 viewer リポジトリ ( livly-myshop-rp ) を本リポジトリ ( -m ) に統合。
+ *        ホーム ( / ) と詳細 ( /items/[id] ) と viewer の upload UI ( /inbox )
+ *        を public route 化、それ以外 ( /register*, /items/[id]/edit,
+ *        /items/[id]/prices/*, /tags, /presets, /settings ) を admin gating。
+ *        AppShell は public route では LoginScreen を出さず content を
+ *        そのまま render し、admin URL を直打ちした時だけ LoginScreen を
+ *        出す ( = login UI を public route に一切露出させない ) 。AppHeader
+ *        の右上スロットは未ログインで Upload icon → /inbox ( viewer 既存
+ *        UX を温存 ) 、admin ログイン後で Hamburger → DrawerNav に置換
+ *        する形で出し分け、Fab は !isAdmin なら null を返して非表示。
+ *        DrawerNav には admin 用の "アップロード" entry ( → /inbox ) を
+ *        追加。詳細ページの EDIT / DELETE / + 価格 / per-entry edit-delete
+ *        + ConfirmDialog + deleteItem / deletePriceEntry 呼出しは
+ *        新規 src/components/ItemAdminActions.tsx に集約し、page から
+ *        next/dynamic で `{ ssr: false }` 付きで lazy load → 非 admin の
+ *        bundle に write 関数が乗らない。viewer から `src/lib/inboxUpload.ts`
+ *        ( HEIC → JPEG canvas 再エンコード + customMetadata.originalLastModified )
+ *        と `src/app/inbox/page.tsx` ( upload queue + Toast + beforeunload
+ *        ガード ) を移植。Storage rules ( inbox public create + admin
+ *        delete ) は既に対応済みで変更なし。
+ * 0.27.1 admin DrawerNav の footer ( ver. label の上 ) に「ログアウト」
+ *        ボタンを追加。 押下で `signOutCurrent()` ( signOut(firebaseAuth())
+ *        ラッパ ) → `router.push("/")` で public ホームに着地し、 admin
+ *        がそのまま利用者画面を確認できる動線に。 再ログインは admin URL
+ *        ( /tags / /register など ) を踏むと従来通り LoginScreen が出る。
+ *        v0.27.0 の `{isAdmin && <DrawerNav .../>}` gate により、 logout
+ *        後は drawer 自体が unmount されるので明示的な open=false 操作は
+ *        onClose() の 1 回で十分。
+ * 0.27.2 価格 entry の dedup key を `yearMonth` 単独から
+ *        `( yearMonth + checkedAt )` の tuple に変更。 同期間でも別時刻の
+ *        entry は別々に保存される ( 例: 朝に開催中、 夕方に再チェック →
+ *        2 entry ) 。 同じ画像の再 OCR は EXIF が一致するので idempotent
+ *        ( 上書き ) のまま、 重複は発生しない。 変更点は以下:
+ *        - `src/lib/firebase/repo.ts` の mergeItemPriceEntry の filter を
+ *          `e.shopPeriod?.yearMonth === newYearMonth` から
+ *          `e.shopPeriod?.yearMonth === newYearMonth && e.checkedAt === newCheckedAt`
+ *          に変更。 個別登録 ( same-name merge ) / bulk save / inbox の
+ *          3 経路すべてが本関数を経由するので一箇所で揃う。
+ *        - `src/app/register/page.tsx` の `willReplaceEntry` 判定式も
+ *          同じ tuple key に合わせ、 MergeDialog の "UPDATE" / "ADD"
+ *          表示と実保存の挙動が同期するように。
+ *        既存データには触れていない ( filter ロジックの変更のみ ) ので
+ *        マイグレーション不要。
+ * 0.27.3 /register form ( single + bulk + inbox の編集画面 ) で、 入力中の
+ *        ( 名前 + 原本/レプリカ ) が既存アイテムと一致した瞬間に「既存
+ *        アイテムに追記」モードに切り替わるように。 mergeItemPriceEntry
+ *        が item レベルの値 ( アイコン / カテゴリ / タグ / 最低価格 ) を
+ *        参照しないので、 これらのフィールドを画面から自動で隠し、 価格
+ *        エントリ周り ( 確認日時 / 期間 / 情報元 / 参考販売価格 ) と
+ *        メイン画像更新の選択肢だけを残す。 banner で merge target の
+ *        アイコン thumbnail と名前を表示し、 何にマージするかが視覚的に
+ *        分かるように。 変更点:
+ *        - `src/app/register/page.tsx` に useMemo の `mergeTarget` を追加し、
+ *          `(name, isReplica, allItems)` で同名 + 同 isReplica を検索。
+ *          マッチしたら banner + フィールド非表示 ( アイコン CropSlot /
+ *          カテゴリ / 最低販売価格 / TagPicker / 「クロップ結果をプリセットに
+ *          登録」ボタン ) 。 onSave の validation も merge 時はアイコン /
+ *          メイン画像のクロップ要件をスキップ ( bulk path / single path 両方 )。
+ *        - `src/lib/bulk/save.ts` の saveBulkEntry も同様に、 existingItem が
+ *          見つかった時点で iconRect 要件を skip し、 cropAndEncode も非
+ *          merge 時のみ実行 ( 不要な crop 処理を回避 ) 。 これにより、
+ *          form で iconRect 未設定で merge ドラフトに反映 → bulk save で
+ *          throw、 という不整合が起こらない。
+ * 0.27.4 v0.27.3 の merge UX の調整 2 件:
+ *        (a) アイコンの CropSlot を消すと grid 2 列のメイン画像が
+ *            full width にスケールしてしまっていたので、 grid を維持
+ *            したまま アイコン位置に DisabledSlot ( 「登録不要 / 既存
+ *            を使用」 と表示する placeholder ) を出すように変更。
+ *            メイン画像の枠サイズが従来と同じ。
+ *        (b) bulk / inbox 一覧の行が `bulkEntryMissingFields` で
+ *            アイコン / カテゴリ / 最低価格 / 参考価格 を全て要求して
+ *            いたため、 form 側で merge UI に倒れた行が「未入力」で
+ *            登録できなかった。 bulkEntryMissingFields に optional の
+ *            `allItems` を追加し、 同名 + 同 isReplica の existingItem
+ *            が居るときは アイコン / カテゴリ / 最低価格 を missing
+ *            扱いから除外。 caller ( BulkRow / register/bulk /
+ *            register/inbox / register form 自身 ) には allItems を
+ *            渡すよう更新し、 これで /register/inbox 一覧でも merge
+ *            行のチェックボックスが解禁され、 「登録するアイテムを
+ *            選択」フローでそのまま saveBulkEntry に流れる。
+ * 0.27.5 register form の 「レプリカ」 checkbox を 名前 field の直下に
+ *        移動。 レプリカ flag は mergeTarget 判定の入力 ( name +
+ *        isReplica の tuple で同名衝突を分ける ) なので、 名前の
+ *        すぐ下にあると 既存追記モードへの切替が一目で行える。 今までは
+ *        参考販売価格 / TagPicker の下に隠れていて、 追記目的で開いた
+ *        ときに毎回スクロールが必要だった。
+ *
+ *        詳細ページ ( /items/[id] ) に mount 時の `window.scrollTo(0, 0)`
+ *        を追加。 価格追加 → router.replace で戻ってきたケース、 一覧
+ *        からの再訪問で前回の scrollY が引きずられて中途半端な位置に
+ *        着地する事象があり、 useEffect deps を [id] にしておくことで
+ *        別アイテムへの遷移でも先頭から読める。
+ * 0.27.6 v0.27.5 の scrollTo(0, 0) が一部 item ( 価格 entry が複数あって
+ *        本文が長い "時を刻まない時計" 等 ) で先頭に戻らない事象を
+ *        修正。 単発の scrollTo では
+ *        (a) ブラウザ自動 scroll restoration が後発で前回 scrollY を
+ *            復元する、
+ *        (b) `useItem(id)` の初回 undefined → 本物に切り替わる
+ *            タイミングで本文が伸び、 placeholder 時点の位置から
+ *            ズレる、
+ *        を取り切れない。 mount 直後 + `requestAnimationFrame` の 2 度
+ *        打ちに加えて、 `item` が undefined から定まった瞬間に 1 度だけ
+ *        scrollTo(0, 0) を再実行 ( ref で多重発火を防ぎ、 後続の
+ *        Firestore snapshot 更新では再 scroll しない ) 。
+ * 0.27.7 詳細ページのメイン画像 ( AtelierHero ) の真上に viewer 由来の
+ *        「マイショップ画像」見出し ( font-label 9.5px / letterSpacing
+ *        0.18em + 右に h-px 区切り線 ) を追加。 v0.27.0 統合時に
+ *        viewer のみが持っていたこのセクション見出しを取り込み忘れて
+ *        いたので、 MARKET REFERENCE と同じ Atelier ヘッダ表現で揃える。
+ * 0.27.8 v0.27.0 統合の re-audit ( 全 30 file を viewer と diff し直し ) で
+ *        見つかったもう 1 件の漏れ — ホーム ( pathname === "/" ) で
+ *        ページ末尾に `ver. X.Y.Z` を出すフッターを AppShell に復元。
+ *        admin は DrawerNav に既に同 表示があるが、 非 admin は drawer
+ *        を持たないので version を確認する手段が無くなっていた。 viewer の
+ *        スタイル ( font-label 10.5px / letterSpacing 0.04em / tabular-nums
+ *        / border-top ) をそのまま移植。 ホーム以外の path では出さない
+ *        ( 詳細ページ等は重要情報を全幅で見せたいので footer は不要 ) 。
+ *        re-audit 時の他の差分はすべて comment 揺れ / フォーマット / 関数
+ *        定義順 / import path の差で、 機能 / UI の漏れは無い。
+ * 0.27.9 詳細ページの MIN PRICE バーを viewer 版の layout に合わせる。
+ *        admin は元から `flex items-center` + `flex-1` ラベル + 縦区切り線
+ *        + 右端 price という Atelier セパレータ表現だったが、 viewer は
+ *        新しく `items-baseline gap-2.5` + ラベルに `minWidth: 96px` を
+ *        指定して price 列を MARKET REFERENCE の price 列 ( period
+ *        badge の右、 約 96px ) と縦揃え する style に進化していた。
+ *        viewer の方がデザイン的に新しいとの方針 ( ユーザー指示 ) に
+ *        従い、 viewer の structure 通りに置換 ( 縦区切り線を撤去、
+ *        price + GP を `<span flex gap-1.5>` で抱きく ) 。
+ * 0.27.10 ボタン配置を inbox / bulk 一覧と同じ fixed bottom-nav パターンに
+ *        統一。 対象は (a) /items/[id] の admin 詳細ページ、
+ *        (b) /register form の bulk-edit / inbox-edit / 単発 全モード。
+ *        - (a) /items/[id]: 上にあった full-width の EDIT ボタンと、
+ *          下端にあった outlined DELETE ボタンを撤去。 末尾に
+ *          ItemAdminActions kind="bottomNav" を 1 つ置き、 fixed
+ *          bottom-0 の枠の中で `flex-1` 同士の EDIT ( primary ) と
+ *          DELETE ( danger ) を並べる。 header の back arrow は
+ *          アプリ全体で統一されている標準ナビなのでそのまま残す。
+ *          ConfirmDialog は引き続き ItemAdminActions 内に閉じ込めて
+ *          dynamic-import 経由で読込む ( 非 admin の bundle に
+ *          deleteItem が乗らない構造を維持 ) 。
+ *        - (b) /register: 上にあった "受信BOXに戻る" / "リストに戻る"
+ *          の full-width Button を撤去。 末尾の `<div flex gap-2 pt-2>`
+ *          の inline ボタン群を fixed bottom-0 の枠に置き換え、
+ *          [ secondary: 戻る/キャンセル ] [ primary flex-1: 保存 /
+ *          ドラフトに反映 ] の 2 ボタンに統一。 isBulk のときは
+ *          backHref ( /register/inbox or /register/bulk ) に
+ *          router.replace、 単発時は router.back() で挙動分岐。 save
+ *          ボタンの disabled 条件も mergeTarget 対応に同期 (
+ *          merge 時は icon/main 不要 ) 。
+ *        - ItemAdminActions の API も整理: 旧 kind="topEdit" /
+ *          "bottomDelete" を撤去し、 新 kind="bottomNav" に集約 ( 1
+ *          回 mount で EDIT + DELETE + ConfirmDialog を全部出す ) 。
+ *          残りの kind ( "addPrice" / "entryActions" ) は据え置き。
+ *        main の `pb-24` は AppShell 共通で 96px 確保しているため、
+ *        新しい fixed bar (高さ約 72px) でも本文の末尾が隠れない。
+ * 0.27.11 v0.27.10 の bottom-nav 微調整 2 件 ( /items/[id] のみ対象 ) :
+ *        (a) ボタン配置を [ EDIT ] [ DELETE ] から [ DELETE ] [ EDIT ] に
+ *            swap。 「決定に近いよく押すもの ( = EDIT ) を親指の可動域
+ *            である右」に持ってきて、 タップミスでの誤削除を減らす。
+ *            register form 側 ( /register ) は元から右が primary 保存
+ *            なので変更なし。
+ *        (b) DELETE と EDIT の両方に v0.27.0 以前の Atelier アイコン
+ *            ( Trash2 / Pencil ) を復活。 lg ボタン ( h-12, text-15px ) に
+ *            対して 16px の strokeWidth 1.8 で、 inbox / bulk の bottom
+ *            nav とテンポが揃う。
+ * 0.27.12 v0.27.11 の bottom-nav の幅バランスを inbox / bulk と完全に
+ *        揃える。 旧: DELETE と EDIT を両方 flex-1 で 50%/50% に
+ *        伸ばしていたが、 inbox 一覧 ( ホーム / 登録 ) や bulk 一覧
+ *        ( キャンセル / 登録 ) の secondary 側は auto-width
+ *        ( content-sized ) なので、 DELETE も flex-1 ラッパを外し
+ *        アイコン + ラベル分の幅にして、 EDIT 側だけ flex-1 fullWidth
+ *        で右に長く伸ばす。 結果、 register form の bottom nav
+ *        ( 戻る / 保存 ) と詳細ページの bottom nav ( DELETE / EDIT ) が
+ *        同じ幅比率で揃う。
+ * 0.27.13 通常仕様改善 4 件:
+ *        (a) ShopPeriodField の <option> に開催日 ( MMDD-MMDD, JST ) を
+ *            並記。 例: `202602 (第10回) 0209-0216`。 lib/shopPeriods.ts
+ *            に formatRoundDateRange を追加し、 SHOP_ROUNDS の start/end
+ *            ( epoch ms ) から JST の MMDD を切り出す。
+ *        (b) /register form の「クロップ結果をプリセットに登録」
+ *            ボタンの下に「クロップ結果で既存プリセットを更新」ボタンを
+ *            追加 ( inbox / bulk / 単発 全モード共通 ) 。 押下で modal が
+ *            開き、 現在の crop source 寸法 (W × H) と一致するプリセット
+ *            だけを select に並べる。 上書きは icon と main 矩形のみ
+ *            ( 名前 / 色判定 / width / height は維持 ) なので、 別寸法の
+ *            プリセットを誤上書きする事故を物理的に防ぐ。
+ *        (c) /presets ( 切り抜きプリセット一覧 ) を tags page と同じ
+ *            DnD pattern に揃える。 行頭に GripVertical ハンドル、
+ *            PointerSensor (4px) + TouchSensor (180ms long-press) で
+ *            誤起動防止。 onDragEnd で `arrayMove` した cropPresets を
+ *            patchSettings → snapshot listener で再描画。 SEED_PRESETS
+ *            も並び順を反映できる ( 旧仕様では作成順固定 ) 。
+ *        (d) /register form の TagPicker ( タグ選択 ) を type 別に
+ *            グループ化。 各 type の見出しは TYPE_LABEL ( 「ニューマハ
+ *            ラショップ」「バザール」「ナッツ」 etc. ) を Atelier label
+ *            ( 10px / 0.18em / gold-deep ) で出し、 該当タグが 0 件の
+ *            type は出さない。 ホーム絞込みパネル ( v0.18.2 ) と同じ
+ *            グルーピングルール ( TYPE_ORDER + normalizeTagType ) を
+ *            適用。
+ * 0.27.14 v0.27.13 (a) の取り込み漏れ修正。 register form 側の <select>
+ *        には開催日 ( MMDD-MMDD ) を反映していたが、 価格 entry の
+ *        個別編集画面 ( /items/[id]/prices/new と
+ *        /items/[id]/prices/[entryId]/edit ) で使われている共通の
+ *        `PriceEntryForm.tsx` 側を見落としていた。 同じ option text
+ *        ( `{yearMonth} (第{N}回) {formatRoundDateRange}` ) を適用し
+ *        全画面で表示が揃う。
+ * 0.27.15 v0.27.14 で再発した「同じ UI が 2 箇所に重複していて片方だけ
+ *        更新する」事故を構造的に防ぐ。 register/page.tsx の
+ *        ShopPeriodField と PriceEntryForm.tsx 内の inline
+ *        マイショップ時期ブロックを `src/components/ShopPeriodPicker.tsx`
+ *        ( 新規 ) に集約。 props 形 ( register: 個別 / PriceEntryForm:
+ *        value object ) と highlight / showManualHint の有無を吸収する
+ *        統一 API ( `{ yearMonth, phase, auto, showManualHint?, highlight?,
+ *        onChange({yearMonth, phase}) }` ) で両呼出をラップ。 register
+ *        form は auto/highlight/showManualHint を mainBlob 有無で渡し分け、
+ *        PriceEntryForm 側は auto = value.shopAuto のみ渡す ( 手動選択
+ *        前提のため hint / highlight 不要 ) 。 旧 ShopPeriodField 関数
+ *        ~70 行と inline ブロック ~50 行を削除し、 共通 component
+ *        ~80 行に集約 ( 全体で 40 行強の縮小 ) 。 不要になった
+ *        Sparkles / formatShopPeriod / formatRoundDateRange / SHOP_ROUNDS /
+ *        inputClass の import も両 file から撤去。
+ * 0.27.16 React 19 lint baseline を 26 → 19 件に削減 ( easy-fix 7 件、
+ *        全て局所修正で動作影響なし ) :
+ *        - register/bulk/page.tsx の未使用 Link import 撤去。
+ *        - prices/new/page.tsx の useState 初期値 ( Date.now() を含む ) を
+ *          lazy initializer 形式に。 strict mode の "Cannot call impure
+ *          function during render" 解消。
+ *        - tags/page.tsx で `useTags() ?? []` / `useItems() ?? []` を
+ *          tagsRaw / itemsRaw 経由 → useMemo で stabilize。 useMemo deps
+ *          が毎 render で振動しなくなる。
+ *        - register/page.tsx の bulk-edit init useEffect の deps に
+ *          backHref を追加 ( router.replace(backHref) を呼んでいる ) 。
+ *        - register/inbox/page.tsx の processRow / refresh を const arrow
+ *          → function 宣言に変更。 関数宣言は scope 内で hoist されるので
+ *          上の useEffect から TDZ なしに参照できる ( "Cannot access
+ *          variable before it is declared" 解消 ) 。 関数本体の semantics
+ *          は不変。
+ *        残り 19 件は React 18 で idiomatic だった set-state-in-effect /
+ *        refs-during-render 系で、 ファイルを触る機会のついでに少しずつ
+ *        パターン書換 ( useSyncExternalStore / render-time derive 等 )
+ *        していく方針。
+ * 0.27.17 価格 entry に「時間不明」フラグを導入。 確認日時の時刻が曖昧で
+ *        埋めにくい / 正確に分からないケース ( OCR で時刻が読めない、 古
+ *        メモを後追い登録、 等 ) に対応。
+ *        - `PriceEntry` に `checkedAtTimeUnknown?: boolean` を追加 ( true
+ *          のときだけ Firestore に書く、 false / undefined は schema を
+ *          汚さないために書込まない ) 。 mappers の itemToFs / itemFromFs
+ *          が pass-through。 旧データは undefined → 時刻既知扱いで互換。
+ *        - `PriceEntryFormValue` と register の `FormState` に
+ *          `checkedAtTimeUnknown: boolean` を追加。 確認日時 input に
+ *          隣接して「時間不明」 checkbox を配置し、 ON のとき input type
+ *          を datetime-local → date に切替。 ON のとき内部値は当日
+ *          ローカル 00:00 に正規化 ( ON / OFF 切替時のロスを防ぐため、
+ *          ON にすると日付 portion を残して時刻を 00:00 に固定 ) 。
+ *        - 詳細ページの MARKET REFERENCE 行で `entry.checkedAtTimeUnknown`
+ *          が true のとき `formatDateTime` の代わりに `formatDate` を
+ *          使用 ( YYYY-MM-DD のみ表示、 時刻 portion は伏せる ) 。
+ *        - `BulkEntry` にも追加して `saveBulkEntry` が初期 entry / merge
+ *          newEntry に伝播するので、 inbox / bulk 経由の登録でも flag を
+ *          維持できる。
+ *        - EXIF auto-fill ( register の handleFile, PriceEntryForm の
+ *          getCheckedAt, prices/new の handleFile ) では timeUnknown を
+ *          自動で OFF に戻す ( EXIF が時刻を持っているので "不明" では
+ *          なくなる ) 。
+ *        - prices/[entryId]/edit の dirty 比較に flag を追加し、 解除時の
+ *          patch では `undefined` を渡して itemToFs の compact に既存値を
+ *          消させる ( spread + compact で正しく Firestore から field 削除 ) 。
+ *        - utils/date.ts に `toLocalDateInput` / `fromLocalDateInput` を
+ *          追加 ( "YYYY-MM-DD" ↔ ms midnight ) 。
+ *        - mergeItemPriceEntry の dedup key ( yearMonth + checkedAt ) は
+ *          そのまま機能。 timeUnknown=true で同じ画像を再 OCR したら EXIF
+ *          が flag OFF に戻して通常モードで上書きされる ( 同 ms ) 。
+ *          timeUnknown=true 同士は ms midnight が同じなので idempotent。
+ * 0.27.18 register form と /items/[id]/edit の アイテム名 / カテゴリ /
+ *        最低販売価格 input の右に「クリア × / ペースト 📋」ボタンを
+ *        並べる。 ペーストは `navigator.clipboard.readText()` 経由 (
+ *        permission denied / unsupported は静かに無視 ) 、 最低販売価格
+ *        では digitsOnly フラグで非数値を除去する。 共通化のため新規
+ *        `src/components/InputActions.tsx` ( ~60 行 ) に集約し、 各
+ *        呼出は input の `inputClass({ fullWidth: false })` に
+ *        `flex-1 min-w-0` を足した flex container で input + buttons を
+ *        並べる形 ( ~12 行/呼出 ) 。 inputClass の h-11 にボタンの
+ *        h-11 を合わせて視覚的に揃う。
+ * 0.27.19 InputActions のボタン並びを [ × ] [ 📋 ] → [ 📋 ] [ × ] に
+ *        入れ替え。 入力末端 ( 右端 ) に「クリア」が来る方が自然
+ *        ( 値を消す = 入力フローの最終位置 ) というユーザー指示に
+ *        合わせた配置。
+ * 0.27.20 InputActions を input の **外側並び** ( 枠線付きボックス × 2 ) →
+ *        **内側オーバーレイ** ( 入力欄の右内側に absolute 配置の
+ *        ゴーストアイコン × 2 ) に書き直し。 メモアプリ等で見られる
+ *        標準的な配置で、 周辺の Atelier 表現とテンポが合う。 呼出側は
+ *        wrapper を `flex` → `relative` に置換し、 input の className に
+ *        `pr-20` ( ボタン領域 64px ≈ 32px × 2 ) を足す。 input の
+ *        `inputClass()` は full width のまま戻したので、 fullWidth=false
+ *        指定も撤去。 ボタンは `tabIndex={-1}` で tab フォーカスから外す
+ *        ( 入力中の流れを乱さない ) 、 hover で `bg-line-soft` のみ。
+ *        対象は v0.27.18 の 6 箇所そのまま。
+ * 0.27.21 ホーム一覧の「参考価格順」ソートを 昇順 ( 安い順 ) → 降順
+ *        ( 高い順 ) に変更。 比較関数の引数を入れ替え、 価格情報なし
+ *        entry のフォールバックを `POSITIVE_INFINITY` → `NEGATIVE_INFINITY`
+ *        にして引き続き末尾に寄せる。
  */
-export const APP_VERSION = "0.26.5";
+export const APP_VERSION = "0.27.21";

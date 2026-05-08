@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Loader2, ScanText, Sparkles } from "lucide-react";
+import { ImagePlus, Loader2, ScanText } from "lucide-react";
 import { getLocalSettings, useLocalSettings } from "@/lib/localSettings";
 import { compressImage } from "@/lib/image";
 import { getCheckedAt } from "@/lib/exif";
@@ -9,13 +9,12 @@ import { recognizeJapanese } from "@/lib/ocr/tesseract";
 import { recognizeWithClaude } from "@/lib/ocr/claude";
 import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import {
-  formatShopPeriod,
   resolveShopPeriod,
-  SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
 import { toLocalInput } from "@/lib/utils/date";
-import { Button, Field, fieldInputClass, inputClass } from "@/components/ui";
+import { Button, Field, fieldInputClass } from "@/components/ui";
+import ShopPeriodPicker from "@/components/ShopPeriodPicker";
 
 export interface PriceEntryFormValue {
   refPriceMin: string;
@@ -23,8 +22,12 @@ export interface PriceEntryFormValue {
   shopYearMonth: string;
   shopPhase: ShopPhase;
   shopAuto: boolean;
-  /** Local-input (datetime-local) string. */
+  /** Local-input (datetime-local) string. checkedAtTimeUnknown=true のときも
+   *  内部表現は datetime-local 形式 ( "YYYY-MM-DDT00:00" ) で保持する。 */
   checkedAt: string;
+  /** 時間不明 ( v0.27.17 ) — checked のとき input は date 型、 表示は
+   *  日付のみ、 内部値は当日 00:00 に固定する。 */
+  checkedAtTimeUnknown: boolean;
   priceSource: string;
 }
 
@@ -35,6 +38,7 @@ export const EMPTY_PRICE_ENTRY_FORM: PriceEntryFormValue = {
   shopPhase: "ongoing",
   shopAuto: false,
   checkedAt: "",
+  checkedAtTimeUnknown: false,
   // メイン画像なし時の既定。表示中のみ保存される ( showPriceSource=false の
   // ときは onSave で undefined に倒される ) 。
   priceSource: "なんおし",
@@ -84,9 +88,12 @@ export default function PriceEntryForm({
     try {
       const checkedAt = await getCheckedAt(file);
       const resolved = resolveShopPeriod(checkedAt);
+      // EXIF が時刻まで持っているので timeUnknown は自動で OFF に戻す
+      // ( v0.27.17 ) 。
       onChange({
         ...value,
         checkedAt: toLocalInput(checkedAt),
+        checkedAtTimeUnknown: false,
         shopYearMonth: resolved ? resolved.round.yearMonth : value.shopYearMonth,
         shopPhase: resolved ? resolved.phase : value.shopPhase,
         shopAuto: !!resolved,
@@ -264,66 +271,65 @@ export default function PriceEntryForm({
       </Field>
 
       <Field label="確認日時">
-        <input
-          type="datetime-local"
-          value={value.checkedAt}
-          onChange={(e) => onChange({ ...value, checkedAt: e.target.value })}
-          className={fieldInputClass}
-        />
-      </Field>
-
-      <Field
-        label="マイショップ時期"
-        labelAdornment={
-          value.shopAuto ? (
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
-              <Sparkles size={11} />
-              画像から自動判定
-            </span>
-          ) : undefined
-        }
-        hint={
-          value.shopYearMonth
-            ? `表示: [${formatShopPeriod(value.shopYearMonth, value.shopPhase)}]`
-            : undefined
-        }
-      >
-        <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={value.shopYearMonth}
-            onChange={(e) =>
-              onChange({ ...value, shopYearMonth: e.target.value, shopAuto: false })
+        <div className="flex items-center gap-3 flex-wrap">
+          <input
+            type={value.checkedAtTimeUnknown ? "date" : "datetime-local"}
+            value={
+              value.checkedAtTimeUnknown
+                ? value.checkedAt.slice(0, 10)
+                : value.checkedAt
             }
-            className={`${inputClass({ fullWidth: false })} flex-1 min-w-[10rem]`}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                checkedAt: value.checkedAtTimeUnknown
+                  ? `${e.target.value}T00:00`
+                  : e.target.value,
+              })
+            }
+            className={`${fieldInputClass} flex-1 min-w-[10rem]`}
+          />
+          <label
+            className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-text)] cursor-pointer select-none"
+            style={{ fontFamily: "var(--font-body)" }}
           >
-            <option value="">未指定</option>
-            {SHOP_ROUNDS.map((r) => (
-              <option key={r.yearMonth} value={r.yearMonth}>
-                {r.yearMonth} (第{r.roundNumber}回)
-              </option>
-            ))}
-          </select>
-          <div className="inline-flex bg-white border border-[var(--color-line)] p-0.5">
-            {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => {
-              const active = value.shopPhase === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => onChange({ ...value, shopPhase: p, shopAuto: false })}
-                  className={`px-3 h-9 text-[12px] transition-colors ${
-                    active
-                      ? "bg-gold text-white"
-                      : "text-text/70 hover:text-text"
-                  }`}
-                >
-                  {p === "ongoing" ? "開催中" : "最終日"}
-                </button>
-              );
-            })}
-          </div>
+            <input
+              type="checkbox"
+              checked={value.checkedAtTimeUnknown}
+              onChange={(e) => {
+                const next = e.target.checked;
+                // ON にするとき: 既存の datetime-local の日付 portion だけ
+                // 残して時刻を 00:00 に。 OFF のとき: 値はそのまま ( ユーザー
+                // が時刻を入力できるように ) 。
+                const nextCheckedAt = next
+                  ? `${value.checkedAt.slice(0, 10) || ""}T00:00`
+                  : value.checkedAt;
+                onChange({
+                  ...value,
+                  checkedAtTimeUnknown: next,
+                  checkedAt: nextCheckedAt,
+                });
+              }}
+              className="w-4 h-4 accent-[var(--color-gold-deep)]"
+            />
+            時間不明
+          </label>
         </div>
       </Field>
+
+      <ShopPeriodPicker
+        yearMonth={value.shopYearMonth}
+        phase={value.shopPhase}
+        auto={value.shopAuto}
+        onChange={({ yearMonth, phase }) =>
+          onChange({
+            ...value,
+            shopYearMonth: yearMonth,
+            shopPhase: phase,
+            shopAuto: false,
+          })
+        }
+      />
 
       {showPriceSource && (
         <Field label="情報元 (メイン画像が無いとき)">

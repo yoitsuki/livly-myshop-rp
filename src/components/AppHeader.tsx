@@ -1,20 +1,27 @@
 "use client";
 
-import { ArrowLeft, Menu } from "lucide-react";
+import { ArrowLeft, Menu, Upload } from "lucide-react";
 import { GuardedLink } from "@/lib/unsavedChanges";
 
 interface Props {
-  onMenuClick: () => void;
+  /** Provided when an admin is signed in — clicking opens the DrawerNav. When
+   *  omitted, the header swaps the right-slot to a viewer-style Upload icon
+   *  pointing at /inbox so non-admin visitors keep the original viewer UX. */
+  onMenuClick?: () => void;
   /** When true, shows a back button. */
   back?: boolean;
   /** Destination for the back button — falls back to "/" when omitted. */
   backHref?: string;
+  /** Suppress the Upload icon (e.g. on the upload page itself). Has no effect
+   *  when onMenuClick is provided (admin sees hamburger anyway). */
+  hideUpload?: boolean;
 }
 
 export default function AppHeader({
   onMenuClick,
   back,
   backHref = "/",
+  hideUpload,
 }: Props) {
   return (
     <header className="sticky top-0 z-30 bg-[var(--color-cream)] border-b border-[var(--color-line)]">
@@ -48,13 +55,32 @@ export default function AppHeader({
           </span>
         </GuardedLink>
 
-        <button
-          aria-label="メニューを開く"
-          onClick={onMenuClick}
-          className="-mr-1.5 w-8 h-8 flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
-        >
-          <Menu size={22} strokeWidth={1.4} />
-        </button>
+        {onMenuClick ? (
+          <button
+            aria-label="メニューを開く"
+            onClick={onMenuClick}
+            className="-mr-1.5 w-8 h-8 flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
+          >
+            <Menu size={22} strokeWidth={1.4} />
+          </button>
+        ) : hideUpload ? null : (
+          <GuardedLink
+            href="/inbox"
+            aria-label="管理者に画像を送る"
+            className="-mr-1.5 -my-1 px-1.5 py-1 flex flex-col items-center gap-[3px] text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
+          >
+            <Upload size={20} strokeWidth={1.6} />
+            <span
+              className="text-[8.5px] leading-none font-medium text-[var(--color-muted)]"
+              style={{
+                fontFamily: "var(--font-label)",
+                letterSpacing: "0.08em",
+              }}
+            >
+              アップロード
+            </span>
+          </GuardedLink>
+        )}
       </div>
     </header>
   );

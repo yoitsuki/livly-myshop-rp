@@ -48,10 +48,12 @@ export default function NewPriceEntryPage({
   const item = useItem(id);
   const cloudSettings = useSettings();
 
-  const [form, setForm] = useState<PriceEntryFormValue>({
+  // lazy initializer で Date.now() を mount 時 1 回だけ評価する。
+  // render 中の Date.now() は impure ( strict mode で flag される ) 。
+  const [form, setForm] = useState<PriceEntryFormValue>(() => ({
     ...EMPTY_PRICE_ENTRY_FORM,
     checkedAt: toLocalInput(Date.now()),
-  });
+  }));
   const [busy, setBusy] = useState<"idle" | "load" | "ocr" | "save">("idle");
   const [error, setError] = useState<string | undefined>();
   const [ocrProgress, setOcrProgress] = useState(0);
@@ -152,11 +154,13 @@ export default function NewPriceEntryPage({
 
     setBusy("load");
     try {
-      // EXIF → checkedAt + 期間自動セット
+      // EXIF → checkedAt + 期間自動セット ( EXIF が時刻まで持っているので
+      // timeUnknown は OFF に戻す、 v0.27.17 ) 。
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({
         ...f,
         checkedAt: toLocalInput(checkedAt),
+        checkedAtTimeUnknown: false,
       }));
 
       const resolved = resolveShopPeriod(checkedAt);
@@ -276,6 +280,7 @@ export default function NewPriceEntryPage({
         checkedAt: form.checkedAt
           ? fromLocalInput(form.checkedAt)
           : Date.now(),
+        checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
       };
       await addPriceEntry(

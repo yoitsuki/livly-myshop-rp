@@ -32,6 +32,10 @@ export function itemToFs(item: Item): DocumentData {
         refPriceMin: e.refPriceMin,
         refPriceMax: e.refPriceMax,
         checkedAt: e.checkedAt,
+        // isReplica と同じく true のときだけ書込む ( false / undefined を
+        // 書かないことで Firestore schema を汚さず、 旧データとも互換 ) 。
+        checkedAtTimeUnknown:
+          e.checkedAtTimeUnknown === true ? true : undefined,
         priceSource: e.priceSource,
         createdAt: e.createdAt,
       }),

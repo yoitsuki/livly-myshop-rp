@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { bulkEntryMissingFields, type BulkEntry } from "@/lib/bulk/types";
 import type { CropPreset } from "@/lib/preset";
+import type { Item } from "@/lib/firebase/types";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import { formatPrice } from "@/lib/utils/parsePrice";
 import { IconButton } from "@/components/ui";
@@ -25,6 +26,10 @@ export interface BulkRowProps {
   onRemove: () => void;
   /** When set, the row is locked (already saved) and gets a 登録済み badge. */
   savedAt?: number;
+  /** Snapshot of all items so the row can soften the missing-field
+   *  validation when this entry will merge into an existing same-name item
+   *  ( v0.27.4 ) . */
+  allItems?: Item[];
 }
 
 export default function BulkRow({
@@ -35,8 +40,9 @@ export default function BulkRow({
   onChangePreset,
   onRemove,
   savedAt,
+  allItems,
 }: BulkRowProps) {
-  const missing = bulkEntryMissingFields(entry);
+  const missing = bulkEntryMissingFields(entry, allItems);
   const processing = entry.status === "processing";
   const failed = entry.status === "failed";
   const saved = savedAt !== undefined;

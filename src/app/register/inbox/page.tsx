@@ -159,8 +159,11 @@ export default function InboxRegisterPage() {
 
   /** Process one row.  Reads the OCR cache first; only calls Claude when the
    *  cache is empty, then writes the result back so the next page load is
-   *  free.  Updates the row's status as side-effects. */
-  const processRow = async (entry: BulkEntry, file: InboxFile) => {
+   *  free.  Updates the row's status as side-effects.
+   *  function 宣言で hoist させて、 上の useEffect ( pagedEntries 監視 ) から
+   *  TDZ なしに参照できるようにしてある ( 旧: const = async () で TDZ
+   *  warning が出ていた ) 。 */
+  async function processRow(entry: BulkEntry, file: InboxFile) {
     try {
       console.log("[inbox] start:", file.name);
       const blob = await fetchInboxBlob(file);
@@ -189,7 +192,7 @@ export default function InboxRegisterPage() {
       }
 
       const draft = { ...entry, ...patch, status: "ready" as const };
-      const valid = bulkEntryMissingFields(draft).length === 0;
+      const valid = bulkEntryMissingFields(draft, allItems ?? []).length === 0;
       bulk.updateEntry(entry.id, {
         ...patch,
         status: "ready",
@@ -224,7 +227,9 @@ export default function InboxRegisterPage() {
     }
   };
 
-  const refresh = async () => {
+  // function 宣言 ( hoist ) で、 上の useEffect ( mount 時 void refresh() )
+  // から TDZ なしに参照できるように。
+  async function refresh() {
     setError(undefined);
     setInfo(undefined);
     setLoading(true);
@@ -331,7 +336,7 @@ export default function InboxRegisterPage() {
 
   const onToggleCheck = (entry: BulkEntry, next: boolean) => {
     if (entry.savedAt !== undefined) return;
-    if (next && bulkEntryMissingFields(entry).length > 0) return;
+    if (next && bulkEntryMissingFields(entry, allItems ?? []).length > 0) return;
     bulk.updateEntry(entry.id, { checked: next });
   };
 
@@ -517,6 +522,7 @@ export default function InboxRegisterPage() {
                 <BulkRow
                   entry={e}
                   presets={presets}
+                  allItems={allItems ?? []}
                   editHref={`/register?entryId=${e.id}`}
                   onToggleCheck={(next) => onToggleCheck(e, next)}
                   onChangePreset={(pid) => void onChangePreset(e.id, pid)}

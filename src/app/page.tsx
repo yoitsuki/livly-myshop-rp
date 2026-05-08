@@ -97,10 +97,12 @@ export default function Home() {
     } else if (sort === "createdAt") {
       sorted.sort((a, b) => b.createdAt - a.createdAt);
     } else {
+      // 参考価格順: 高い順 ( 降順 ) 。 価格情報が無い entry は NEGATIVE_INFINITY
+      // で末尾に寄せる ( v0.27.21 で 昇順 → 降順 に変更 ) 。
       sorted.sort(
         (a, b) =>
-          (latestPriceEntry(a)?.refPriceMin ?? Number.POSITIVE_INFINITY) -
-          (latestPriceEntry(b)?.refPriceMin ?? Number.POSITIVE_INFINITY)
+          (latestPriceEntry(b)?.refPriceMin ?? Number.NEGATIVE_INFINITY) -
+          (latestPriceEntry(a)?.refPriceMin ?? Number.NEGATIVE_INFINITY)
       );
     }
     return sorted;

@@ -1,30 +1,29 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  Calendar,
-  ImageIcon,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import dynamic from "next/dynamic";
+import { Calendar, ImageIcon } from "lucide-react";
 import { useItem, useTags } from "@/lib/firebase/hooks";
 import {
-  deleteItem,
-  deletePriceEntry,
   infoSourceLabel,
   sortedPriceEntries,
   type Item,
   type PriceEntry,
 } from "@/lib/firebase/repo";
 import { formatPrice } from "@/lib/utils/parsePrice";
-import { formatDateTime } from "@/lib/utils/date";
+import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
 import InfoSourceChip from "@/components/InfoSourceChip";
-import { ConfirmDialog } from "@/components/ui";
+import { useAuth } from "@/lib/firebase/auth";
+
+// Admin-only buttons + ConfirmDialog + write helpers (deleteItem /
+// deletePriceEntry) live in this dynamically loaded chunk so the
+// non-admin bundle has no path to invoke writes.
+const ItemAdminActions = dynamic(() => import("@/components/ItemAdminActions"), {
+  ssr: false,
+});
 
 /** Atelier period badge */
 function PeriodBadge({ yearMonth, phase }: { yearMonth: string; phase: string }) {
@@ -120,14 +119,32 @@ export default function ItemDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
   const item = useItem(id);
   const allTags = useTags() ?? [];
+  const { isAdmin } = useAuth();
 
-  const [confirmDialog, setConfirmDialog] = useState<{
-    message: string;
-    onConfirm: () => Promise<void> | void;
-  } | null>(null);
+  // 詳細ページは常に先頭から読みたい。 単発の scrollTo(0, 0) では
+  // (1) ブラウザの自動 scroll restoration が後発で前回の scrollY を
+  //     復元するケース、
+  // (2) Firestore の useItem(id) 初回 undefined → データ到着で
+  //     placeholder から本文に化け、 ページが伸びた直後の位置ズレ、
+  // を取り切れず「時を刻まない時計」のような長尺 item で先頭に
+  // 戻らない事象があった ( v0.27.5 → v0.27.6 ) 。 [id] mount 時に
+  // 直ちに + 次フレームで scrollTo を 2 度打ち、 さらに item が
+  // undefined → 本物に切り替わった瞬間にも一度だけ top に戻す。
+  const initialScrollDoneRef = useRef(false);
+  useEffect(() => {
+    initialScrollDoneRef.current = false;
+    window.scrollTo(0, 0);
+    const raf = requestAnimationFrame(() => window.scrollTo(0, 0));
+    return () => cancelAnimationFrame(raf);
+  }, [id]);
+  useEffect(() => {
+    if (item !== undefined && !initialScrollDoneRef.current) {
+      window.scrollTo(0, 0);
+      initialScrollDoneRef.current = true;
+    }
+  }, [item]);
 
   const mainUrl = item?.mainImageUrl;
 
@@ -158,52 +175,8 @@ export default function ItemDetailPage({
   const tags = allTags.filter((t) => i.tagIds.includes(t.id));
   const entries = sortedPriceEntries(i);
 
-  const onDelete = () => {
-    setConfirmDialog({
-      message: `「${i.name}」を削除しますか？\nこの操作は取り消せません。`,
-      onConfirm: async () => {
-        await deleteItem(i.id);
-        router.push("/");
-      },
-    });
-  };
-
-  const onDeleteEntry = (entryId: string) => {
-    if (entries.length <= 1) {
-      alert("最後の価格は削除できません。アイテムごと削除してください。");
-      return;
-    }
-    setConfirmDialog({
-      message: "この価格を削除しますか？",
-      onConfirm: async () => {
-        try {
-          await deletePriceEntry(i.id, entryId);
-        } catch (e) {
-          alert(e instanceof Error ? e.message : "削除に失敗しました");
-        }
-      },
-    });
-  };
-
   return (
     <div className="pb-8">
-
-      {/* ── Top action: EDIT (full width) ────────────────────────── */}
-      <div className="pt-3">
-        <Link
-          href={`/items/${i.id}/edit`}
-          className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 bg-[var(--color-gold-deep)] text-white hover:bg-gold transition-colors"
-          style={{
-            fontFamily: "var(--font-label)",
-            fontSize: 10,
-            letterSpacing: "0.24em",
-            borderRadius: 0,
-          }}
-        >
-          <Pencil size={13} strokeWidth={1.8} />
-          EDIT
-        </Link>
-      </div>
 
       {/* ── Title block ──────────────────────────────────────────── */}
       <div className="pt-4 pb-3 flex gap-3.5">
@@ -265,28 +238,33 @@ export default function ItemDetailPage({
       </div>
 
       {/* ── MIN PRICE bar ────────────────────────────────────────── */}
-      <div className="flex items-center py-3">
+      <div className="flex items-baseline gap-2.5 py-3">
         <span
-          className="text-[var(--color-muted)] flex-1 uppercase"
-          style={{ fontFamily: "var(--font-label)", fontSize: 9, letterSpacing: "0.28em" }}
+          className="text-[var(--color-muted)] uppercase shrink-0"
+          style={{
+            fontFamily: "var(--font-label)",
+            fontSize: 9,
+            letterSpacing: "0.28em",
+            // align the value with the MARKET REFERENCE prices that sit
+            // after the period badge (~96px wide column)
+            minWidth: 96,
+          }}
         >
           MIN PRICE
         </span>
-        <span
-          className="w-px h-3 bg-[var(--color-line)] mx-4 shrink-0"
-          aria-hidden
-        />
-        <span
-          className="text-[var(--color-gold-deep)] tabular-nums"
-          style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500 }}
-        >
-          {formatPrice(i.minPrice)}
-        </span>
-        <span
-          className="text-[var(--color-muted)] ml-1.5"
-          style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
-        >
-          GP
+        <span className="flex items-baseline gap-1.5">
+          <span
+            className="text-[var(--color-gold-deep)] tabular-nums"
+            style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500 }}
+          >
+            {formatPrice(i.minPrice)}
+          </span>
+          <span
+            className="text-[var(--color-muted)]"
+            style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+          >
+            GP
+          </span>
         </span>
       </div>
 
@@ -301,14 +279,7 @@ export default function ItemDetailPage({
             MARKET REFERENCE ({entries.length})
           </span>
           <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
-          <Link
-            href={`/items/${i.id}/prices/new`}
-            className="shrink-0 flex items-center gap-1 text-[var(--color-gold-deep)] hover:bg-[var(--color-line-soft)] transition-colors px-2 py-1"
-            style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.24em" }}
-          >
-            <Plus size={11} strokeWidth={2} />
-            ADD
-          </Link>
+          {isAdmin && <ItemAdminActions kind="addPrice" id={i.id} />}
         </div>
 
         {/* price entries */}
@@ -320,9 +291,16 @@ export default function ItemDetailPage({
             >
               <PriceEntryRow
                 entry={entry}
-                onEdit={() => router.push(`/items/${i.id}/prices/${entry.id}/edit`)}
-                onDelete={() => onDeleteEntry(entry.id)}
-                deletable={entries.length > 1}
+                actions={
+                  isAdmin ? (
+                    <ItemAdminActions
+                      kind="entryActions"
+                      itemId={i.id}
+                      entryId={entry.id}
+                      deletable={entries.length > 1}
+                    />
+                  ) : null
+                }
               />
             </li>
           ))}
@@ -331,6 +309,15 @@ export default function ItemDetailPage({
 
       {/* ── Hero image (supplementary, below market reference) ─── */}
       <div className="mt-6">
+        <div className="flex items-center gap-2 mb-3">
+          <span
+            className="text-[var(--color-muted)]"
+            style={{ fontFamily: "var(--font-label)", fontSize: 9.5, letterSpacing: "0.18em" }}
+          >
+            マイショップ画像
+          </span>
+          <span className="h-px flex-1 bg-[var(--color-line)]" aria-hidden />
+        </div>
         <AtelierHero src={mainUrl} alt={i.name} />
       </div>
 
@@ -345,47 +332,18 @@ export default function ItemDetailPage({
         )}
       </div>
 
-      {/* ── Bottom action: DELETE only ───────────────────────────── */}
-      <div className="flex mt-4">
-        <button
-          type="button"
-          onClick={onDelete}
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 border border-[var(--color-muted)] text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] transition-colors"
-          style={{
-            fontFamily: "var(--font-label)",
-            fontSize: 10,
-            letterSpacing: "0.24em",
-            borderRadius: 0,
-          }}
-        >
-          <Trash2 size={13} strokeWidth={1.8} />
-          DELETE
-        </button>
-      </div>
-
-      <ConfirmDialog
-        open={confirmDialog !== null}
-        message={confirmDialog?.message ?? ""}
-        onConfirm={async () => {
-          await confirmDialog?.onConfirm();
-          setConfirmDialog(null);
-        }}
-        onCancel={() => setConfirmDialog(null)}
-      />
+      {/* ── Fixed bottom nav: EDIT + DELETE (admin-only) ─────────── */}
+      {isAdmin && <ItemAdminActions kind="bottomNav" item={i} />}
     </div>
   );
 }
 
 function PriceEntryRow({
   entry,
-  onEdit,
-  onDelete,
-  deletable,
+  actions,
 }: {
   entry: PriceEntry;
-  onEdit: () => void;
-  onDelete: () => void;
-  deletable: boolean;
+  actions?: React.ReactNode;
 }) {
   const hasPeriod = !!entry.shopPeriod;
 
@@ -422,25 +380,11 @@ function PriceEntryRow({
             </span>
           </span>
         </div>
-        <div className="flex items-center gap-0.5 shrink-0 self-start">
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label="価格を編集"
-            className="w-[26px] h-[26px] flex items-center justify-center text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-text)] transition-colors"
-          >
-            <Pencil size={13} strokeWidth={1.8} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={!deletable}
-            aria-label="価格を削除"
-            className="w-[26px] h-[26px] flex items-center justify-center text-[var(--color-muted)] hover:bg-[var(--color-line-soft)] hover:text-[var(--color-text)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Trash2 size={13} strokeWidth={1.8} />
-          </button>
-        </div>
+        {actions ? (
+          <div className="flex items-center gap-0.5 shrink-0 self-start">
+            {actions}
+          </div>
+        ) : null}
       </div>
 
       {/* meta: date + source */}
@@ -449,7 +393,9 @@ function PriceEntryRow({
         style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
       >
         <Calendar size={11} strokeWidth={1.8} />
-        {formatDateTime(entry.checkedAt)}
+        {entry.checkedAtTimeUnknown
+          ? formatDate(entry.checkedAt)
+          : formatDateTime(entry.checkedAt)}
         {entry.priceSource && (
           <>
             <span className="mx-1 opacity-40">|</span>

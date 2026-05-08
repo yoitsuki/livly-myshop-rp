@@ -7,6 +7,7 @@ import {
   Crop,
   ImagePlus,
   Loader2,
+  RotateCcw,
   ScanText,
   Sparkles,
   X,
@@ -37,7 +38,6 @@ import { parseShopText, type ExtractedFields } from "@/lib/ocr/parse";
 import {
   formatShopPeriod,
   resolveShopPeriod,
-  SHOP_ROUNDS,
   type ShopPhase,
 } from "@/lib/shopPeriods";
 import {
@@ -51,6 +51,7 @@ import {
 import { toLocalInput, fromLocalInput } from "@/lib/utils/date";
 import { useBulkDraft } from "@/lib/bulk/context";
 import { applyPresetRects, renderIconThumb } from "@/lib/bulk/process";
+import { normalizeTagType, TYPE_LABEL, TYPE_ORDER } from "@/lib/tagTypes";
 import {
   bulkEntryMissingFields,
   type BulkEntry,
@@ -58,6 +59,8 @@ import {
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 import PresetForm from "@/components/PresetForm";
+import ShopPeriodPicker from "@/components/ShopPeriodPicker";
+import InputActions from "@/components/InputActions";
 import { Button, Field, inputClass } from "@/components/ui";
 import { useDirtyTracker } from "@/lib/unsavedChanges";
 
@@ -67,7 +70,12 @@ interface FormState {
   minPrice: string;
   refPriceMin: string;
   refPriceMax: string;
+  /** datetime-local string ( "YYYY-MM-DDTHH:mm" ) 。 checkedAtTimeUnknown=true
+   *  のときは時刻 portion を 00:00 に固定する。 */
   checkedAt: string;
+  /** 時間不明 ( v0.27.17 ) — checked のとき input は date 型、 内部値は当日
+   *  00:00 固定。 詳細ページで日付のみ表示される。 */
+  checkedAtTimeUnknown: boolean;
   tagIds: string[];
   shopYearMonth: string;
   shopPhase: ShopPhase;
@@ -88,6 +96,7 @@ const EMPTY_FORM: FormState = {
   refPriceMin: "",
   refPriceMax: "",
   checkedAt: toLocalInput(Date.now()),
+  checkedAtTimeUnknown: false,
   tagIds: [],
   shopYearMonth: "",
   shopPhase: "ongoing",
@@ -163,6 +172,22 @@ function RegisterPageInner() {
   const { settings: local } = useLocalSettings();
   const [ocrDone, setOcrDone] = useState(false);
 
+  // 既存の同名 + 同 isReplica アイテムがあれば merge 対象として扱う。
+  // form 上では「既存に追記」モードに切り替えてアイコン / カテゴリ / タグ /
+  // 最低価格などの「item レベル」項目を非表示にする ( v0.27.3 ) 。
+  // mergeItemPriceEntry の ( yearMonth + checkedAt ) 同一判定とは独立で、
+  // この検出は「アイテム重複」の判定 ( = 名前 + 原本/レプリカフラグの同一 ) 。
+  const mergeTarget = useMemo<Item | null>(() => {
+    const trimmedName = form.name.trim();
+    if (!trimmedName) return null;
+    return (
+      (allItems ?? []).find(
+        (i) =>
+          i.name === trimmedName && !!i.isReplica === !!form.isReplica,
+      ) ?? null
+    );
+  }, [allItems, form.name, form.isReplica]);
+
   // Bulk-edit mode (?entryId=xxx) hydrates the form from a draft entry that
   // already persists in BulkDraftProvider — leaving the page doesn't truly
   // lose data, so skip the warning there. In standalone register, treat the
@@ -181,6 +206,11 @@ function RegisterPageInner() {
   useDirtyTracker(dirty);
   const [presetModalInitial, setPresetModalInitial] =
     useState<CropPreset | null>(null);
+  // 「クロップ結果で既存プリセットを更新」用 ( v0.27.13 ) 。 picker を出すだけで、
+  // 上書き対象 id を選んで「上書き」を押すと patchSettings する。
+  const [presetUpdateOpen, setPresetUpdateOpen] = useState(false);
+  const [presetUpdateTargetId, setPresetUpdateTargetId] = useState<string>("");
+  const [presetUpdateBusy, setPresetUpdateBusy] = useState(false);
   const [mergeDialog, setMergeDialog] = useState<{
     existing: Item;
     willReplaceEntry: boolean;
@@ -244,6 +274,7 @@ function RegisterPageInner() {
       refPriceMin: bulkEntry.refPriceMin ? String(bulkEntry.refPriceMin) : "",
       refPriceMax: bulkEntry.refPriceMax ? String(bulkEntry.refPriceMax) : "",
       checkedAt: toLocalInput(bulkEntry.checkedAt || Date.now()),
+      checkedAtTimeUnknown: bulkEntry.checkedAtTimeUnknown === true,
       tagIds: bulkEntry.tagIds,
       shopYearMonth: bulkEntry.shopPeriod?.yearMonth ?? "",
       shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
@@ -281,7 +312,7 @@ function RegisterPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [bulkEntry, bulk, router]);
+  }, [bulkEntry, bulk, router, backHref]);
 
   const onPick = () => fileInput.current?.click();
 
@@ -294,7 +325,11 @@ function RegisterPageInner() {
     setMainCrop(undefined);
     setPresets(null);
     setMatchedPresetId(undefined);
-    setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
+    setForm((f) => ({
+      ...f,
+      checkedAt: toLocalInput(Date.now()),
+      checkedAtTimeUnknown: false,
+    }));
     setAutoFilled(new Set());
     setOcrDone(false);
 
@@ -304,7 +339,12 @@ function RegisterPageInner() {
     setBusy("load");
     try {
       const checkedAt = await getCheckedAt(file);
-      setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
+      // EXIF が時刻まで持っているので timeUnknown は OFF に戻す ( v0.27.17 ) 。
+      setForm((f) => ({
+        ...f,
+        checkedAt: toLocalInput(checkedAt),
+        checkedAtTimeUnknown: false,
+      }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
 
       const resolved = resolveShopPeriod(checkedAt);
@@ -403,7 +443,9 @@ function RegisterPageInner() {
         setError("アイテム名は必須です");
         return;
       }
-      if (!iconBlob && !mainBlob) {
+      // mergeTarget が居れば既存アイテムへの追記なのでアイコン / メイン
+      // 画像は不要 ( v0.27.3 ) 。 居ないときだけ従来通り 1 つは要求する。
+      if (!mergeTarget && !iconBlob && !mainBlob) {
         setError("アイコンかメイン画像のどちらかを切り抜いてください");
         return;
       }
@@ -426,6 +468,7 @@ function RegisterPageInner() {
           refPriceMax: Number(form.refPriceMax) || 0,
           priceSource: form.priceSource.trim() || undefined,
           checkedAt: fromLocalInput(form.checkedAt),
+          checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
           shopPeriod,
           iconCrop,
           mainCrop,
@@ -445,7 +488,7 @@ function RegisterPageInner() {
           }
         }
         const merged = { ...bulkEntry, ...updates };
-        const valid = bulkEntryMissingFields(merged).length === 0;
+        const valid = bulkEntryMissingFields(merged, allItems ?? []).length === 0;
         bulk.updateEntry(bulkEntry.id, {
           ...updates,
           checked: valid ? true : bulkEntry.checked,
@@ -458,16 +501,10 @@ function RegisterPageInner() {
       return;
     }
 
-    if (!iconBlob && !mainBlob) {
-      setError("アイコンかメイン画像のどちらかを切り抜いてください");
-      return;
-    }
     if (!form.name.trim()) {
       setError("アイテム名は必須です");
       return;
     }
-    setError(undefined);
-
     // Same-name + same isReplica detection: only treat as the same item
     // when both the trimmed name AND the replica/original flag match —
     // a replica and an original with the same name are distinct items.
@@ -475,12 +512,25 @@ function RegisterPageInner() {
     const existingItem = (allItems ?? []).find(
       (i) => i.name === trimmedName && !!i.isReplica === !!form.isReplica,
     );
+    // 既存アイテムへの追記時はアイコン / メイン画像は不要 ( v0.27.3 ) 。
+    // 新規作成のときだけ少なくとも片方の crop を要求する。
+    if (!existingItem && !iconBlob && !mainBlob) {
+      setError("アイコンかメイン画像のどちらかを切り抜いてください");
+      return;
+    }
+    setError(undefined);
     if (existingItem) {
       const newYearMonth = form.shopYearMonth || undefined;
+      // mergeItemPriceEntry の dedup と同じ key ( yearMonth + checkedAt ) で
+      // willReplaceEntry を判定。 ここがズレると MergeDialog の文言と
+      // 実際の保存挙動が食い違うので必ず repo.ts と一緒に動かす ( v0.27.2 ) 。
+      const newCheckedAt = fromLocalInput(form.checkedAt);
       const willReplaceEntry =
         !!newYearMonth &&
         existingItem.priceEntries.some(
-          (e) => e.shopPeriod?.yearMonth === newYearMonth,
+          (e) =>
+            e.shopPeriod?.yearMonth === newYearMonth &&
+            e.checkedAt === newCheckedAt,
         );
       const defaultReplaceMain =
         !!mainBlob && shouldReplaceMainImage(existingItem, newYearMonth);
@@ -504,6 +554,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
+        checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
         createdAt: now,
       };
@@ -544,6 +595,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
+        checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
       };
       await mergeItemPriceEntry({
@@ -619,17 +671,6 @@ function RegisterPageInner() {
         </div>
       )}
 
-      {isBulk && (
-        <Button
-          variant="primary"
-          size="md"
-          fullWidth
-          onClick={() => router.replace(backHref)}
-        >
-          {isInbox ? "受信BOXに戻る" : "リストに戻る"}
-        </Button>
-      )}
-
       <input
         ref={fileInput}
         type="file"
@@ -678,19 +719,23 @@ function RegisterPageInner() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <CropSlot
-              label="アイコン"
-              imageUrl={iconUrl}
-              onClick={() => setCropping("icon")}
-              onClear={
-                iconBlob
-                  ? () => {
-                      setIconBlob(undefined);
-                      setIconCrop(undefined);
-                    }
-                  : undefined
-              }
-            />
+            {mergeTarget ? (
+              <DisabledSlot label="アイコン" hint="登録不要" />
+            ) : (
+              <CropSlot
+                label="アイコン"
+                imageUrl={iconUrl}
+                onClick={() => setCropping("icon")}
+                onClear={
+                  iconBlob
+                    ? () => {
+                        setIconBlob(undefined);
+                        setIconCrop(undefined);
+                      }
+                    : undefined
+                }
+              />
+            )}
             <CropSlot
               label="メイン画像"
               imageUrl={mainUrl}
@@ -706,16 +751,47 @@ function RegisterPageInner() {
             />
           </div>
 
-          {iconCrop && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              icon={<BookmarkPlus size={14} />}
-              onClick={openPresetFromCrop}
-            >
-              クロップ結果をプリセットに登録
-            </Button>
+          {iconCrop && !mergeTarget && (
+            <div className="flex flex-col items-start gap-1.5">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<BookmarkPlus size={14} />}
+                onClick={openPresetFromCrop}
+              >
+                クロップ結果をプリセットに登録
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<RotateCcw size={14} />}
+                onClick={() => {
+                  // デフォルト選択 = 現在マッチしているプリセット ( あれば ) 。
+                  // 無ければ最初の compatible preset。
+                  const list =
+                    cloudSettings?.cropPresets &&
+                    cloudSettings.cropPresets.length > 0
+                      ? cloudSettings.cropPresets
+                      : SEED_PRESETS;
+                  const sw = iconCrop.source.width;
+                  const sh = iconCrop.source.height;
+                  const compatible = list.filter(
+                    (p) => p.width === sw && p.height === sh,
+                  );
+                  const initial =
+                    matchedPresetId &&
+                    compatible.some((p) => p.id === matchedPresetId)
+                      ? matchedPresetId
+                      : compatible[0]?.id ?? "";
+                  setPresetUpdateTargetId(initial);
+                  setPresetUpdateOpen(true);
+                }}
+              >
+                クロップ結果で既存プリセットを更新
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -764,64 +840,197 @@ function RegisterPageInner() {
         required
         labelAdornment={isAuto("name") ? autoBadge : undefined}
       >
-        <input
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={`${inputClass({ highlighted: isAuto("name") })} text-[17px]`}
-          style={{ fontFamily: "var(--font-display)" }}
-          placeholder="例: 籐の揺りかご"
-        />
-      </Field>
-
-      <Field
-        label="カテゴリ"
-        labelAdornment={isAuto("category") ? autoBadge : undefined}
-      >
-        <input
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-          className={inputClass({ highlighted: isAuto("category") })}
-          placeholder="例: 島デコ右前"
-          list="cat-suggestions"
-        />
-        <CategorySuggestions />
-      </Field>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field
-          label="最低販売価格 (GP)"
-          labelAdornment={isAuto("minPrice") ? autoBadge : undefined}
-        >
+        <div className="relative">
           <input
-            inputMode="numeric"
-            value={form.minPrice}
-            onChange={(e) =>
-              setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
-            }
-            className={`${inputClass({ highlighted: isAuto("minPrice") })} tabular-nums`}
-            placeholder="1800"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className={`${inputClass({ highlighted: isAuto("name") })} pr-20 text-[17px]`}
+            style={{ fontFamily: "var(--font-display)" }}
+            placeholder="例: 籐の揺りかご"
           />
+          <InputActions
+            onClear={() => setForm({ ...form, name: "" })}
+            onPaste={(text) => setForm({ ...form, name: text })}
+            hasValue={!!form.name}
+          />
+        </div>
+      </Field>
+
+      {/* レプリカは原本との同名衝突を分けるキーで、 mergeTarget 判定の
+          入力でもあるので 名前のすぐ下に置く ( v0.27.5 ) 。 */}
+      <label className="flex items-center gap-2 px-1 -mt-1 py-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={form.isReplica}
+          onChange={(e) =>
+            setForm({ ...form, isReplica: e.target.checked })
+          }
+          className="w-4 h-4 accent-[var(--color-gold-deep)]"
+        />
+        <span
+          className="text-[13px] text-[var(--color-text)]"
+          style={{ fontFamily: "var(--font-body)" }}
+        >
+          レプリカ
+        </span>
+        <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
+          ( 原本でない場合のみ ON )
+        </span>
+      </label>
+
+      {mergeTarget && (
+        <div
+          className="flex items-center gap-3 px-3 py-2.5 bg-[var(--color-line-soft)] border border-[var(--color-line)]"
+          style={{ borderRadius: 0 }}
+        >
+          {mergeTarget.iconUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={mergeTarget.iconUrl}
+              alt=""
+              className="w-10 h-10 object-cover border border-[var(--color-line)] shrink-0 bg-white"
+            />
+          ) : (
+            <div className="w-10 h-10 border border-[var(--color-line)] shrink-0 bg-white" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div
+              className="text-[13px] text-[var(--color-text)] truncate"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              既存「{mergeTarget.name}」に追記します
+            </div>
+            <div
+              className="text-[10.5px] text-[var(--color-muted)] mt-0.5"
+              style={{
+                fontFamily: "var(--font-label)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              アイコン・カテゴリ・タグ・最低価格は既存の値を使用
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!mergeTarget && (
+        <Field
+          label="カテゴリ"
+          labelAdornment={isAuto("category") ? autoBadge : undefined}
+        >
+          <div className="relative">
+            <input
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className={`${inputClass({ highlighted: isAuto("category") })} pr-20`}
+              placeholder="例: 島デコ右前"
+              list="cat-suggestions"
+            />
+            <InputActions
+              onClear={() => setForm({ ...form, category: "" })}
+              onPaste={(text) => setForm({ ...form, category: text })}
+              hasValue={!!form.category}
+            />
+          </div>
+          <CategorySuggestions />
         </Field>
+      )}
+
+      <div
+        className={
+          mergeTarget
+            ? ""
+            : "grid grid-cols-1 sm:grid-cols-2 gap-3"
+        }
+      >
+        {!mergeTarget && (
+          <Field
+            label="最低販売価格 (GP)"
+            labelAdornment={isAuto("minPrice") ? autoBadge : undefined}
+          >
+            <div className="relative">
+              <input
+                inputMode="numeric"
+                value={form.minPrice}
+                onChange={(e) =>
+                  setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
+                }
+                className={`${inputClass({ highlighted: isAuto("minPrice") })} pr-20 tabular-nums`}
+                placeholder="1800"
+              />
+              <InputActions
+                onClear={() => setForm({ ...form, minPrice: "" })}
+                onPaste={(digits) => setForm({ ...form, minPrice: digits })}
+                digitsOnly
+                hasValue={!!form.minPrice}
+              />
+            </div>
+          </Field>
+        )}
         <Field
           label="確認日時"
           labelAdornment={isAuto("checkedAt") ? autoBadge : undefined}
         >
-          <input
-            type="datetime-local"
-            value={form.checkedAt}
-            onChange={(e) => setForm({ ...form, checkedAt: e.target.value })}
-            className={`${inputClass({ highlighted: isAuto("checkedAt") })} text-[13px]`}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type={form.checkedAtTimeUnknown ? "date" : "datetime-local"}
+              value={
+                form.checkedAtTimeUnknown
+                  ? form.checkedAt.slice(0, 10)
+                  : form.checkedAt
+              }
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  checkedAt: form.checkedAtTimeUnknown
+                    ? `${e.target.value}T00:00`
+                    : e.target.value,
+                })
+              }
+              className={`${inputClass({ highlighted: isAuto("checkedAt"), fullWidth: false })} flex-1 min-w-[8rem] text-[13px]`}
+            />
+            <label
+              className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-text)] cursor-pointer select-none shrink-0"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              <input
+                type="checkbox"
+                checked={form.checkedAtTimeUnknown}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  // ON にするとき: 既存 checkedAt の日付 portion を残して
+                  // 時刻を 00:00 に正規化。 OFF のとき: 値はそのまま
+                  // ( ユーザーが時刻を再編集できるように ) 。
+                  const nextCheckedAt = next
+                    ? `${form.checkedAt.slice(0, 10) || ""}T00:00`
+                    : form.checkedAt;
+                  setForm({
+                    ...form,
+                    checkedAtTimeUnknown: next,
+                    checkedAt: nextCheckedAt,
+                  });
+                }}
+                className="w-4 h-4 accent-[var(--color-gold-deep)]"
+              />
+              時間不明
+            </label>
+          </div>
         </Field>
       </div>
 
-      <ShopPeriodField
+      <ShopPeriodPicker
         yearMonth={form.shopYearMonth}
         phase={form.shopPhase}
         auto={form.shopAuto && !!mainBlob}
-        hasMainImage={!!mainBlob}
-        onChange={(yearMonth, phase) =>
-          setForm({ ...form, shopYearMonth: yearMonth, shopPhase: phase, shopAuto: false })
+        showManualHint={!mainBlob}
+        highlight={form.shopAuto && !!mainBlob}
+        onChange={({ yearMonth, phase }) =>
+          setForm({
+            ...form,
+            shopYearMonth: yearMonth,
+            shopPhase: phase,
+            shopAuto: false,
+          })
         }
       />
 
@@ -879,58 +1088,52 @@ function RegisterPageInner() {
         </div>
       </Field>
 
-      <TagPicker
-        tags={tags}
-        selected={form.tagIds}
-        onChange={(ids) => setForm({ ...form, tagIds: ids })}
-      />
-
-      <label className="flex items-center gap-2 px-1 py-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={form.isReplica}
-          onChange={(e) =>
-            setForm({ ...form, isReplica: e.target.checked })
-          }
-          className="w-4 h-4 accent-[var(--color-gold-deep)]"
+      {!mergeTarget && (
+        <TagPicker
+          tags={tags}
+          selected={form.tagIds}
+          onChange={(ids) => setForm({ ...form, tagIds: ids })}
         />
-        <span
-          className="text-[13px] text-[var(--color-text)]"
-          style={{ fontFamily: "var(--font-body)" }}
-        >
-          レプリカ
-        </span>
-        <span className="text-[10.5px] text-[var(--color-muted)] ml-1">
-          ( 原本でない場合のみ ON )
-        </span>
-      </label>
+      )}
 
-      <div className="flex gap-2 pt-2">
-        {!isBulk && (
+      {/* Fixed bottom nav ( v0.27.10 ) — inbox/bulk 一覧と同じ枠で
+          [secondary 戻る/キャンセル] [primary 保存/ドラフトに反映] を並べる。
+          isBulk の time は backHref ( /register/inbox or /register/bulk ) に
+          戻り、 単発 /register は router.back() で来た元へ戻る。 */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-[var(--color-line)] bg-[var(--color-cream)]">
+        <div className="max-w-screen-sm mx-auto px-4 py-3 flex gap-2">
           <Button
             variant="secondary"
             size="lg"
-            onClick={() => router.back()}
-            className="flex-1"
+            onClick={() =>
+              isBulk ? router.replace(backHref) : router.back()
+            }
           >
-            キャンセル
+            {isBulk
+              ? isInbox
+                ? "受信BOXに戻る"
+                : "リストに戻る"
+              : "キャンセル"}
           </Button>
-        )}
-        <div className={isBulk ? "flex-1" : "flex-[2]"}>
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            onClick={onSave}
-            loading={busy === "save"}
-            disabled={busy === "save" || (!iconBlob && !mainBlob)}
-          >
-            {busy === "save"
-              ? "保存中…"
-              : isBulk
-                ? "ドラフトに反映"
-                : "保存"}
-          </Button>
+          <div className="flex-1">
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={onSave}
+              loading={busy === "save"}
+              disabled={
+                busy === "save" ||
+                (!mergeTarget && !iconBlob && !mainBlob)
+              }
+            >
+              {busy === "save"
+                ? "保存中…"
+                : isBulk
+                  ? "ドラフトに反映"
+                  : "保存"}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1042,6 +1245,132 @@ function RegisterPageInner() {
           </div>
         </div>
       )}
+
+      {presetUpdateOpen && iconCrop && (() => {
+        const list =
+          cloudSettings?.cropPresets &&
+          cloudSettings.cropPresets.length > 0
+            ? cloudSettings.cropPresets
+            : SEED_PRESETS;
+        const sw = iconCrop.source.width;
+        const sh = iconCrop.source.height;
+        const compatible = list.filter(
+          (p) => p.width === sw && p.height === sh,
+        );
+        const target = compatible.find((p) => p.id === presetUpdateTargetId);
+        return (
+          <div
+            className="fixed inset-0 z-40 flex items-start justify-center px-4 py-6 overflow-y-auto"
+            style={{ background: "rgba(20,40,38,0.55)" }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setPresetUpdateOpen(false);
+            }}
+          >
+            <div
+              className="w-full max-w-md bg-[var(--color-cream)] border border-[var(--color-line-strong)]"
+              style={{ borderRadius: 0 }}
+            >
+              <div className="px-4 pt-3 pb-2 border-b border-[var(--color-line)] flex items-center gap-2">
+                <h2
+                  className="text-[16px] flex-1 text-[var(--color-gold-deep)]"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  既存プリセットを更新
+                </h2>
+                <button
+                  type="button"
+                  aria-label="閉じる"
+                  onClick={() => setPresetUpdateOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="px-4 pb-4 space-y-3">
+                <p
+                  className="text-[11px] text-[var(--color-muted)] leading-relaxed"
+                  style={{ fontFamily: "var(--font-label)", letterSpacing: "0.04em" }}
+                >
+                  現在のクロップ結果 ( アイコン{mainCrop ? " + メイン画像" : ""} の矩形 ) で
+                  既存のプリセットを上書きします。 名前 / 色判定設定はそのまま。
+                  画像サイズ {sw}×{sh} に対応するプリセットのみが対象です。
+                </p>
+                {compatible.length === 0 ? (
+                  <div
+                    className="border border-dashed border-[var(--color-line)] px-3 py-4 text-center text-[12px] text-[var(--color-muted)]"
+                    style={{ fontFamily: "var(--font-label)" }}
+                  >
+                    対応するプリセットがありません ({sw}×{sh})
+                  </div>
+                ) : (
+                  <Field label="更新するプリセット">
+                    <select
+                      value={presetUpdateTargetId}
+                      onChange={(e) => setPresetUpdateTargetId(e.target.value)}
+                      className={`${inputClass()} text-[13px]`}
+                    >
+                      {compatible.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={() => setPresetUpdateOpen(false)}
+                    disabled={presetUpdateBusy}
+                  >
+                    キャンセル
+                  </Button>
+                  <div className="flex-1">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="md"
+                      fullWidth
+                      loading={presetUpdateBusy}
+                      disabled={!target || presetUpdateBusy}
+                      onClick={async () => {
+                        if (!target) return;
+                        setPresetUpdateBusy(true);
+                        try {
+                          const settings = await getSettings();
+                          const next = (settings.cropPresets ?? []).map((p) =>
+                            p.id === target.id
+                              ? {
+                                  ...p,
+                                  icon: { ...iconCrop.rect },
+                                  main: mainCrop ? { ...mainCrop.rect } : p.main,
+                                }
+                              : p,
+                          );
+                          await patchSettings({ cropPresets: next });
+                          setPresetUpdateOpen(false);
+                        } catch (e) {
+                          setError(
+                            e instanceof Error
+                              ? e.message
+                              : "プリセット更新に失敗",
+                          );
+                        } finally {
+                          setPresetUpdateBusy(false);
+                        }
+                      }}
+                    >
+                      上書き
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {mergeDialog && (
         <MergeDialog
@@ -1216,74 +1545,30 @@ function CropSlot({
   );
 }
 
-function ShopPeriodField({
-  yearMonth,
-  phase,
-  auto,
-  hasMainImage,
-  onChange,
-}: {
-  yearMonth: string;
-  phase: ShopPhase;
-  auto: boolean;
-  hasMainImage: boolean;
-  onChange: (yearMonth: string, phase: ShopPhase) => void;
-}) {
-  const adornment = auto ? (
-    <span className="inline-flex items-center gap-0.5 text-[10px] text-gold-deep font-medium normal-case tracking-normal">
-      <Sparkles size={11} />
-      画像から自動判定
-    </span>
-  ) : !hasMainImage ? (
-    <span className="text-[10px] text-muted normal-case tracking-normal">
-      手動選択
-    </span>
-  ) : undefined;
-
+/**
+ * CropSlot と同じ枠サイズ ( aspect-square + label 行 ) で「登録不要」と
+ * 示すプレースホルダ。merge 時にアイコン側で出すので、 メイン画像の
+ * CropSlot のサイズが既存と同じまま grid 2 列を維持できる ( v0.27.4 ) 。
+ */
+function DisabledSlot({ label, hint }: { label: string; hint: string }) {
   return (
-    <Field
-      label="マイショップ時期"
-      labelAdornment={adornment}
-      hint={
-        yearMonth
-          ? `表示: [${formatShopPeriod(yearMonth, phase)}]`
-          : undefined
-      }
-    >
-      <div className="flex items-center gap-2 flex-wrap">
-        <select
-          value={yearMonth}
-          onChange={(e) => onChange(e.target.value, phase)}
-          className={`${inputClass({ highlighted: auto })} flex-1 min-w-[10rem] text-[13px]`}
+    <div className="relative border border-dashed border-[var(--color-line-strong)] bg-white/40 overflow-hidden opacity-80">
+      <div className="aspect-square bg-[var(--color-line-soft)]/40 flex items-center justify-center text-[var(--color-muted)]">
+        <span
+          className="text-[11px] tracking-wider"
+          style={{
+            fontFamily: "var(--font-label)",
+            letterSpacing: "0.18em",
+          }}
         >
-          <option value="">未指定</option>
-          {SHOP_ROUNDS.map((r) => (
-            <option key={r.yearMonth} value={r.yearMonth}>
-              {r.yearMonth} (第{r.roundNumber}回)
-            </option>
-          ))}
-        </select>
-        <div className="inline-flex bg-white border border-[var(--color-line)] p-0.5">
-          {(["ongoing", "lastDay"] as ShopPhase[]).map((p) => {
-            const active = phase === p;
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onChange(yearMonth, p)}
-                className={`px-3 h-9 text-[12px] transition-colors ${
-                  active
-                    ? "bg-gold text-white"
-                    : "text-text/70 hover:text-text"
-                }`}
-              >
-                {p === "ongoing" ? "開催中" : "最終日"}
-              </button>
-            );
-          })}
-        </div>
+          {hint}
+        </span>
       </div>
-    </Field>
+      <div className="px-2 py-1.5 text-[11px] font-medium text-text/60 text-center tracking-wide">
+        {label}
+        <span className="text-[10px] text-muted ml-1">既存を使用</span>
+      </div>
+    </div>
   );
 }
 
@@ -1331,28 +1616,55 @@ function TagPicker({
     setAdding(false);
   };
 
+  // タグを type 別にグルーピング ( v0.27.13 ) 。 ホーム一覧の絞込みパネルと
+  // 同じく TYPE_ORDER 固定順 + TYPE_LABEL を section 見出しに使い、
+  // 該当タグが 0 件の type は出さない。 normalizeTagType で legacy / unknown
+  // type も "other" に倒す。
+  const groupedTags = TYPE_ORDER.map((type) => ({
+    type,
+    list: tags.filter((t) => normalizeTagType(t.type) === type),
+  })).filter((g) => g.list.length > 0);
+
+  const renderChip = (t: Tag) => {
+    const on = selected.includes(t.id);
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => toggle(t.id)}
+        className={`px-2.5 h-7 text-[12px] border transition-colors ${
+          on
+            ? "bg-gold text-white border-gold"
+            : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
+        }`}
+      >
+        #{t.name}
+      </button>
+    );
+  };
+
   return (
     <Field label="タグ">
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          {tags.map((t) => {
-            const on = selected.includes(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => toggle(t.id)}
-                className={`px-2.5 h-7 text-[12px] border transition-colors ${
-                  on
-                    ? "bg-gold text-white border-gold"
-                    : "bg-white border-[var(--color-line)] text-text/80 hover:border-[var(--color-line-strong)]"
-                }`}
-              >
-                #{t.name}
-              </button>
-            );
-          })}
-          {!adding && (
+      <div className="space-y-3">
+        {groupedTags.map(({ type, list }) => (
+          <section key={type} className="space-y-1.5">
+            <h4
+              className="px-1 text-[var(--color-gold-deep)] uppercase"
+              style={{
+                fontFamily: "var(--font-label)",
+                fontSize: 10,
+                letterSpacing: "0.18em",
+                fontWeight: 500,
+              }}
+            >
+              {TYPE_LABEL[type]}
+            </h4>
+            <div className="flex flex-wrap gap-1.5">{list.map(renderChip)}</div>
+          </section>
+        ))}
+
+        {!adding && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
             <button
               type="button"
               onClick={() => setAdding(true)}
@@ -1360,8 +1672,8 @@ function TagPicker({
             >
               ＋ 新規タグ
             </button>
-          )}
-        </div>
+          </div>
+        )}
         {adding && (
           <div className="flex items-center gap-1.5">
             <input

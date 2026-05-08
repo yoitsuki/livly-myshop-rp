@@ -39,25 +39,33 @@ export async function saveBulkEntry({
   source,
   allItems,
 }: SaveBulkEntryArgs): Promise<SaveBulkEntryResult> {
-  if (!entry.iconRect) throw new Error("アイコンの矩形が未設定です");
-
-  const iconBlob = await cropAndEncode(source, entry.iconRect, {
-    maxWidth: 320,
-    quality: 0.85,
-  });
-  const mainBlob = entry.mainRect
-    ? await cropAndEncode(source, entry.mainRect, {
-        maxWidth: 1200,
-        quality: 0.85,
-      })
-    : undefined;
-
   const trimmedName = entry.name.trim();
   // Replica と原本は同名でも別 item として扱う ( v0.18.0 で追加した
   // isReplica の同一判定漏れを v0.26.4 で修正 ) 。
   const existingItem = allItems.find(
     (i) => i.name === trimmedName && !!i.isReplica === !!entry.isReplica,
   );
+
+  // mergeItemPriceEntry はアイコンを参照しないので、 既存アイテムへの
+  // 追記時はアイコンクロップを免除 ( v0.27.3 ) 。 新規作成のときだけ
+  // iconRect が必須。
+  if (!existingItem && !entry.iconRect) {
+    throw new Error("アイコンの矩形が未設定です");
+  }
+
+  const iconBlob =
+    !existingItem && entry.iconRect
+      ? await cropAndEncode(source, entry.iconRect, {
+          maxWidth: 320,
+          quality: 0.85,
+        })
+      : undefined;
+  const mainBlob = entry.mainRect
+    ? await cropAndEncode(source, entry.mainRect, {
+        maxWidth: 1200,
+        quality: 0.85,
+      })
+    : undefined;
 
   if (existingItem) {
     const newYearMonth = entry.shopPeriod?.yearMonth;
@@ -73,6 +81,8 @@ export async function saveBulkEntry({
         refPriceMin: entry.refPriceMin,
         refPriceMax: entry.refPriceMax || entry.refPriceMin,
         checkedAt: entry.checkedAt,
+        checkedAtTimeUnknown:
+          entry.checkedAtTimeUnknown === true ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, entry.priceSource),
       },
       replaceMainImage:
@@ -89,6 +99,8 @@ export async function saveBulkEntry({
     refPriceMin: entry.refPriceMin,
     refPriceMax: entry.refPriceMax || entry.refPriceMin,
     checkedAt: entry.checkedAt,
+    checkedAtTimeUnknown:
+      entry.checkedAtTimeUnknown === true ? true : undefined,
     priceSource: resolveEntryPriceSource(!!mainBlob, entry.priceSource),
     createdAt: Date.now(),
   };

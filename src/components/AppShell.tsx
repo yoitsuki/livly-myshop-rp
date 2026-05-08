@@ -7,6 +7,7 @@ import DrawerNav from "./DrawerNav";
 import LoginScreen from "./LoginScreen";
 import { useAuth } from "@/lib/firebase/auth";
 import { UnsavedChangesProvider } from "@/lib/unsavedChanges";
+import { APP_VERSION } from "@/lib/version";
 
 /**
  * Resolves the "parent" path for the back button. We avoid router.back()
@@ -21,7 +22,24 @@ function parentHref(pathname: string): string | null {
     if (!rest) return "/"; // detail page → home
     return `/items/${itemId}`; // edit / prices/* → detail
   }
+  if (pathname === "/inbox" || pathname.startsWith("/inbox/")) return "/";
   return null;
+}
+
+/**
+ * Public routes are reachable without admin sign-in: home, item detail
+ * (read-only display), and the viewer-style /inbox upload page. Admin-only
+ * paths like /items/[id]/edit, /items/[id]/prices/*, /register*, /tags,
+ * /presets, /settings fall through and trigger the LoginScreen for
+ * non-admin visitors who URL-direct into them.
+ */
+function isPublicRoute(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    /^\/items\/[^/]+\/?$/.test(pathname) ||
+    pathname === "/inbox" ||
+    pathname.startsWith("/inbox/")
+  );
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -32,24 +50,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (loading) {
     return <div className="min-h-dvh" aria-hidden />;
   }
-  if (!user || !isAdmin) {
+
+  // Admin-route hit by a non-admin visitor → LoginScreen. URL-direct entry
+  // to /register etc. is the only login surface; public pages never expose
+  // a login button.
+  if (!isPublicRoute(pathname) && !isAdmin) {
     return <LoginScreen user={user} redirectError={redirectError} />;
   }
 
   const backHref = parentHref(pathname);
+  const onInbox = pathname === "/inbox" || pathname.startsWith("/inbox/");
+  // viewer から取り込み忘れていた home フッター ( v0.27.8 ) 。 admin は
+  // DrawerNav に同じ ver. 表示があるが、 非 admin は drawer 自体を持たない
+  // ので、 home に居るときだけページ末尾に出して版数が見えるようにする。
+  const showVersionFooter = pathname === "/";
 
   return (
     <div className="min-h-dvh flex flex-col">
       <UnsavedChangesProvider>
         <AppHeader
-          onMenuClick={() => setOpen(true)}
+          onMenuClick={isAdmin ? () => setOpen(true) : undefined}
           back={!!backHref}
           backHref={backHref ?? undefined}
+          hideUpload={onInbox}
         />
-        <DrawerNav open={open} onClose={() => setOpen(false)} />
+        {isAdmin && <DrawerNav open={open} onClose={() => setOpen(false)} />}
         <main className="flex-1 w-full max-w-screen-sm mx-auto px-4 pb-24 pt-2 overflow-x-hidden">
           {children}
         </main>
+        {showVersionFooter ? (
+          <footer
+            className="w-full max-w-screen-sm mx-auto px-4 py-3 text-center text-[var(--color-muted)] border-t border-[var(--color-line)] tabular-nums"
+            style={{
+              fontFamily: "var(--font-label)",
+              fontSize: 10.5,
+              letterSpacing: "0.04em",
+            }}
+          >
+            ver. {APP_VERSION}
+          </footer>
+        ) : null}
       </UnsavedChangesProvider>
     </div>
   );
