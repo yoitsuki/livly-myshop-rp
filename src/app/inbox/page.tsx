@@ -109,7 +109,9 @@ function StatusBadge({
 export default function InboxUploadPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
-  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [pendingCount, setPendingCount] = useState<
+    { kind: "loading" } | { kind: "error" } | { kind: "loaded"; n: number }
+  >({ kind: "loading" });
   const [toast, setToast] = useState<{
     open: boolean;
     message: string;
@@ -117,11 +119,12 @@ export default function InboxUploadPage() {
   }>({ open: false, message: "", tone: "success" });
 
   const refreshPendingCount = useCallback(async () => {
+    setPendingCount({ kind: "loading" });
     try {
       const n = await countPendingInboxFiles();
-      setPendingCount(n);
+      setPendingCount({ kind: "loaded", n });
     } catch {
-      setPendingCount(null);
+      setPendingCount({ kind: "error" });
     }
   }, []);
 
@@ -296,12 +299,19 @@ export default function InboxUploadPage() {
           複数枚まとめて選択できます。選択後すぐに送信が始まります。
         </p>
         <p
-          className="text-[11px] text-[var(--color-muted)] tabular-nums"
+          className="text-[11px] text-[var(--color-muted)] tabular-nums inline-flex items-center gap-1"
           style={{ fontFamily: "var(--font-label)", letterSpacing: "0.04em" }}
         >
-          {pendingCount === null
-            ? "登録待ち件数: —"
-            : `登録待ち件数: ${pendingCount} 件`}
+          {pendingCount.kind === "loading" ? (
+            <>
+              <Loader2 size={12} strokeWidth={1.8} className="animate-spin" aria-hidden />
+              登録待ち件数: 読み込み中…
+            </>
+          ) : pendingCount.kind === "error" ? (
+            <>登録待ち件数: 取得に失敗しました</>
+          ) : (
+            <>登録待ち件数: {pendingCount.n} 件</>
+          )}
         </p>
         <input
           ref={inputRef}
