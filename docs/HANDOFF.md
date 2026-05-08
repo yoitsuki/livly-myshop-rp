@@ -106,9 +106,10 @@ function isAdmin() {
 
 `src/lib/version.ts` の `APP_VERSION` を更新する運用。Drawer 下部に表示される。
 
-最新: **0.27.23**
+最新: **0.27.24**
 
 直近のチェンジログ要約:
+- **0.27.24 — 個別修正画面 ( /items/[id]/edit ) のレプリカ checkbox 位置を /register と揃える**。 タグ picker の下 ( 保存ボタン直前 ) に置かれていたレプリカ checkbox を アイテム名 field の直下に移動。 v0.27.5 で /register form 側は同位置に揃えていたが、 個別編集側を触り忘れていて inbox / bulk の個別編集 ( = /register?entryId=xxx ) と位置がズレていた。 mergeTarget 判定の入力 ( = 名前 + 原本/レプリカ ) を縦に並べて操作の文脈を揃える方針で統一。 `-mt-1` で名前 input との縦間隔を詰める指定も /register 側と揃えた。
 - **0.27.22 〜 0.27.23 — 閲覧側 /inbox に登録待ち件数を表示**。「画像を選んで送信」ボタン下の説明文の下に「登録待ち件数: N 件」の行を追加し、 ユーザーに「送った分が admin で滞留しているか」を見える化する。0.27.22 で新規 `countPendingInboxFiles()` を `src/lib/firebase/inbox.ts` に追加 ( `listAll` + `getMetadata` の Promise.all で `customMetadata.savedAt` 未セットの inbox file を数える、 `getDownloadURL` を呼ばないので `listInboxFiles` より軽量 ) 。`storage.rules` の `inbox/*` `read: true` で unauth viewer からも参照可能。 mount 時に 1 度取得 + 送信成功後に re-fetch して最新化。0.27.23 で取得前の placeholder を「—」から「`Loader2` spinner + 読み込み中…」に変更し、 件数 state を `number | null` から `{ kind: "loading" | "error" | "loaded"; n? }` のタグ付き union に書き換え、 loading / error ( 「取得に失敗しました」 ) / loaded ( 「N 件」 ) を明示的に分岐表示。 再取得開始時にも loading に戻すので、 送信直後の更新中も spinner が出る。
 - **0.27.21 — ホーム一覧の「参考価格順」を 高い順 ( 降順 ) に変更**。 比較関数の引数を入れ替え + 価格情報なし entry のフォールバックを `POSITIVE_INFINITY` → `NEGATIVE_INFINITY` にして引き続き末尾に寄せる。 `latestPriceEntry(item).refPriceMin` ベースで降順 ( 大きい値が上 ) 。
 - **0.27.18 〜 0.27.20 — 各編集画面の主要 input にクリア / ペーストボタンを追加**。 register form ( 新規 / bulk-edit / inbox-edit ) と /items/[id]/edit の アイテム名 / カテゴリ / 最低販売価格 入力欄の右に「📋 ペースト」「× クリア」のゴーストアイコンを **input 右内側に absolute 配置** で重ねる。 ペーストは `navigator.clipboard.readText()` 経由で、 最低販売価格 ( 数値専用 ) では digitsOnly フラグで非数値を除去。 共通化のため新規 `src/components/InputActions.tsx` ( ~70 行 ) を作成し、 各呼出 ( 計 6 箇所 ) は `<div className="relative">` でラップして input の className に `pr-20` ( ボタン領域 64px = 32px × 2 ) を足す。 ボタンは `tabIndex={-1}` で tab フォーカスから外して入力中の流れを乱さない。 0.27.18 で初版 ( 外付け 2 ボックス ) → 0.27.19 で順序を `[ × ][ 📋 ]` → `[ 📋 ][ × ]` に swap → 0.27.20 で標準的な内側オーバーレイ ( メモアプリ等で見られる配置 ) に書き直し、 周辺の Atelier 表現とテンポを揃えた。
