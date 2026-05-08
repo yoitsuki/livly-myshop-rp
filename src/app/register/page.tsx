@@ -840,11 +840,11 @@ function RegisterPageInner() {
         required
         labelAdornment={isAuto("name") ? autoBadge : undefined}
       >
-        <div className="flex items-center gap-1.5">
+        <div className="relative">
           <input
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className={`${inputClass({ highlighted: isAuto("name"), fullWidth: false })} flex-1 min-w-0 text-[17px]`}
+            className={`${inputClass({ highlighted: isAuto("name") })} pr-20 text-[17px]`}
             style={{ fontFamily: "var(--font-display)" }}
             placeholder="例: 籐の揺りかご"
           />
@@ -918,11 +918,11 @@ function RegisterPageInner() {
           label="カテゴリ"
           labelAdornment={isAuto("category") ? autoBadge : undefined}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="relative">
             <input
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
-              className={`${inputClass({ highlighted: isAuto("category"), fullWidth: false })} flex-1 min-w-0`}
+              className={`${inputClass({ highlighted: isAuto("category") })} pr-20`}
               placeholder="例: 島デコ右前"
               list="cat-suggestions"
             />
@@ -948,14 +948,14 @@ function RegisterPageInner() {
             label="最低販売価格 (GP)"
             labelAdornment={isAuto("minPrice") ? autoBadge : undefined}
           >
-            <div className="flex items-center gap-1.5">
+            <div className="relative">
               <input
                 inputMode="numeric"
                 value={form.minPrice}
                 onChange={(e) =>
                   setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
                 }
-                className={`${inputClass({ highlighted: isAuto("minPrice"), fullWidth: false })} flex-1 min-w-0 tabular-nums`}
+                className={`${inputClass({ highlighted: isAuto("minPrice") })} pr-20 tabular-nums`}
                 placeholder="1800"
               />
               <InputActions

@@ -280,11 +280,11 @@ export default function EditItemPage({
       )}
 
       <Field label="アイテム名" required>
-        <div className="flex items-center gap-1.5">
+        <div className="relative">
           <input
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0 text-[17px]`}
+            className={`${inputClass()} pr-20 text-[17px]`}
             style={{ fontFamily: "var(--font-display)" }}
           />
           <InputActions
@@ -296,11 +296,11 @@ export default function EditItemPage({
       </Field>
 
       <Field label="カテゴリ">
-        <div className="flex items-center gap-1.5">
+        <div className="relative">
           <input
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0`}
+            className={`${inputClass()} pr-20`}
             list="cat-suggestions-edit"
           />
           <InputActions
@@ -313,14 +313,14 @@ export default function EditItemPage({
       </Field>
 
       <Field label="最低販売価格 (GP)">
-        <div className="flex items-center gap-1.5">
+        <div className="relative">
           <input
             inputMode="numeric"
             value={form.minPrice}
             onChange={(e) =>
               setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
             }
-            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0 tabular-nums`}
+            className={`${inputClass()} pr-20 tabular-nums`}
           />
           <InputActions
             onClear={() => setForm({ ...form, minPrice: "" })}

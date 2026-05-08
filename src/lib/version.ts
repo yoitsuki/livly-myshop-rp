@@ -1024,5 +1024,15 @@
  *        入れ替え。 入力末端 ( 右端 ) に「クリア」が来る方が自然
  *        ( 値を消す = 入力フローの最終位置 ) というユーザー指示に
  *        合わせた配置。
+ * 0.27.20 InputActions を input の **外側並び** ( 枠線付きボックス × 2 ) →
+ *        **内側オーバーレイ** ( 入力欄の右内側に absolute 配置の
+ *        ゴーストアイコン × 2 ) に書き直し。 メモアプリ等で見られる
+ *        標準的な配置で、 周辺の Atelier 表現とテンポが合う。 呼出側は
+ *        wrapper を `flex` → `relative` に置換し、 input の className に
+ *        `pr-20` ( ボタン領域 64px ≈ 32px × 2 ) を足す。 input の
+ *        `inputClass()` は full width のまま戻したので、 fullWidth=false
+ *        指定も撤去。 ボタンは `tabIndex={-1}` で tab フォーカスから外す
+ *        ( 入力中の流れを乱さない ) 、 hover で `bg-line-soft` のみ。
+ *        対象は v0.27.18 の 6 箇所そのまま。
  */
-export const APP_VERSION = "0.27.19";
+export const APP_VERSION = "0.27.20";

@@ -15,10 +15,11 @@ export interface InputActionsProps {
 }
 
 /**
- * 各種テキスト/数値 input の右に並べる「クリア × / ペースト 📋」ボタン
- * セット ( v0.27.18 ) 。 input の `inputClass({ fullWidth: false })` を
- * `flex-1 min-w-0` で挟んだ flex container 内に並べて使う。 高さは
- * inputClass の h-11 に合わせている。
+ * 各種テキスト/数値 input の **右内側に重ねて表示する**「ペースト 📋 /
+ * クリア × 」ゴーストボタン ( v0.27.20 で外付け box → 内側オーバーレイ
+ * に変更 ) 。 呼出側は `<div className="relative">` で input をラップし、
+ * input の className に `pr-20` ( ボタン分 = 64px ) を足す。 並びは
+ * 左ペースト / 右クリアで、 入力末端に × が来る形 ( v0.27.19 ) 。
  */
 export default function InputActions({
   onClear,
@@ -35,28 +36,28 @@ export default function InputActions({
       // 静かに無視 — ユーザーが手動入力するだけ。
     }
   };
-  // ボタン順は左 = ペースト、 右 = クリア ( v0.27.19 ) 。 入力の右端に
-  // × が来る並びの方が自然 ( 元データを消す動作なので一番外側に置く ) 。
   return (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
       <button
         type="button"
         onClick={handlePaste}
         aria-label="ペースト"
-        className="w-9 h-11 inline-flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-line-soft)] border border-[var(--color-line)] transition-colors"
+        tabIndex={-1}
+        className="w-8 h-8 inline-flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-line-soft)] transition-colors"
         style={{ borderRadius: 0 }}
       >
-        <ClipboardPaste size={14} strokeWidth={1.8} />
+        <ClipboardPaste size={14} strokeWidth={1.6} />
       </button>
       <button
         type="button"
         onClick={onClear}
         disabled={!hasValue}
         aria-label="クリア"
-        className="w-9 h-11 inline-flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-line-soft)] border border-[var(--color-line)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        tabIndex={-1}
+        className="w-8 h-8 inline-flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-line-soft)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         style={{ borderRadius: 0 }}
       >
-        <X size={14} strokeWidth={1.8} />
+        <X size={14} strokeWidth={1.6} />
       </button>
     </div>
   );
