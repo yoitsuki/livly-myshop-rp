@@ -12,7 +12,7 @@ import {
   type PriceEntry,
 } from "@/lib/firebase/repo";
 import { formatPrice } from "@/lib/utils/parsePrice";
-import { formatDateTime } from "@/lib/utils/date";
+import { formatDate, formatDateTime } from "@/lib/utils/date";
 import { formatShopPeriod, roundAgeIndex } from "@/lib/shopPeriods";
 import TagChip from "@/components/TagChip";
 import InfoSourceChip from "@/components/InfoSourceChip";
@@ -393,7 +393,9 @@ function PriceEntryRow({
         style={{ fontFamily: "var(--font-label)", fontSize: 10, letterSpacing: "0.08em" }}
       >
         <Calendar size={11} strokeWidth={1.8} />
-        {formatDateTime(entry.checkedAt)}
+        {entry.checkedAtTimeUnknown
+          ? formatDate(entry.checkedAt)
+          : formatDateTime(entry.checkedAt)}
         {entry.priceSource && (
           <>
             <span className="mx-1 opacity-40">|</span>

@@ -69,7 +69,12 @@ interface FormState {
   minPrice: string;
   refPriceMin: string;
   refPriceMax: string;
+  /** datetime-local string ( "YYYY-MM-DDTHH:mm" ) 。 checkedAtTimeUnknown=true
+   *  のときは時刻 portion を 00:00 に固定する。 */
   checkedAt: string;
+  /** 時間不明 ( v0.27.17 ) — checked のとき input は date 型、 内部値は当日
+   *  00:00 固定。 詳細ページで日付のみ表示される。 */
+  checkedAtTimeUnknown: boolean;
   tagIds: string[];
   shopYearMonth: string;
   shopPhase: ShopPhase;
@@ -90,6 +95,7 @@ const EMPTY_FORM: FormState = {
   refPriceMin: "",
   refPriceMax: "",
   checkedAt: toLocalInput(Date.now()),
+  checkedAtTimeUnknown: false,
   tagIds: [],
   shopYearMonth: "",
   shopPhase: "ongoing",
@@ -267,6 +273,7 @@ function RegisterPageInner() {
       refPriceMin: bulkEntry.refPriceMin ? String(bulkEntry.refPriceMin) : "",
       refPriceMax: bulkEntry.refPriceMax ? String(bulkEntry.refPriceMax) : "",
       checkedAt: toLocalInput(bulkEntry.checkedAt || Date.now()),
+      checkedAtTimeUnknown: bulkEntry.checkedAtTimeUnknown === true,
       tagIds: bulkEntry.tagIds,
       shopYearMonth: bulkEntry.shopPeriod?.yearMonth ?? "",
       shopPhase: bulkEntry.shopPeriod?.phase ?? "ongoing",
@@ -317,7 +324,11 @@ function RegisterPageInner() {
     setMainCrop(undefined);
     setPresets(null);
     setMatchedPresetId(undefined);
-    setForm((f) => ({ ...f, checkedAt: toLocalInput(Date.now()) }));
+    setForm((f) => ({
+      ...f,
+      checkedAt: toLocalInput(Date.now()),
+      checkedAtTimeUnknown: false,
+    }));
     setAutoFilled(new Set());
     setOcrDone(false);
 
@@ -327,7 +338,12 @@ function RegisterPageInner() {
     setBusy("load");
     try {
       const checkedAt = await getCheckedAt(file);
-      setForm((f) => ({ ...f, checkedAt: toLocalInput(checkedAt) }));
+      // EXIF が時刻まで持っているので timeUnknown は OFF に戻す ( v0.27.17 ) 。
+      setForm((f) => ({
+        ...f,
+        checkedAt: toLocalInput(checkedAt),
+        checkedAtTimeUnknown: false,
+      }));
       setAutoFilled((prev) => new Set(prev).add("checkedAt"));
 
       const resolved = resolveShopPeriod(checkedAt);
@@ -451,6 +467,7 @@ function RegisterPageInner() {
           refPriceMax: Number(form.refPriceMax) || 0,
           priceSource: form.priceSource.trim() || undefined,
           checkedAt: fromLocalInput(form.checkedAt),
+          checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
           shopPeriod,
           iconCrop,
           mainCrop,
@@ -536,6 +553,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
+        checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
         createdAt: now,
       };
@@ -576,6 +594,7 @@ function RegisterPageInner() {
         refPriceMin: Number(form.refPriceMin) || 0,
         refPriceMax: Number(form.refPriceMax) || 0,
         checkedAt: fromLocalInput(form.checkedAt),
+        checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
       };
       await mergeItemPriceEntry({
@@ -929,12 +948,50 @@ function RegisterPageInner() {
           label="確認日時"
           labelAdornment={isAuto("checkedAt") ? autoBadge : undefined}
         >
-          <input
-            type="datetime-local"
-            value={form.checkedAt}
-            onChange={(e) => setForm({ ...form, checkedAt: e.target.value })}
-            className={`${inputClass({ highlighted: isAuto("checkedAt") })} text-[13px]`}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type={form.checkedAtTimeUnknown ? "date" : "datetime-local"}
+              value={
+                form.checkedAtTimeUnknown
+                  ? form.checkedAt.slice(0, 10)
+                  : form.checkedAt
+              }
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  checkedAt: form.checkedAtTimeUnknown
+                    ? `${e.target.value}T00:00`
+                    : e.target.value,
+                })
+              }
+              className={`${inputClass({ highlighted: isAuto("checkedAt"), fullWidth: false })} flex-1 min-w-[8rem] text-[13px]`}
+            />
+            <label
+              className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-text)] cursor-pointer select-none shrink-0"
+              style={{ fontFamily: "var(--font-body)" }}
+            >
+              <input
+                type="checkbox"
+                checked={form.checkedAtTimeUnknown}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  // ON にするとき: 既存 checkedAt の日付 portion を残して
+                  // 時刻を 00:00 に正規化。 OFF のとき: 値はそのまま
+                  // ( ユーザーが時刻を再編集できるように ) 。
+                  const nextCheckedAt = next
+                    ? `${form.checkedAt.slice(0, 10) || ""}T00:00`
+                    : form.checkedAt;
+                  setForm({
+                    ...form,
+                    checkedAtTimeUnknown: next,
+                    checkedAt: nextCheckedAt,
+                  });
+                }}
+                className="w-4 h-4 accent-[var(--color-gold-deep)]"
+              />
+              時間不明
+            </label>
+          </div>
         </Field>
       </div>
 

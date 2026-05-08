@@ -45,6 +45,9 @@ export interface BulkEntry {
   refPriceMax: number;
   priceSource?: string;
   checkedAt: number;
+  /** 時間不明 ( v0.27.17 ) — true なら checkedAt は当日 00:00 のダミー
+   *  時刻を持っているだけで、 表示時に時刻 portion を伏せる。 */
+  checkedAtTimeUnknown?: boolean;
   shopPeriod?: ShopPeriodRecord;
 
   /** Whether the row is selected for the bulk-save sweep. */

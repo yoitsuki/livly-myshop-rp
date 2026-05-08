@@ -43,6 +43,7 @@ export default function EditPriceEntryPage({
       shopPhase: entry.shopPeriod?.phase ?? "ongoing",
       shopAuto: entry.shopPeriod?.auto ?? false,
       checkedAt: toLocalInput(entry.checkedAt),
+      checkedAtTimeUnknown: entry.checkedAtTimeUnknown === true,
       priceSource: entry.priceSource ?? "なんおし",
     });
   }, [entryId, entry?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -56,6 +57,7 @@ export default function EditPriceEntryPage({
       form.shopPhase !== (entry.shopPeriod?.phase ?? "ongoing") ||
       form.shopAuto !== (entry.shopPeriod?.auto ?? false) ||
       form.checkedAt !== toLocalInput(entry.checkedAt) ||
+      form.checkedAtTimeUnknown !== (entry.checkedAtTimeUnknown === true) ||
       form.priceSource !== (entry.priceSource ?? "なんおし"))
   );
   useDirtyTracker(dirty);
@@ -112,6 +114,10 @@ export default function EditPriceEntryPage({
         checkedAt: form.checkedAt
           ? fromLocalInput(form.checkedAt)
           : Date.now(),
+        // updatePriceEntry の spread + itemToFs の compact が undefined を
+        // 自動で strip するので、 解除した行 ( OFF ) は undefined を渡せば
+        // 既存 true を消せる。
+        checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         // "マイショ" entry は画像と紐付いているので priceSource を保持
         // ( フォームでは編集できないため、元の値をそのまま書き戻す ) 。
         priceSource: isMaisho

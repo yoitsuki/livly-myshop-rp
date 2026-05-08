@@ -106,9 +106,10 @@ function isAdmin() {
 
 `src/lib/version.ts` の `APP_VERSION` を更新する運用。Drawer 下部に表示される。
 
-最新: **0.27.16**
+最新: **0.27.17**
 
 直近のチェンジログ要約:
+- **0.27.17 — 価格 entry に「時間不明」フラグを導入**。 確認日時の時刻が曖昧で正確に分からないケース ( OCR で時刻が読めない / 古メモを後追い登録 等 ) に対応。 `PriceEntry` に `checkedAtTimeUnknown?: boolean` を追加 ( true のときだけ Firestore に書く、 旧データは undefined で時刻既知扱いの互換 ) 。 form 側 ( `PriceEntryFormValue` / register の `FormState` ) に同フィールド + 確認日時 input の隣に「時間不明」 checkbox を配置、 ON にすると input type が datetime-local → date に切替、 内部値は当日ローカル 00:00 に正規化される。 詳細ページの MARKET REFERENCE 行で `entry.checkedAtTimeUnknown=true` のとき `formatDateTime` → `formatDate` ( YYYY-MM-DD のみ ) で表示。 `BulkEntry` にも追加して `saveBulkEntry` が initial / merge newEntry に伝播するので、 inbox / bulk 経由でも flag を維持。 EXIF auto-fill では timeUnknown を自動で OFF に戻す ( EXIF が時刻持ちなら "不明" ではなくなる ) 。 prices/[entryId]/edit の dirty 比較にも flag を追加し、 解除時は patch に `undefined` を渡して itemToFs の compact 経由で field を Firestore から削除。 mergeItemPriceEntry の dedup key ( yearMonth + checkedAt ) は変更なしで機能 — timeUnknown=true 同士は ms midnight が同じなので idempotent。 `utils/date.ts` に `toLocalDateInput` / `fromLocalDateInput` を追加。
 - **0.27.16 — React 19 lint baseline を 26 → 19 件に削減 ( easy-fix 7 件 )**。 全て局所修正で動作影響なし: (a) register/bulk の未使用 Link import 撤去、(b) prices/new の useState 初期値を lazy initializer に ( `Date.now()` の impure 警告 解消 ) 、(c) tags page で `useTags() ?? []` / `useItems() ?? []` を `tagsRaw` / `itemsRaw` 経由 + `useMemo` で stabilize ( useMemo deps の振動 解消 ) 、(d) register/page.tsx の bulk-edit init useEffect の deps に `backHref` を追加、(e) register/inbox の `processRow` / `refresh` を `const = async` → `async function` 宣言に変更 ( hoisting で TDZ 解消 ) 。 残り 19 件は React 18 で idiomatic だった `set-state-in-effect` / `refs-during-render` 系で、 1 件あたり 10〜30 分のパターン書換 ( `useSyncExternalStore` / render-time derive 等 ) が必要。 ファイルを触る機会のついでに片付ける方針。
 - **0.27.15 — ShopPeriodPicker の共通コンポーネント化**。0.27.13 → 0.27.14 で発覚した「同じ UI が 2 箇所に重複していて片方だけ更新した」事故を構造的に防ぐ。`register/page.tsx` の inline `ShopPeriodField` 関数 と `PriceEntryForm.tsx` の inline `<Field label="マイショップ時期">` ブロックを `src/components/ShopPeriodPicker.tsx` に集約。props 形差 ( register: 個別 / PriceEntryForm: value object ) と `highlight` / `showManualHint` の有無 ( = mainBlob の有無による分岐 ) を統一 API ( `{ yearMonth, phase, auto, showManualHint?, highlight?, onChange({yearMonth,phase}) }` ) で吸収。両呼出は wrapping だけで move、 不要になった `Sparkles` / `formatShopPeriod` / `formatRoundDateRange` / `SHOP_ROUNDS` / `inputClass` の import も両 file から撤去。今後 `<option>` テキストや phase ボタン等の更新は ShopPeriodPicker.tsx 1 箇所で済む。
 - **0.27.14 — 0.27.13 (a) の取り込み漏れ修正**。register form 側の `<select>` には開催日 (MMDD-MMDD) を反映していたが、価格 entry の個別編集画面 ( `/items/[id]/prices/new` と `/items/[id]/prices/[entryId]/edit` ) で使われている共通 `PriceEntryForm.tsx` 側を見落としていた。同じ option text に同期 → 全画面で表示が揃う。再発防止として 0.27.15 で共通化に倒した。
@@ -316,6 +317,7 @@ src/
     image.ts                compressImage / cropAndEncode / Blob 周り
     exif.ts                 getCheckedAt(File|Blob)
     shopPeriods.ts          SHOP_ROUNDS + resolveShopPeriod + roundAgeIndex + formatRoundDateRange ( JST の MMDD-MMDD で start/end を返す、 v0.27.13 で追加 )
+    utils/date.ts           formatDate / formatDateTime / toLocalInput / fromLocalInput + toLocalDateInput / fromLocalDateInput ( "YYYY-MM-DD" ↔ ローカル 00:00 ms 、 v0.27.17 の「時間不明」モードで使う )
     version.ts              APP_VERSION + 変更履歴コメント
     ocr/
       tesseract.ts          worker をキャッシュ

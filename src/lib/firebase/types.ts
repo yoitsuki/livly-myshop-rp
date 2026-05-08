@@ -29,6 +29,11 @@ export interface PriceEntry {
   refPriceMin: number;
   refPriceMax: number;
   checkedAt: number;
+  /** true = 時刻が不明 ( = 日付だけ確かで時刻はダミー値 ) 。 表示時に
+   *  時刻 portion を伏せて日付だけ出す ( v0.27.17 で追加 ) 。 内部的には
+   *  当日のローカル 00:00 を保持する。 undefined / false = 時刻も含めて
+   *  既知 ( 既定 ) 。 */
+  checkedAtTimeUnknown?: boolean;
   priceSource?: string;
   createdAt: number;
 }

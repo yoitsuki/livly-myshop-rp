@@ -978,5 +978,37 @@
  *        refs-during-render 系で、 ファイルを触る機会のついでに少しずつ
  *        パターン書換 ( useSyncExternalStore / render-time derive 等 )
  *        していく方針。
+ * 0.27.17 価格 entry に「時間不明」フラグを導入。 確認日時の時刻が曖昧で
+ *        埋めにくい / 正確に分からないケース ( OCR で時刻が読めない、 古
+ *        メモを後追い登録、 等 ) に対応。
+ *        - `PriceEntry` に `checkedAtTimeUnknown?: boolean` を追加 ( true
+ *          のときだけ Firestore に書く、 false / undefined は schema を
+ *          汚さないために書込まない ) 。 mappers の itemToFs / itemFromFs
+ *          が pass-through。 旧データは undefined → 時刻既知扱いで互換。
+ *        - `PriceEntryFormValue` と register の `FormState` に
+ *          `checkedAtTimeUnknown: boolean` を追加。 確認日時 input に
+ *          隣接して「時間不明」 checkbox を配置し、 ON のとき input type
+ *          を datetime-local → date に切替。 ON のとき内部値は当日
+ *          ローカル 00:00 に正規化 ( ON / OFF 切替時のロスを防ぐため、
+ *          ON にすると日付 portion を残して時刻を 00:00 に固定 ) 。
+ *        - 詳細ページの MARKET REFERENCE 行で `entry.checkedAtTimeUnknown`
+ *          が true のとき `formatDateTime` の代わりに `formatDate` を
+ *          使用 ( YYYY-MM-DD のみ表示、 時刻 portion は伏せる ) 。
+ *        - `BulkEntry` にも追加して `saveBulkEntry` が初期 entry / merge
+ *          newEntry に伝播するので、 inbox / bulk 経由の登録でも flag を
+ *          維持できる。
+ *        - EXIF auto-fill ( register の handleFile, PriceEntryForm の
+ *          getCheckedAt, prices/new の handleFile ) では timeUnknown を
+ *          自動で OFF に戻す ( EXIF が時刻を持っているので "不明" では
+ *          なくなる ) 。
+ *        - prices/[entryId]/edit の dirty 比較に flag を追加し、 解除時の
+ *          patch では `undefined` を渡して itemToFs の compact に既存値を
+ *          消させる ( spread + compact で正しく Firestore から field 削除 ) 。
+ *        - utils/date.ts に `toLocalDateInput` / `fromLocalDateInput` を
+ *          追加 ( "YYYY-MM-DD" ↔ ms midnight ) 。
+ *        - mergeItemPriceEntry の dedup key ( yearMonth + checkedAt ) は
+ *          そのまま機能。 timeUnknown=true で同じ画像を再 OCR したら EXIF
+ *          が flag OFF に戻して通常モードで上書きされる ( 同 ms ) 。
+ *          timeUnknown=true 同士は ms midnight が同じなので idempotent。
  */
-export const APP_VERSION = "0.27.16";
+export const APP_VERSION = "0.27.17";

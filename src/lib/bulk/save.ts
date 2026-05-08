@@ -81,6 +81,8 @@ export async function saveBulkEntry({
         refPriceMin: entry.refPriceMin,
         refPriceMax: entry.refPriceMax || entry.refPriceMin,
         checkedAt: entry.checkedAt,
+        checkedAtTimeUnknown:
+          entry.checkedAtTimeUnknown === true ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, entry.priceSource),
       },
       replaceMainImage:
@@ -97,6 +99,8 @@ export async function saveBulkEntry({
     refPriceMin: entry.refPriceMin,
     refPriceMax: entry.refPriceMax || entry.refPriceMin,
     checkedAt: entry.checkedAt,
+    checkedAtTimeUnknown:
+      entry.checkedAtTimeUnknown === true ? true : undefined,
     priceSource: resolveEntryPriceSource(!!mainBlob, entry.priceSource),
     createdAt: Date.now(),
   };

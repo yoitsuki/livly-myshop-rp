@@ -154,11 +154,13 @@ export default function NewPriceEntryPage({
 
     setBusy("load");
     try {
-      // EXIF → checkedAt + 期間自動セット
+      // EXIF → checkedAt + 期間自動セット ( EXIF が時刻まで持っているので
+      // timeUnknown は OFF に戻す、 v0.27.17 ) 。
       const checkedAt = await getCheckedAt(file);
       setForm((f) => ({
         ...f,
         checkedAt: toLocalInput(checkedAt),
+        checkedAtTimeUnknown: false,
       }));
 
       const resolved = resolveShopPeriod(checkedAt);
@@ -278,6 +280,7 @@ export default function NewPriceEntryPage({
         checkedAt: form.checkedAt
           ? fromLocalInput(form.checkedAt)
           : Date.now(),
+        checkedAtTimeUnknown: form.checkedAtTimeUnknown ? true : undefined,
         priceSource: resolveEntryPriceSource(!!mainBlob, form.priceSource),
       };
       await addPriceEntry(
