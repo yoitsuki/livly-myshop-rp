@@ -15,6 +15,7 @@ import {
 } from "@/lib/firebase/repo";
 import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
+import InputActions from "@/components/InputActions";
 import { Button, Field, inputClass } from "@/components/ui";
 import { useDirtyTracker } from "@/lib/unsavedChanges";
 
@@ -279,33 +280,55 @@ export default function EditItemPage({
       )}
 
       <Field label="アイテム名" required>
-        <input
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={`${inputClass()} text-[17px]`}
-          style={{ fontFamily: "var(--font-display)" }}
-        />
+        <div className="flex items-center gap-1.5">
+          <input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0 text-[17px]`}
+            style={{ fontFamily: "var(--font-display)" }}
+          />
+          <InputActions
+            onClear={() => setForm({ ...form, name: "" })}
+            onPaste={(text) => setForm({ ...form, name: text })}
+            hasValue={!!form.name}
+          />
+        </div>
       </Field>
 
       <Field label="カテゴリ">
-        <input
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-          className={inputClass()}
-          list="cat-suggestions-edit"
-        />
+        <div className="flex items-center gap-1.5">
+          <input
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0`}
+            list="cat-suggestions-edit"
+          />
+          <InputActions
+            onClear={() => setForm({ ...form, category: "" })}
+            onPaste={(text) => setForm({ ...form, category: text })}
+            hasValue={!!form.category}
+          />
+        </div>
         <CategorySuggestions />
       </Field>
 
       <Field label="最低販売価格 (GP)">
-        <input
-          inputMode="numeric"
-          value={form.minPrice}
-          onChange={(e) =>
-            setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
-          }
-          className={`${inputClass()} tabular-nums`}
-        />
+        <div className="flex items-center gap-1.5">
+          <input
+            inputMode="numeric"
+            value={form.minPrice}
+            onChange={(e) =>
+              setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
+            }
+            className={`${inputClass({ fullWidth: false })} flex-1 min-w-0 tabular-nums`}
+          />
+          <InputActions
+            onClear={() => setForm({ ...form, minPrice: "" })}
+            onPaste={(digits) => setForm({ ...form, minPrice: digits })}
+            digitsOnly
+            hasValue={!!form.minPrice}
+          />
+        </div>
       </Field>
 
       <TagPicker

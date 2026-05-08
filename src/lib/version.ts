@@ -1010,5 +1010,15 @@
  *          そのまま機能。 timeUnknown=true で同じ画像を再 OCR したら EXIF
  *          が flag OFF に戻して通常モードで上書きされる ( 同 ms ) 。
  *          timeUnknown=true 同士は ms midnight が同じなので idempotent。
+ * 0.27.18 register form と /items/[id]/edit の アイテム名 / カテゴリ /
+ *        最低販売価格 input の右に「クリア × / ペースト 📋」ボタンを
+ *        並べる。 ペーストは `navigator.clipboard.readText()` 経由 (
+ *        permission denied / unsupported は静かに無視 ) 、 最低販売価格
+ *        では digitsOnly フラグで非数値を除去する。 共通化のため新規
+ *        `src/components/InputActions.tsx` ( ~60 行 ) に集約し、 各
+ *        呼出は input の `inputClass({ fullWidth: false })` に
+ *        `flex-1 min-w-0` を足した flex container で input + buttons を
+ *        並べる形 ( ~12 行/呼出 ) 。 inputClass の h-11 にボタンの
+ *        h-11 を合わせて視覚的に揃う。
  */
-export const APP_VERSION = "0.27.17";
+export const APP_VERSION = "0.27.18";

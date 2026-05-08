@@ -60,6 +60,7 @@ import TagChip from "@/components/TagChip";
 import ImageCropper from "@/components/ImageCropper";
 import PresetForm from "@/components/PresetForm";
 import ShopPeriodPicker from "@/components/ShopPeriodPicker";
+import InputActions from "@/components/InputActions";
 import { Button, Field, inputClass } from "@/components/ui";
 import { useDirtyTracker } from "@/lib/unsavedChanges";
 
@@ -839,13 +840,20 @@ function RegisterPageInner() {
         required
         labelAdornment={isAuto("name") ? autoBadge : undefined}
       >
-        <input
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className={`${inputClass({ highlighted: isAuto("name") })} text-[17px]`}
-          style={{ fontFamily: "var(--font-display)" }}
-          placeholder="例: 籐の揺りかご"
-        />
+        <div className="flex items-center gap-1.5">
+          <input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className={`${inputClass({ highlighted: isAuto("name"), fullWidth: false })} flex-1 min-w-0 text-[17px]`}
+            style={{ fontFamily: "var(--font-display)" }}
+            placeholder="例: 籐の揺りかご"
+          />
+          <InputActions
+            onClear={() => setForm({ ...form, name: "" })}
+            onPaste={(text) => setForm({ ...form, name: text })}
+            hasValue={!!form.name}
+          />
+        </div>
       </Field>
 
       {/* レプリカは原本との同名衝突を分けるキーで、 mergeTarget 判定の
@@ -910,13 +918,20 @@ function RegisterPageInner() {
           label="カテゴリ"
           labelAdornment={isAuto("category") ? autoBadge : undefined}
         >
-          <input
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className={inputClass({ highlighted: isAuto("category") })}
-            placeholder="例: 島デコ右前"
-            list="cat-suggestions"
-          />
+          <div className="flex items-center gap-1.5">
+            <input
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className={`${inputClass({ highlighted: isAuto("category"), fullWidth: false })} flex-1 min-w-0`}
+              placeholder="例: 島デコ右前"
+              list="cat-suggestions"
+            />
+            <InputActions
+              onClear={() => setForm({ ...form, category: "" })}
+              onPaste={(text) => setForm({ ...form, category: text })}
+              hasValue={!!form.category}
+            />
+          </div>
           <CategorySuggestions />
         </Field>
       )}
@@ -933,15 +948,23 @@ function RegisterPageInner() {
             label="最低販売価格 (GP)"
             labelAdornment={isAuto("minPrice") ? autoBadge : undefined}
           >
-            <input
-              inputMode="numeric"
-              value={form.minPrice}
-              onChange={(e) =>
-                setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
-              }
-              className={`${inputClass({ highlighted: isAuto("minPrice") })} tabular-nums`}
-              placeholder="1800"
-            />
+            <div className="flex items-center gap-1.5">
+              <input
+                inputMode="numeric"
+                value={form.minPrice}
+                onChange={(e) =>
+                  setForm({ ...form, minPrice: e.target.value.replace(/[^\d]/g, "") })
+                }
+                className={`${inputClass({ highlighted: isAuto("minPrice"), fullWidth: false })} flex-1 min-w-0 tabular-nums`}
+                placeholder="1800"
+              />
+              <InputActions
+                onClear={() => setForm({ ...form, minPrice: "" })}
+                onPaste={(digits) => setForm({ ...form, minPrice: digits })}
+                digitsOnly
+                hasValue={!!form.minPrice}
+              />
+            </div>
           </Field>
         )}
         <Field
