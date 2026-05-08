@@ -1034,5 +1034,9 @@
  *        指定も撤去。 ボタンは `tabIndex={-1}` で tab フォーカスから外す
  *        ( 入力中の流れを乱さない ) 、 hover で `bg-line-soft` のみ。
  *        対象は v0.27.18 の 6 箇所そのまま。
+ * 0.27.21 ホーム一覧の「参考価格順」ソートを 昇順 ( 安い順 ) → 降順
+ *        ( 高い順 ) に変更。 比較関数の引数を入れ替え、 価格情報なし
+ *        entry のフォールバックを `POSITIVE_INFINITY` → `NEGATIVE_INFINITY`
+ *        にして引き続き末尾に寄せる。
  */
-export const APP_VERSION = "0.27.20";
+export const APP_VERSION = "0.27.21";
